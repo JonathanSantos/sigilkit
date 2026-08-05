@@ -2,6 +2,7 @@
   "name": "@sigil/core",
   "version": "0.1.0",
   "description": "Runtime do sigil — decorators e registry. Vai para o bundle da extensão; nunca importa typescript (R1).",
+  "license": "MIT",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -14,7 +15,9 @@
       "default": "./dist/ui.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -b ."
   },

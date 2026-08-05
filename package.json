@@ -2,6 +2,7 @@
   "name": "sigil",
   "private": true,
   "description": "Framework declarativo para extensões do VSCode — o TypeScript é a fonte única de verdade, o manifesto é derivado.",
+  "license": "MIT",
   "workspaces": [
     "packages/*",
     "examples/*"

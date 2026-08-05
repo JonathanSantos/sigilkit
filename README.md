@@ -1,9 +1,16 @@
-# sigil
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo/sigil-logo-dark.svg">
+    <img src="assets/logo/sigil-logo-light.svg" alt="sigil" width="300">
+  </picture>
+</p>
 
-Framework declarativo para extensões do VSCode. O arquivo TypeScript é a
-**fonte única de verdade**; o `contributes` do `package.json` é **derivado**
-dele em build time. Renomear um comando no código e esquecer o manifesto deixa
-de ser um comando fantasma — vira erro de build com posição no arquivo.
+<p align="center">
+  <strong>Framework declarativo para extensões do VSCode.</strong><br>
+  O TypeScript é a fonte única de verdade; o <code>package.json</code> é derivado dele.
+</p>
+
+---
 
 ```ts
 import * as vscode from "vscode";
@@ -30,78 +37,96 @@ Nenhuma linha de `contributes` é escrita à mão. `sigil build` gera:
 - `src/.generated/wire.ts` — o `activate()` real, que faz o join entre as chaves
   emitidas pelo compilador e os handlers registrados em runtime, e **lança erro**
   se faltar handler;
-- `src/.generated/config.d.ts` — augmentation que tipa o `getConfig` do core
-  por chave: `getConfig("hello.retries")` → `number`, com autocomplete; chave
-  fora do registro (configs de terceiros) retorna `unknown` e exige cast.
-  Requer `"include": ["src", "src/.generated/**/*"]` no tsconfig — globs do
-  tsc não atravessam diretórios com ponto (o `sigil init` já gera assim).
+- `src/.generated/config.d.ts` — tipos por chave: `getConfig("hello.retries")`
+  → `number`, com autocomplete; chave fora do registro retorna `unknown`.
 
-## Estrutura
+Renomear um comando e esquecer o manifesto deixa de ser um comando fantasma —
+vira **erro de build com posição no arquivo**. Um typo numa expressão `when`,
+que falharia em silêncio para sempre, vira `SIGIL1018` com caret na linha.
 
-| Pacote | Papel | Regra inviolável |
-|---|---|---|
-| `@sigil/core` | runtime (vai para o bundle) | nunca importa `typescript` (R1) |
-| `@sigil/compiler` | build time (AST → IR → emitters) | nunca importa `vscode` (R2); nunca executa código do usuário (R3) |
-| `@sigil/cli` | orquestração e IO | emitters são puros; todo IO fica aqui (R4) |
+## Por que sigil
 
-**Comece pelo [tutorial: sua primeira extensão em 5 minutos](docs/tutorial.md)**
-— comando, config, status bar, watch, aba de opções e `.vsix`, sem abrir o
-VSCode (o teste `tests/tutorial.test.ts` garante que ele nunca apodrece).
+- **Uma fonte de verdade** — identidade (ids, títulos, schemas) sai da AST em
+  build time; comportamento (handlers) sai do registry em runtime; o join por
+  chave estável é verificado nas duas pontas.
+- **Erros altos, nunca silêncio** (R6) — handler ausente lança na ativação;
+  exceção em comando vira log com stack + notificação "Abrir logs"; API não
+  simulada no teste lança erro descritivo.
+- **Dev loop de segundos, não de F5** — quatro marchas: watch incremental,
+  simulador com REPL, workbench visual no browser e VSCode real com hot swap.
+- **Testável por padrão** — `@sigil/test` ativa o bundle real da extensão sem
+  extension host; os exemplos e o próprio tutorial rodam no CI.
+- **Web-ready e minificação-safe** — runtime sem `node:*` (funciona no
+  vscode.dev) e join por `Symbol.metadata` (sem `--keep-names`).
 
-O design completo está em [docs/spec.md](docs/spec.md). Leia a §4 (modelo de
-propriedade) antes de mexer em qualquer coisa.
-
-## Uso
-
-Projeto novo:
+## Começando
 
 ```bash
 sigil init minha-extensao
 cd minha-extensao && npm install && npm run build
-# abra no VSCode e aperte F5
+# abra no VSCode e aperte F5 — ou: sigil sim --ui minha-extensao
 ```
+
+**Siga o [tutorial: sua primeira extensão em 5 minutos](docs/tutorial.md)** —
+comando, config, status bar, watch, aba de opções e `.vsix`, sem abrir o
+VSCode. O teste `tests/tutorial.test.ts` garante que ele nunca apodrece.
 
 Neste monorepo:
 
 ```bash
-npm install          # workspaces
-npm run build        # compila os quatro pacotes
-npm run example:build
-cd examples/hello && npm run bundle
-# abra examples/hello no VSCode e aperte F5
+npm install && npm run build     # compila os quatro pacotes
+npm test                         # unidade + simulador + E2E do CLI
 ```
 
-## Linguagem, Chat e Custom Editors
+## Os decorators
 
-As superfícies que fecham o mapa do marketplace, no mesmo modelo declarativo:
+| Decorator | Em | O que declara |
+|---|---|---|
+| `@Extension({ prefix?, settings? })` | classe | a extensão; `settings: true` gera a aba de opções (`<prefix>.configure`) |
+| `@Command({ title, keybinding?, menus?, enablement?, progress? })` | método | comando + keybindings + menus; `progress` envolve em `withProgress` (token é o último argumento) |
+| `@Config({ description?, ... })` | accessor | configuração — tipo, default e enum saem da declaração TS |
+| `@Watch("chave")` | método | reação a mudança de config |
+| `@Activate` / `@Deactivate` | método | lifecycle |
+| `@StatusBar({ alignment?, command? })` | accessor | item na status bar; atribuir ao accessor atualiza o texto |
+| `@On("ns.evento", { debounce? })` | método | evento da API com auto-dispose |
+| `@OnFile(glob, kind, { debounce? })` | método | `FileSystemWatcher` declarativo |
+| `@UriHandler()` | método | deep links `vscode://…` (+ `activationEvent` automático) |
+| `@State("global" \| "workspace")` | accessor | persistência em `Memento`, tipada |
+| `@Secret()` | accessor | `SecretStorage` com cache síncrono |
+| `@ContextKey()` | accessor | `setContext` ao atribuir — e habilita a validação de `when` |
+| `@TreeView({ name, container? })` + `@TreeRoot`/`@TreeChildren`/`@TreeItem` | classe | view na sidebar com `TreeDataProvider` adaptado |
+| `@Webview({ title, ui, location? })` + `@OnMessage`/`@OnRequest` | classe | painel ou sidebar com shell HTML (CSP + nonce) e RPC tipado |
+| `@Language({ id })` + `@Hover`/`@Completion`/`@CodeLens`/`@Diagnostics` | classe | providers de linguagem (+ `onLanguage:*` automático) |
+| `@ChatParticipant({ id, name })` + `@ChatRequest`/`@ChatFollowups` | classe | participante de chat (`@nome` no Copilot Chat) |
+| `@CustomEditor({ id, filenamePattern, ui })` | classe | editor custom sobre o shell de webview, com `applyEdit` undo-friendly |
+
+## Superfícies de linguagem, chat e editores
 
 ```ts
 @Language({ id: "markdown" })
 export class MarkdownAssist {
-  @Hover()          hover(doc, pos) { return new vscode.Hover("…"); }
-  @Completion({ triggerCharacters: ["("] })  complete(doc, pos) { … }
-  @CodeLens()       lenses(doc) { … }
-  @Diagnostics({ on: "change" })  validate(doc) { return [/* Diagnostic[] */]; }
+  @Hover()                                   hover(doc, pos) { return new vscode.Hover("…"); }
+  @Completion({ triggerCharacters: ["("] })  complete(doc, pos) { /* … */ }
+  @Diagnostics({ on: "change" })             validate(doc) { return [/* Diagnostic[] */]; }
 }
 ```
 
-O sigil emite os `activationEvents: onLanguage:<id>` (a ponte que o VSCode não
-gera sozinho — e só gerencia o subconjunto `onLanguage:*`, o resto do array é
-seu), registra os providers com dispatch dinâmico (hot-swappáveis) e cuida do
-`DiagnosticCollection` inteiro: revalida em change/save/open e limpa no close.
+O sigil emite os `activationEvents: onLanguage:<id>` (gerencia só o subconjunto
+`onLanguage:*` — o resto do array é seu), registra os providers com dispatch
+dinâmico (hot-swappáveis) e cuida do ciclo de vida do `DiagnosticCollection`:
+revalida em change/save/open e limpa no close.
 
 ```ts
-@ChatParticipant({ id: "guru", name: "guru", description: "…" })
+@ChatParticipant({ id: "guru", name: "guru" })
 export class Guru {
   @ChatRequest()
   async responder(request, ctx, stream, token) { stream.markdown("…"); }
 }
 ```
 
-Entra em `contributes.chatParticipants` (ativação automática); exige VSCode
-≥ 1.90 em runtime — em hosts antigos o bind falha alto com mensagem clara, e
-a API é acessada dinamicamente para não exigir `@types/vscode` novo de quem
-não usa chat.
+Entra em `contributes.chatParticipants`; a API de chat é acessada
+dinamicamente — não exige `@types/vscode` novo de quem não usa chat, e em
+hosts antigos o bind falha alto com mensagem clara.
 
 ```ts
 @CustomEditor({ id: "caps", displayName: "CAPS", filenamePattern: "*.caps", ui: "./ui/editor.html" })
@@ -113,237 +138,174 @@ export class CapsEditor {
 }
 ```
 
-Mesmo shell dos webviews (CSP + nonce + `asWebviewUri` + RPC); os handlers
-recebem o **contexto do documento** como segundo argumento, a UI recebe o
+Handlers recebem o contexto do documento como segundo argumento; a UI recebe o
 conteúdo no load e a cada mudança (`onDocument` em `@sigil/core/ui`).
 
-## DX sobre a API — eventos, estado e `when` validado
+## `when` validado no build
+
+A feature que só o sigil pode ter: o compilador vê as `@ContextKey` declaradas
+**e** as expressões `when`/`enablement`. Token com o seu prefixo que não é uma
+context key, view ou comando declarado → `SIGIL1018` com caret na linha.
+Sintaxe inválida (`&&&`, parênteses desbalanceados) → `SIGIL1019`.
 
 ```ts
-@On("workspace.onDidSaveTextDocument")            // auto-dispose; guard; sem leak
-aoSalvar(doc: vscode.TextDocument) { ... }
+@ContextKey() accessor pronto = false;
 
-@On("window.onDidChangeActiveTextEditor", { debounce: 300 })
-aoTrocar(editor?: vscode.TextEditor) { ... }
-
-@OnFile("**/*.md", "change")                      // FileSystemWatcher declarativo
-aoMudarMd(uri: vscode.Uri) { ... }
-
-@State("global")  accessor ultimaSync: string | undefined;   // Memento tipado
-@Secret()         accessor token: string | undefined;        // SecretStorage (cache síncrono)
-@ContextKey()     accessor pronto = false;                   // setContext ao atribuir
-
-@Command({ title: "Sync", enablement: "hello.pronto" })      // ✓ VALIDADO no build!
-sync() { ... }
-
-@Command({ title: "Longa", progress: "Processando…" })       // withProgress automático
-async longa(token: vscode.CancellationToken) { ... }         // token = último argumento
-
-@UriHandler()                                     // deep links vscode://…
-aoAbrirUri(uri: vscode.Uri) { ... }
+@Command({ title: "Sync", enablement: "hello.pronto" })   // ✓ validado
+sync() { /* … */ }
 ```
-
-**A validação de `when` é a feature que só o sigil pode ter**: o compilador vê
-as `@ContextKey` declaradas E as expressões — um typo em `when`/`enablement`
-que falharia em silêncio para sempre vira `SIGIL1018` com caret na linha
-(sintaxe inválida vira `SIGIL1019`). E ainda: `prompt.steps({...})` para
-wizards multi-step (ESC volta um passo) e `llm.ask/stream` sobre a Language
-Model API (acessada dinamicamente; testável com `host.queueLlmResponse`).
 
 ## Plataforma de runtime
 
 Além dos decorators, o `@sigil/core` traz a base que toda extensão reescreve:
 
-- **Logs** — `log.info/warn/error/debug/trace` sobre `LogOutputChannel` (aba
-  Output, nível controlado pelo usuário). Funciona antes da ativação (buffer)
-  e o canal usa o `displayName` da extensão.
-- **Erros nunca somem** — todo comando/watch/webview/tree registrado pelo wire
-  passa por `guard()`: erro vira log com stack + notificação com botão
-  "Abrir logs" (comandos); trees degradam para item de aviso. R6 em runtime.
-- **HTTP** — `http.get/post/put/patch/delete` sobre o fetch global (web-ready):
-  JSON automático, timeout com AbortController, `HttpError` com status/corpo,
-  log de duração, e `http.fetchImpl` trocável em teste.
-- **Recursos** — `resources.readText/readJson/readBytes/uri` para arquivos
+- **Logs** — `log.info/warn/error/debug/trace` sobre `LogOutputChannel` (nível
+  controlado pelo usuário); funciona antes da ativação (buffer).
+- **Erros nunca somem** — todo comando/watch/webview/tree passa por `guard()`:
+  erro vira log com stack + notificação com botão "Abrir logs"; trees degradam
+  para item de aviso.
+- **HTTP** — `http.get/post/…` sobre o fetch global: JSON automático, timeout,
+  `HttpError` com status/corpo, `http.fetchImpl` trocável em teste.
+- **Recursos** — `resources.readText/readJson/readBytes` para arquivos
   empacotados (via `workspace.fs`, funciona no vscode.dev).
-- **RPC tipado host↔UI** — além do `@OnMessage` (fire-and-forget), `@OnRequest`
-  responde a `callHost(type, value)` do `@sigil/core/ui` com correlação
-  automática; o retorno do handler resolve a Promise da UI, um throw a rejeita.
-- **Aba de configurações pronta** — `@Extension({ settings: true })` emite o
-  comando `<prefix>.configure` que abre um webview com formulário derivado do
-  schema das `@Config` (string/number/boolean/enum, min/max), two-way com o
-  workspace.
+- **RPC host↔UI** — `@OnMessage` (fire-and-forget) e `@OnRequest` respondendo
+  a `callHost(type, value)` com correlação automática.
+- **Wizards e LLM** — `prompt.text/pick/confirm/steps` (ESC volta um passo) e
+  `llm.ask/stream` sobre a Language Model API.
+- **Aba de configurações pronta** — `@Extension({ settings: true })` gera o
+  comando `<prefix>.configure` com formulário derivado do schema das `@Config`.
 
-## Hot reload simulado — `sigil sim`
+## Modos de desenvolvimento
 
-```bash
-sigil sim minha-extensao/
-```
+| Comando | O que faz | Quando usar |
+|---|---|---|
+| `sigil build` | AST → IR → manifesto + wire + tipos (cache por hash do IR) | build e CI |
+| `sigil check` | falha se o manifesto commitado está stale | guardião no CI |
+| `sigil dev` | watch incremental (`ts.createWatchProgram`, rebuilds de ~3ms) | terminal ao lado do editor |
+| `sigil sim` | hot reload no simulador `@sigil/test` + REPL | testar comportamento sem UI |
+| `sigil sim --ui` | workbench visual no browser, estado ao vivo por SSE | ver palette, trees, configs e webviews reais |
+| `sigil sandbox` | VSCode **real e isolado** com hot swap sem F5 | fidelidade total |
 
-Watch incremental → re-bundle → **re-ativação no simulador `@sigil/test`** a
-cada mudança de código, preservando as configs entre reloads — desenvolva e
-teste o comportamento sem abrir o VSCode. O REPL exercita a extensão ao vivo:
+**`sigil sim`** re-ativa a extensão no simulador a cada salvamento, preservando
+configs, e o REPL a exercita ao vivo: `run hello.sayHello`, `set hello.greeting
+"Oi"` (dispara `@Watch`), `tree hello.tasks`, `msg`, `input`, `logs`.
 
-```
-sigil> run hello.sayHello        # executa comando (mostra messages/logs novos)
-sigil> set hello.greeting "Oi"   # simula editar Settings → dispara @Watch
-sigil> tree hello.tasks          # imprime os nós da view
-sigil> msg hello.settings {"type":"save","value":{...}}
-sigil> input Comprar café        # resposta para o próximo showInputBox
-sigil> logs | panels | reload | help | exit
-```
+**`sigil sim --ui`** abre `http://127.0.0.1:4400`: command palette clicável,
+trees com expansão, editor de configs, status bar, toasts, Output — e
+**webviews renderizadas de verdade** em iframes com shim de `acquireVsCodeApi`;
+`showInputBox`/`showQuickPick` viram modais na página. É um harness visual do
+que o simulador modela, não um clone do VSCode — para fidelidade total, use o
+sandbox.
 
-### `sigil sim --ui` — workbench visual no browser
+**`sigil sandbox`** baixa um VSCode isolado (user-data e extensões próprios,
+zero poluição do seu) e conecta um companion por socket. O watch decide pelo
+**hash do IR**: corpo de método mudou → **🔥 hot swap** (~3ms, sem reload de
+janela — o companion recarrega o bundle e chama `__sigilHydrate()`); manifesto
+mudou → reload de janela automático. Estado de instância zera no swap (como
+Fast Refresh); configs e painéis abertos sobrevivem. Requer `node_modules` no
+projeto (o bundle deixa `@sigil/core` externo para o registry ser singleton
+entre swaps).
 
-```bash
-sigil sim --ui minha-extensao/     # abre http://127.0.0.1:4400 (--port=N)
-```
+## Testando sem o VSCode — `@sigil/test`
 
-Um workbench fake renderizando o estado do simulador **ao vivo** (push por
-SSE a cada hot reload): command palette clicável, trees com expansão, editor
-de configs (mudar dispara `@Watch`), status bar, toasts de notificação, aba
-de Output com os logs — e **webviews renderizadas de verdade** em iframes com
-shim de `acquireVsCodeApi`: a UI da sua extensão funciona com mouse, e
-mensagens fluem nos dois sentidos. `showInputBox`/`showQuickPick` viram
-modais reais (a Promise da extensão espera a resposta na página).
-
-Guarda-corpo de escopo: a página renderiza somente o que o simulador modela —
-é um harness visual, não um clone do VSCode (o editor não é simulado). Para
-fidelidade total, use `sigil sandbox`.
-
-## VSCode standalone com hot swap — `sigil sandbox`
-
-```bash
-sigil sandbox minha-extensao/
-```
-
-Abre um **VSCode real e isolado** do projeto (user-data e extensões próprios —
-zero poluição do seu VSCode) com a extensão carregada e um companion conectado
-por socket. O watch decide pelo **hash do IR**:
-
-- corpo de método mudou (IR igual) → **🔥 hot swap**: o companion recarrega o
-  bundle e chama `__sigilHydrate()` — handlers novos por baixo dos registros
-  vivos, **sem reload de janela (~3ms)**;
-- manifesto mudou (IR diferente) → reload de janela automático (~1–2s).
-
-Sem F5, sem `Reload Window` manual. O REPL dirige a janela real: `run <id>`
-executa comandos nela, `swap`/`reload` forçam os dois caminhos. Possível
-porque o modelo de propriedade (§4) separa identidade (manifesto, estável) de
-comportamento (registry, trocável) — e o dispatch é dinâmico. Estado de
-instância zera no swap (como Fast Refresh); configs e painéis abertos
-sobrevivem. Requer `node_modules` no projeto (o bundle do sandbox deixa
-`@sigil/core` externo para o registry ser singleton entre swaps).
-
-## Empacotando (.vsix)
-
-```bash
-npm run package      # dentro do projeto da extensão
-```
-
-O script roda `vsce package --no-dependencies`: o `vsce` chama o
-`vscode:prepublish` (= `sigil build` + esbuild) sozinho, e `--no-dependencies`
-porque o bundle já embute `@sigil/core` — nada de `node_modules` no pacote.
-O `.vscodeignore` (gerado pelo `sigil init`) exclui fonte/testes/sourcemaps e
-deixa entrar `out/`, `ui/` e `media/`. O resultado é `nome-versão.vsix`,
-instalável via "Install from VSIX…" ou `code --install-extension`.
-
-Publicar no Marketplace é `vsce publish` — exige publisher registrado e PAT;
-veja a doc do vsce.
-
-## Testando extensões sem o VSCode — `@sigil/test`
-
-Um ambiente simulado do subconjunto da API `vscode` que o sigil toca. Ativa o
-**bundle real** da extensão interceptando `require("vscode")`, semeia os
-defaults de config a partir do manifesto (como o VSCode faz) e expõe sondas:
+Simulador do subconjunto da API `vscode` que o sigil toca. Ativa o **bundle
+real** interceptando `require("vscode")`, semeia os defaults do manifesto e
+expõe sondas:
 
 ```ts
 import { activateExtension } from "@sigil/test";
 
 const host = await activateExtension({ projectDir: "examples/hello" });
-host.commands;                                  // ids registrados
 await host.executeCommand("hello.sayHello");
 host.infoMessages;                              // ["Olá!"]
-host.configuration.set("hello.greeting", "Oi"); // simula editar Settings → dispara @Watch
-const tree = host.tree("hello.tasks");
-await tree.roots();                             // nós da view
-const panel = host.panel("hello.settings");     // depois de abrir via comando
-panel.receive({ type: "save", value: {...} });  // simula a UI → roteador @OnMessage
-panel.posted;                                   // mensagens do host para a UI
+host.configuration.set("hello.greeting", "Oi"); // simula Settings → dispara @Watch
+await host.tree("hello.tasks").roots();         // nós da view
+host.panel("hello.settings").receive({ type: "save", value: { /* … */ } });
 await host.dispose();
 ```
 
-Fidelidade onde importa (semântica de `affectsConfiguration`, update dispara
-change, registro duplicado lança, painel singleton) e honestidade nas bordas:
-API não simulada lança erro descritivo em vez de `undefined` silencioso (R6).
-O que o simulador não cobre, o E2E cobre no host real:
+Fidelidade onde importa (semântica de `affectsConfiguration`, registro
+duplicado lança, painel singleton) e honestidade nas bordas: API não simulada
+lança erro descritivo em vez de `undefined` silencioso. O que o simulador não
+cobre, o E2E cobre no host real: `npm run test:e2e` roda `examples/hello` via
+`@vscode/test-electron`.
+
+## Empacotando (`.vsix`)
 
 ```bash
-npm run test:e2e     # @vscode/test-electron sobre examples/hello (caminho feliz)
+npm run package      # dentro do projeto da extensão
 ```
 
-Requisitos do projeto do usuário (ver §6 e §16 do spec):
+Roda `vsce package --no-dependencies` (o bundle já embute `@sigil/core`). O
+`.vscodeignore` gerado pelo `sigil init` exclui fonte/testes e deixa entrar
+`out/`, `ui/` e `media/`. O `.vsix` instala via "Install from VSIX…" ou
+`code --install-extension`; publicar no Marketplace é `vsce publish`.
 
-- `target: ES2022`, `experimentalDecorators: false`, `useDefineForClassFields: true`
-  (decorators **stage 3**; `@Config`/`@StatusBar` exigem a palavra-chave `accessor`);
-- bundle com esbuild usando `--target=es2022` (sem target o esbuild deixa a
-  sintaxe de decorator crua no bundle e o extension host não a executa).
-  `--keep-names` **não** é necessário: o join usa `Symbol.metadata`, não nomes
-  de função em runtime — há teste que ativa o bundle minificado para provar;
-- `engines.vscode >= 1.75` — `activationEvents` de comandos são automáticos, o
-  sigil não os emite. O runtime é web-ready (`workspace.fs` + WebCrypto): o
-  mesmo código serve `--platform=browser` para vscode.dev.
+## Requisitos do projeto
 
-## Status
+O `sigil init` já gera tudo assim; para projetos existentes:
 
-- **Fase 1 — Núcleo: completa.** `@Extension`, `@Command`, `@Config`, `@Watch`,
-  `@Activate`/`@Deactivate`, coletor AST, IR determinístico, emitters de
-  manifesto/wire/tipos, merge de `package.json`, `sigil build`.
-- **Fase 2 — Robustez: completa.** Todos os diagnósticos com caret na posição
-  exata; `sigil check` (CI — exit 1 em manifesto stale); `sigil dev` (watch
-  mode com anti-loop); cache incremental por hash do IR (mudança que não
-  altera o IR não reemite nada).
-- **Fase 3 — UI: completa.** `@TreeView`/`@TreeRoot`/`@TreeChildren`/`@TreeItem`
-  com adaptador de `TreeDataProvider` e refresh via `registry.trees`; comandos
-  dentro da classe da view (menus `view/*` ganham `when: view == <id>`
-  automático); `@Webview`/`@OnMessage` com shell HTML (CSP + nonce +
-  `asWebviewUri`), `retainContextWhenHidden`, roteador de mensagens tipado por
-  `type` (tipo desconhecido vira warning — R6), `post` injetado e painel
-  singleton via `registry.webviews.get(...)!.open()`; runtime do lado UI em
-  `@sigil/core/ui` (`postToHost`/`onHostMessage`). Diagnósticos SIGIL1012–1017.
-- **Pós-spec (roadmap H2+H3): completo.** `@Webview` em **sidebar**
-  (`WebviewViewProvider`, `location: "sidebar"`); `@StatusBar` (accessor cujo
-  set atualiza o item); menus com opções **por entrada** (`{ id, group, when }`),
-  keybindings `linux`/`win`, `viewsContainers` inline (chave condicional no
-  merge); `setConfig` tipado; avaliador estático seguindo **consts locais**
-  (`as const`/`satisfies` transparentes); join por **`Symbol.metadata`**
-  (minificação-safe, sem `--keep-names`); runtime web-ready; `sigil dev`
-  incremental via `ts.createWatchProgram` (rebuilds de ~3ms); `@sigil/test`
-  com editores/documentos fake, gravação de input/quickPick e **modo inline**
-  (wire TS direto no vitest, sem bundle).
+- `target: ES2022`, `experimentalDecorators: false`,
+  `useDefineForClassFields: true` — decorators **stage 3**; `@Config`,
+  `@StatusBar`, `@State`, `@Secret` e `@ContextKey` exigem `accessor`;
+- `"include": ["src", "src/.generated/**/*"]` no tsconfig (globs do tsc não
+  atravessam diretórios com ponto);
+- bundle esbuild com `--target=es2022` (sem isso a sintaxe de decorator fica
+  crua no bundle); `--keep-names` **não** é necessário — o join usa
+  `Symbol.metadata`, com teste que ativa o bundle minificado para provar;
+- `engines.vscode >= 1.75`; chat exige host ≥ 1.90 **em runtime** (não em
+  `@types`).
+
+## O monorepo
+
+| Pacote | Papel | Regra inviolável |
+|---|---|---|
+| [`@sigil/core`](packages/core) | runtime — vai para o bundle da extensão | nunca importa `typescript` (R1) nem `node:*` (web-ready) |
+| [`@sigil/compiler`](packages/compiler) | build time — AST → IR → emitters | nunca importa `vscode` (R2); nunca executa código do usuário (R3) |
+| [`@sigil/cli`](packages/cli) | orquestração e IO | emitters são puros; todo IO fica aqui (R4) |
+| [`@sigil/test`](packages/test) | simulador para testes | nunca importa `vscode` nem `typescript` |
+
+As regras são **testadas**: `tests/boundaries.test.ts` extrai imports por AST e
+falha o build se alguma for violada. O design completo — modelo de propriedade
+(§4), IR, diagnósticos `SIGIL1000`–`SIGIL1019`, armadilhas — está em
+[docs/spec.md](docs/spec.md), com as erratas descobertas na implementação ao
+final.
 
 ## Exemplos
 
-Cada um valida um perfil de DX diferente, e todos têm testes com `@sigil/test`
-em `test/extension.test.ts` — o mesmo padrão que uma extensão real usaria:
+Cada um valida um perfil de DX, e todos têm testes com `@sigil/test` — o mesmo
+padrão que uma extensão real usaria:
 
 | Exemplo | Perfil | O que exercita |
 |---|---|---|
-| [examples/counter](examples/counter) | mínimo — 1 classe, 1 arquivo | prefix default do `name`, união → enum, min/max, keybinding com `mac` |
-| [examples/todos](examples/todos) | TreeView interativa | tree rasa (sem `@TreeChildren`), estado mutável + refresh via `@Watch`, `showInputBox`, menu `view/item/context` recebendo o elemento como argumento, `when` auto-escopado |
-| [examples/notes](examples/notes) | Webview | assets externos reescritos via `asWebviewUri`, protocolo tipado com resposta de erro, config lida no handler, estado que sobrevive a fechar/reabrir o painel |
-| [examples/hello](examples/hello) | kitchen sink | tudo junto + E2E no extension host real |
+| [examples/counter](examples/counter) | mínimo — 1 classe, 1 arquivo | prefix default, união → enum, min/max, keybinding com `mac` |
+| [examples/todos](examples/todos) | TreeView interativa | container próprio na activity bar, estado + refresh via `@Watch`, menu `view/item/context`, `when` auto-escopado |
+| [examples/notes](examples/notes) | Webview de sidebar | assets via `asWebviewUri`, RPC tipado com `@OnRequest`, estado que sobrevive a fechar/reabrir |
+| [examples/hello](examples/hello) | kitchen sink | tudo junto — inclusive `@Language` — + E2E no extension host real |
 
 ## Testes
 
 ```bash
-npm test             # unidade + simulador + E2E do CLI (inclui os testes dos exemplos)
+npm test             # unidade + simulador + E2E do CLI (inclui os exemplos)
 npm run test:e2e     # extension host real (baixa o VSCode na primeira vez)
 ```
 
-Camadas (§14): fixtures em `tests/fixtures/` com um caso por diagnóstico
-(asserção de código **e** linha do caret), snapshot de IR e de emitters sobre
-`examples/hello`, teste de merge (chaves não gerenciadas sobrevivem), teste de
-fronteira (falha o build se R1/R2 forem violadas — imports extraídos por AST,
-não regex), E2E dos comandos do CLI (`init`/`build`/`check` sobre cópias
-isoladas), o simulador `@sigil/test` sobre o bundle real, e o caminho feliz no
-extension host via `@vscode/test-electron`. O CI (GitHub Actions) roda tudo,
-incluindo `sigil check` como guardião de manifesto stale.
+Camadas: fixtures com um caso por diagnóstico (asserção de código **e** linha
+do caret), snapshots de IR/emitters, merge de `package.json`, testes de
+fronteira R1–R4, E2E do CLI (`init`/`build`/`check` em cópias isoladas), o
+simulador sobre o bundle real (inclusive **minificado**), o tutorial pinado, e
+o caminho feliz no extension host via `@vscode/test-electron`. O CI roda tudo,
+com `sigil check` como guardião de manifesto stale.
+
+## Status
+
+As três fases do spec (núcleo, robustez, UI) estão completas, mais o roadmap
+pós-spec: superfícies de linguagem/chat/editores, DX sobre a API de eventos e
+estado, plataforma de runtime, os quatro modos de desenvolvimento e o
+empacotamento. A [tabela de decorators](#os-decorators) reflete o que está
+implementado e testado — hoje o sigil cobre declarativamente a grande maioria
+dos tipos de extensão do marketplace.
+
+## Licença
+
+[MIT](LICENSE)

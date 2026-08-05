@@ -2,12 +2,16 @@
   "name": "@sigil/cli",
   "version": "0.1.0",
   "description": "CLI do sigil — orquestração e IO. build/check/dev.",
+  "license": "MIT",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
     "sigil": "./bin/sigil.js"
   },
-  "files": ["dist", "bin"],
+  "files": [
+    "dist",
+    "bin"
+  ],
   "scripts": {
     "build": "tsc -b ."
   },
