@@ -5,3 +5,4 @@ out/
 .tmp/
 .vscode-test/
 *.tsbuildinfo
+*.vsix

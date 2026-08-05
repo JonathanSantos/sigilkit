@@ -32,6 +32,7 @@ describe("sigil init", () => {
       "tsconfig.json",
       "src/extension.ts",
       ".vscode/launch.json",
+      ".vscodeignore",
       ".gitignore",
       "README.md",
     ]) {

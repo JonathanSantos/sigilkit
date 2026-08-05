@@ -48,12 +48,16 @@ function templateFiles(name: string): TemplateFile[] {
       check: "sigil check",
       dev: "sigil dev",
       typecheck: "tsc --noEmit",
+      // o vsce roda vscode:prepublish sozinho; --no-dependencies porque o
+      // esbuild já embute @sigil/core no bundle
+      package: "vsce package --no-dependencies",
       "vscode:prepublish": "npm run build",
     },
     dependencies: { "@sigil/core": "^0.1.0" },
     devDependencies: {
       "@sigil/cli": "^0.1.0",
       "@types/vscode": "^1.75.0",
+      "@vscode/vsce": "^3.2.1",
       esbuild: "^0.24.2",
       typescript: "^5.7.3",
     },
@@ -124,11 +128,23 @@ Regras herdadas do sigil: o tsconfig usa decorators stage 3 (não mude
 \`experimentalDecorators\`), e o bundle exige \`--keep-names --target=es2022\`.
 `;
 
+  const vscodeignore = `.vscode/**
+.vscode-test/**
+src/**
+test/**
+node_modules/**
+out/**/*.map
+tsconfig.json
+.gitignore
+**/*.ts
+`;
+
   return [
     { rel: "package.json", content: JSON.stringify(pkg, null, 2) + "\n" },
     { rel: "tsconfig.json", content: tsconfig },
     { rel: "src/extension.ts", content: extension },
     { rel: ".vscode/launch.json", content: launch },
+    { rel: ".vscodeignore", content: vscodeignore },
     { rel: ".gitignore", content: "node_modules/\nout/\n.generated/\n*.vsix\n" },
     { rel: "README.md", content: readme },
   ];

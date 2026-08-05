@@ -67,6 +67,22 @@ cd examples/hello && npm run bundle
 # abra examples/hello no VSCode e aperte F5
 ```
 
+## Empacotando (.vsix)
+
+```bash
+npm run package      # dentro do projeto da extensão
+```
+
+O script roda `vsce package --no-dependencies`: o `vsce` chama o
+`vscode:prepublish` (= `sigil build` + esbuild) sozinho, e `--no-dependencies`
+porque o bundle já embute `@sigil/core` — nada de `node_modules` no pacote.
+O `.vscodeignore` (gerado pelo `sigil init`) exclui fonte/testes/sourcemaps e
+deixa entrar `out/`, `ui/` e `media/`. O resultado é `nome-versão.vsix`,
+instalável via "Install from VSIX…" ou `code --install-extension`.
+
+Publicar no Marketplace é `vsce publish` — exige publisher registrado e PAT;
+veja a doc do vsce.
+
 ## Testando extensões sem o VSCode — `@sigil/test`
 
 Um ambiente simulado do subconjunto da API `vscode` que o sigil toca. Ativa o
