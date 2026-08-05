@@ -27,7 +27,8 @@ export class NotesPanel {
 
   @OnMessage("add")
   onAdd(text: string) {
-    const max = getConfig<number>("notes.maxNotes");
+    // tipado pelo config.d.ts gerado — a anotação é prova estática da augmentation
+    const max: number = getConfig("notes.maxNotes");
     if (this.notes.length >= max) {
       this.post({ type: "error", value: `limite de ${max} notas atingido` });
       return;

@@ -54,9 +54,11 @@ export class TodosExtension {
 export class TodoList {
   @TreeRoot()
   roots(): Todo[] {
-    return getConfig<boolean>("todos.showCompleted")
-      ? store.todos
-      : store.todos.filter((t) => !t.done);
+    // tipado pelo config.d.ts gerado (augmentation): a anotação `: boolean`
+    // é uma prova estática — se a augmentation quebrar, isto vira unknown
+    // e o typecheck falha
+    const showCompleted: boolean = getConfig("todos.showCompleted");
+    return showCompleted ? store.todos : store.todos.filter((t) => !t.done);
   }
 
   @TreeItem()

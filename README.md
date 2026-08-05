@@ -30,7 +30,11 @@ Nenhuma linha de `contributes` é escrita à mão. `sigil build` gera:
 - `src/.generated/wire.ts` — o `activate()` real, que faz o join entre as chaves
   emitidas pelo compilador e os handlers registrados em runtime, e **lança erro**
   se faltar handler;
-- `src/.generated/config.d.ts` — tipos das configs.
+- `src/.generated/config.d.ts` — augmentation que tipa o `getConfig` do core
+  por chave: `getConfig("hello.retries")` → `number`, com autocomplete; chave
+  fora do registro (configs de terceiros) retorna `unknown` e exige cast.
+  Requer `"include": ["src", "src/.generated/**/*"]` no tsconfig — globs do
+  tsc não atravessam diretórios com ponto (o `sigil init` já gera assim).
 
 ## Estrutura
 

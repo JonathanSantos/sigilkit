@@ -12,7 +12,17 @@ Regras que quebram o build se violadas (há teste de fronteira em tests/):
 - Emitters (`compiler/src/emit/*`) são funções puras, sem IO (R4). IO fica no CLI.
 - Ordem determinística do IR é requisito do `sigil check`, não polimento.
 
-Desvios conscientes do spec (documentados na implementação):
+Desvios conscientes do spec (documentados na implementação; erratas no fim de
+docs/spec.md):
+
+- emitTypes (§10.3) emite module augmentation de "@sigil/core"
+  (SigilConfigRegistry) em vez do declare órfão do spec — getConfig fica
+  tipado por chave. A interface é declarada DIRETO no index.ts do core:
+  augmentation não faz merge com re-export (pitfall vue/@vue-runtime-core).
+  O overload fallback retorna `unknown` fixo, NUNCA um genérico <T> — um
+  genérico seria inferido do tipo do destino e engoliria typos de chave.
+- tsconfig de usuário: include precisa de "src/.generated/**/*" — globs do
+  tsc não atravessam diretórios com ponto, nem nomeados sem wildcard.
 
 - `resolveDecoratorName` resolve o alias de import ANTES de olhar declarations
   (o snippet da §8.2 olharia o ImportSpecifier no arquivo do usuário).

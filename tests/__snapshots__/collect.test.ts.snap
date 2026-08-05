@@ -284,11 +284,15 @@ export function deactivate() {
 
 exports[`coletor sobre examples/hello > snapshot dos tipos 1`] = `
 "// GERADO POR sigil — NÃO EDITE
+import "@sigil/core";
+
 export interface SigilConfig {
   "hello.greeting": string;
   "hello.retries": number;
 }
 
-export declare function getConfig<K extends keyof SigilConfig>(key: K): SigilConfig[K];
+declare module "@sigil/core" {
+  interface SigilConfigRegistry extends SigilConfig {}
+}
 "
 `;

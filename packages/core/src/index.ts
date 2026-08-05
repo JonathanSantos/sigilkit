@@ -31,4 +31,34 @@ export type { WebviewBinding } from "./webview-host";
 export { renderWebviewHtml } from "./webview-html";
 export type { WebviewHtmlOptions } from "./webview-html";
 
-export { readWorkspaceConfig, writeWorkspaceConfig, getConfig } from "./config-access";
+export { readWorkspaceConfig, writeWorkspaceConfig } from "./config-access";
+
+import { getConfig as getConfigById } from "./config-access";
+
+/**
+ * Registro de tipos das configs da extensão. Vazio aqui; o `sigil build` emite
+ * src/.generated/config.d.ts com uma augmentation deste módulo que o preenche:
+ *
+ *   declare module "@sigil/core" {
+ *     interface SigilConfigRegistry { "hello.retries": number }
+ *   }
+ *
+ * Com isso, getConfig("hello.retries") retorna number, com autocomplete.
+ * A interface precisa ser declarada NESTE arquivo, não re-exportada —
+ * augmentation não faz merge com alias de re-export.
+ */
+export interface SigilConfigRegistry {}
+
+export function getConfig<K extends keyof SigilConfigRegistry & string>(
+  key: K
+): SigilConfigRegistry[K];
+/**
+ * Configs fora do registro (ex.: "editor.fontSize", de outra extensão)
+ * retornam `unknown` DE PROPÓSITO — são valores não-confiáveis; faça cast
+ * explícito. Um genérico `<T>` aqui deixaria typos de chave passarem em
+ * silêncio, porque T seria inferido do tipo esperado no destino.
+ */
+export function getConfig(id: string): unknown;
+export function getConfig(id: string): unknown {
+  return getConfigById(id);
+}

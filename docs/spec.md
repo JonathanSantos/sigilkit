@@ -832,3 +832,17 @@ esbuild src/.generated/wire.ts --bundle --platform=node --format=cjs \
 > de `--target=es2022`. Sem target o esbuild assume `esnext`, considera
 > decorators "suportados" e os deixa **crus** no bundle — e nenhum runtime Node
 > os executa hoje. Descoberto por smoke test na Fase 1.
+>
+> **Errata 2 (include do tsconfig):** `"include": ["src"]` NÃO inclui
+> `src/.generated/` — os globs do tsc excluem diretórios que começam com ponto,
+> mesmo quando o diretório é nomeado sem wildcard. O include correto é
+> `["src", "src/.generated/**/*"]` (o segmento-ponto explícito no padrão
+> funciona). Sem isso, o `config.d.ts` gerado (e sua augmentation de tipos)
+> fica fora do programa e o typecheck do usuário não vê o wire. Descoberto
+> pelo teste negativo de tipos na melhoria do getConfig tipado.
+>
+> **Errata 3 (§10.3):** o `config.d.ts` do spec declarava um `getConfig` órfão,
+> sem ligação com runtime algum. A implementação emite, em vez disso, uma
+> module augmentation de `@sigil/core` (interface `SigilConfigRegistry`), que
+> tipa por chave o `getConfig` REAL do core — autocomplete e checagem de typo
+> sem nenhum import novo.

@@ -72,7 +72,7 @@ function templateFiles(name: string): TemplateFile[] {
     "outDir": "out",
     "skipLibCheck": true
   },
-  "include": ["src"]
+  "include": ["src", "src/.generated/**/*"]
 }
 `;
 
