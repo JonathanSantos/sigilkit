@@ -117,6 +117,39 @@ Mesmo shell dos webviews (CSP + nonce + `asWebviewUri` + RPC); os handlers
 recebem o **contexto do documento** como segundo argumento, a UI recebe o
 conteúdo no load e a cada mudança (`onDocument` em `@sigil/core/ui`).
 
+## DX sobre a API — eventos, estado e `when` validado
+
+```ts
+@On("workspace.onDidSaveTextDocument")            // auto-dispose; guard; sem leak
+aoSalvar(doc: vscode.TextDocument) { ... }
+
+@On("window.onDidChangeActiveTextEditor", { debounce: 300 })
+aoTrocar(editor?: vscode.TextEditor) { ... }
+
+@OnFile("**/*.md", "change")                      // FileSystemWatcher declarativo
+aoMudarMd(uri: vscode.Uri) { ... }
+
+@State("global")  accessor ultimaSync: string | undefined;   // Memento tipado
+@Secret()         accessor token: string | undefined;        // SecretStorage (cache síncrono)
+@ContextKey()     accessor pronto = false;                   // setContext ao atribuir
+
+@Command({ title: "Sync", enablement: "hello.pronto" })      // ✓ VALIDADO no build!
+sync() { ... }
+
+@Command({ title: "Longa", progress: "Processando…" })       // withProgress automático
+async longa(token: vscode.CancellationToken) { ... }         // token = último argumento
+
+@UriHandler()                                     // deep links vscode://…
+aoAbrirUri(uri: vscode.Uri) { ... }
+```
+
+**A validação de `when` é a feature que só o sigil pode ter**: o compilador vê
+as `@ContextKey` declaradas E as expressões — um typo em `when`/`enablement`
+que falharia em silêncio para sempre vira `SIGIL1018` com caret na linha
+(sintaxe inválida vira `SIGIL1019`). E ainda: `prompt.steps({...})` para
+wizards multi-step (ESC volta um passo) e `llm.ask/stream` sobre a Language
+Model API (acessada dinamicamente; testável com `host.queueLlmResponse`).
+
 ## Plataforma de runtime
 
 Além dos decorators, o `@sigil/core` traz a base que toda extensão reescreve:

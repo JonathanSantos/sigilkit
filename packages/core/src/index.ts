@@ -41,6 +41,21 @@ export type { CustomEditorOptions, CustomEditorBinding, SigilEditorContext } fro
 export { adoptRegistrations, bucketOf } from "./metadata";
 export type { Bucket } from "./metadata";
 
+export { On, OnFile, UriHandler, bindEvents, bindFileWatchers, bindUriHandler } from "./decorators/events";
+export type { OnOptions, OnFileOptions, EventBinding, FileWatcherBinding } from "./decorators/events";
+
+export { State, Secret, ContextKey, bindSecrets, bindContextKeys } from "./decorators/state";
+export type { ContextKeyBinding } from "./decorators/state";
+
+export { prompt } from "./prompt";
+export type { PromptStep, TextStepOptions, PickStepOptions } from "./prompt";
+
+export { withCommandProgress } from "./progress";
+export type { CommandProgress } from "./progress";
+
+export { llm } from "./llm";
+export type { LlmOptions } from "./llm";
+
 export { log, bindLog } from "./log";
 export { guard } from "./guard";
 export type { GuardOptions } from "./guard";

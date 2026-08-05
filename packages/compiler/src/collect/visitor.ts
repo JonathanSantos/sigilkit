@@ -5,8 +5,12 @@ import {
   IRChatParticipant,
   IRCommand,
   IRConfig,
+  IRContextKey,
   IRCustomEditor,
+  IREventHandler,
+  IRFileWatcher,
   IRLanguage,
+  IRSecret,
   IRSettingsPanel,
   IRStatusBar,
   IRTreeView,
@@ -66,7 +70,20 @@ function resolveDecoratorName(d: ts.Decorator, checker: ts.TypeChecker): string 
 const EVAL_FAILED: unique symbol = Symbol("sigil.evalFailed");
 
 // Decorators de membro por espécie de classe (§8.5 + §15)
-const EXTENSION_MEMBERS = ["Command", "Config", "Watch", "Activate", "Deactivate", "StatusBar"] as const;
+const EXTENSION_MEMBERS = [
+  "Command",
+  "Config",
+  "Watch",
+  "Activate",
+  "Deactivate",
+  "StatusBar",
+  "On",
+  "OnFile",
+  "UriHandler",
+  "State",
+  "Secret",
+  "ContextKey",
+] as const;
 const TREE_MEMBERS = ["TreeRoot", "TreeChildren", "TreeItem", "Command"] as const;
 const WEBVIEW_MEMBERS = ["OnMessage", "OnRequest"] as const;
 const LANGUAGE_MEMBERS = ["Hover", "Completion", "CodeLens", "Diagnostics"] as const;
@@ -241,8 +258,13 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
   const languages: IRLanguage[] = [];
   const chatParticipants: IRChatParticipant[] = [];
   const customEditors: IRCustomEditor[] = [];
+  const events: IREventHandler[] = [];
+  const fileWatchers: IRFileWatcher[] = [];
+  const secrets: IRSecret[] = [];
+  const contextKeys: IRContextKey[] = [];
   let activateKey: string | undefined;
   let deactivateKey: string | undefined;
+  let uriHandlerKey: string | undefined;
 
   /** Container inline `{ id, title, icon }` → registra e retorna o id. */
   function collectContainer(raw: unknown, optsNode: ts.Expression, at: ts.Node): string | undefined {
@@ -332,6 +354,12 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
       menus.push(compact({ menu: menuId, group, when }));
     }
 
+    let progress: IRCommand["progress"];
+    if (typeof o.progress === "string") progress = { title: o.progress };
+    else if (o.progress && typeof o.progress === "object") {
+      progress = compact(o.progress as { title: string; location?: "notification" | "window" | "statusBar"; cancellable?: boolean });
+    }
+
     commands.push(
       compact({
         key,
@@ -343,6 +371,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
         enablement: o.enablement as string | undefined,
         keybinding,
         menus,
+        progress,
         loc: locOf(m.name),
       }) as IRCommand
     );
@@ -394,6 +423,56 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
       return;
     }
 
+    const onDec = getDecorator(m, checker, "On");
+    if (onDec) {
+      const call = ts.isCallExpression(onDec.expression) ? onDec.expression : undefined;
+      const eventRaw = call?.arguments[0] ? tryEval(call.arguments[0]) : undefined;
+      if (eventRaw === EVAL_FAILED) return;
+      if (typeof eventRaw !== "string" || !/^\w+\.on[A-Z]\w*$/.test(eventRaw)) {
+        diagnostics.push(
+          diagAt(call?.arguments[0] ?? m.name, SIGIL.MissingRequiredOption, `@On exige um caminho de evento como "workspace.onDidSaveTextDocument"`)
+        );
+        return;
+      }
+      const optsRaw = call?.arguments[1] ? tryEval(call.arguments[1]) : {};
+      if (optsRaw === EVAL_FAILED) return;
+      const debounce = (optsRaw as { debounce?: unknown } | null)?.debounce;
+      events.push(
+        compact({ key, event: eventRaw, debounce: typeof debounce === "number" ? debounce : undefined, loc: locOf(m.name) }) as IREventHandler
+      );
+      return;
+    }
+
+    const onFileDec = getDecorator(m, checker, "OnFile");
+    if (onFileDec) {
+      const call = ts.isCallExpression(onFileDec.expression) ? onFileDec.expression : undefined;
+      const glob = call?.arguments[0] ? tryEval(call.arguments[0]) : undefined;
+      if (glob === EVAL_FAILED) return;
+      if (typeof glob !== "string" || glob.length === 0) {
+        diagnostics.push(diagAt(call?.arguments[0] ?? m.name, SIGIL.MissingRequiredOption, "@OnFile exige um glob (string)"));
+        return;
+      }
+      const kindRaw = call?.arguments[1] ? tryEval(call.arguments[1]) : "all";
+      if (kindRaw === EVAL_FAILED) return;
+      const kind = kindRaw === "change" || kindRaw === "create" || kindRaw === "delete" ? kindRaw : "all";
+      const optsRaw = call?.arguments[2] ? tryEval(call.arguments[2]) : {};
+      if (optsRaw === EVAL_FAILED) return;
+      const debounce = (optsRaw as { debounce?: unknown } | null)?.debounce;
+      fileWatchers.push(
+        compact({ key, glob, kind, debounce: typeof debounce === "number" ? debounce : undefined, loc: locOf(m.name) }) as IRFileWatcher
+      );
+      return;
+    }
+
+    if (getDecorator(m, checker, "UriHandler")) {
+      if (uriHandlerKey) {
+        diagnostics.push(diagAt(m.name, SIGIL.TreeViewIncomplete, "apenas um @UriHandler por extensão"));
+        return;
+      }
+      uriHandlerKey = key;
+      return;
+    }
+
     if (getDecorator(m, checker, "Activate")) {
       activateKey = key;
       return;
@@ -416,6 +495,30 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
 
   function collectExtensionProperty(p: ts.PropertyDeclaration): void {
     const propName = memberNameOf(p.name);
+
+    const stateDec = getDecorator(p, checker, "State");
+    if (stateDec) {
+      requireAccessor(p, "State", propName); // sem IR: @State é só comportamento
+      return;
+    }
+    const secretDec = getDecorator(p, checker, "Secret");
+    if (secretDec) {
+      if (!requireAccessor(p, "Secret", propName)) return;
+      secrets.push({ key: `${className}.${propName}`, name: propName, loc: locOf(p.name) });
+      return;
+    }
+    const ctxKeyDec = getDecorator(p, checker, "ContextKey");
+    if (ctxKeyDec) {
+      if (!requireAccessor(p, "ContextKey", propName)) return;
+      let def: unknown = false;
+      if (p.initializer) {
+        const evaluated = tryEval(p.initializer, `o default de @ContextKey em '${propName}'`);
+        if (evaluated === EVAL_FAILED) return;
+        def = evaluated;
+      }
+      contextKeys.push({ key: `${className}.${propName}`, id: `${prefix}.${propName}`, default: def, loc: locOf(p.name) });
+      return;
+    }
 
     const sbDec = getDecorator(p, checker, "StatusBar");
     const cfgDec = getDecorator(p, checker, "Config");
@@ -958,6 +1061,10 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
   languages.sort(byKey);
   chatParticipants.sort(byId);
   customEditors.sort((a, b) => (a.viewType < b.viewType ? -1 : a.viewType > b.viewType ? 1 : 0));
+  events.sort(byKey);
+  fileWatchers.sort(byKey);
+  secrets.sort(byKey);
+  contextKeys.sort(byId);
 
   const ir = compact({
     version: IR_VERSION,
@@ -978,6 +1085,11 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     languages,
     chatParticipants,
     customEditors,
+    events,
+    fileWatchers,
+    secrets,
+    contextKeys,
+    uriHandlerKey,
   }) as IR;
 
   return { ir, diagnostics };

@@ -54,6 +54,11 @@ export class Registry {
   readonly webviewHandlers = new Map<string, (...args: unknown[]) => unknown>();
   readonly languageHandlers = new Map<string, (...args: unknown[]) => unknown>();
   readonly chatHandlers = new Map<string, (...args: unknown[]) => unknown>();
+  readonly events = new Map<string, (...args: unknown[]) => unknown>();
+  /** valores vivos de @ContextKey (id completo → valor) */
+  readonly contextValues = new Map<string, unknown>();
+  /** cache síncrono dos @Secret (SecretStorage é async; bindSecrets pré-carrega) */
+  readonly secretsCache = new Map<string, string>();
   /** post de cada webview (preenchido pelo bind); o wire injeta forwarders nas instâncias */
   readonly webviewPosts = new Map<string, (msg: unknown) => void>();
   /** buckets adotados por nome declarado de classe (ver metadata.ts) */

@@ -105,6 +105,9 @@ export async function activateExtension(opts: ActivateOptions): Promise<SigilTes
       subscriptions: [] as DisposableLike[],
       extensionUri: uriFile(projectDir),
       extensionPath: projectDir,
+      globalState: state.globalState,
+      workspaceState: state.workspaceState,
+      secrets: state.secretStorage,
     };
     await ext.activate(ctx);
     return new SigilTestHost(state, vscodeMock, ext, ctx);
@@ -269,6 +272,62 @@ export class SigilTestHost {
     const stream = new ChatResponseStreamMock();
     await participant.handler({ prompt }, { history: [] }, stream, { isCancellationRequested: false });
     return stream;
+  }
+
+  /** Valor corrente de uma @ContextKey (publicada via setContext). */
+  contextKey(id: string): unknown {
+    return this.state.contextKeys.get(id);
+  }
+
+  /** Memento global fake (ctx.globalState). */
+  get globalState() {
+    return this.state.globalState;
+  }
+
+  /** Memento de workspace fake (ctx.workspaceState). */
+  get workspaceState() {
+    return this.state.workspaceState;
+  }
+
+  /** SecretStorage fake (ctx.secrets) — use antes do activate para semear. */
+  get secretsStorage() {
+    return this.state.secretStorage;
+  }
+
+  /** Execuções de window.withProgress ({ title }). */
+  get progressRuns() {
+    return [...this.state.progressRuns];
+  }
+
+  /** Dispara os FileSystemWatchers cujo glob casa com o caminho. */
+  fireFileChange(filePath: string, kind: "change" | "create" | "delete" = "change"): number {
+    let fired = 0;
+    for (const watcher of this.state.fileWatchers) {
+      if (!watcher.matches(filePath)) continue;
+      const listeners =
+        kind === "change" ? watcher.changeListeners : kind === "create" ? watcher.createListeners : watcher.deleteListeners;
+      for (const listener of listeners) {
+        listener(uriFile(filePath));
+        fired++;
+      }
+    }
+    return fired;
+  }
+
+  /** Entrega um deep link ao @UriHandler registrado. */
+  openUri(pathAndQuery: string): void {
+    if (!this.state.uriHandler) throw new Error("sigil-test: nenhum @UriHandler registrado");
+    this.state.uriHandler.handleUri(uriFile(pathAndQuery));
+  }
+
+  /** Dispara onDidSaveTextDocument para o documento. */
+  saveTextDocument(doc: TextDocumentMock): void {
+    (this.vscode as { __fireDoc?: { save(d: TextDocumentMock): void } }).__fireDoc?.save(doc);
+  }
+
+  /** Enfileira respostas para llm.ask/llm.stream. */
+  queueLlmResponse(...responses: string[]): void {
+    this.state.llmQueue.push(...responses);
   }
 
   /** Abre um documento num @CustomEditor (resolve o provider com um painel fake). */

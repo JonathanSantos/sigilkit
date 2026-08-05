@@ -58,6 +58,17 @@ sim` = hot reload simulado (watch incremental → esbuild → activateExtension
 no @sigil/test, configs preservadas entre reloads) com REPL; cli depende de
 @sigil/test e esbuild.
 
+DX sobre a API (IR v6): @On/@OnFile (bucket "events", bindEvents/
+bindFileWatchers, debounce trailing), @UriHandler (activationEvent "onUri"
+no subconjunto gerenciado), @State (Memento; sem IR — só requireAccessor),
+@Secret (cache síncrono em registry.secretsCache; bindSecrets pré-carrega e
+segue onDidChange; wire activate é ASYNC), @ContextKey (registry.contextValues
++ setContext; ids alimentam a validação de when), progress em @Command
+(withCommandProgress; token como ÚLTIMO arg), prompt.steps (ESC volta passo),
+llm (vscode.lm dinâmico). Validação de when em validate.ts: SIGIL1018 (token
+`<prefix>.*` precisa ser @ContextKey/view/comando declarado) e SIGIL1019
+(sintaxe via tokenizer sticky + parênteses).
+
 Superfícies de linguagem/chat/editor: @Language({id}) com @Hover/@Completion/
 @CodeLens/@Diagnostics (bindLanguage; activationEvents onLanguage:* são
 SUBCONJUNTO gerenciado no merge — resto do array é do usuário);

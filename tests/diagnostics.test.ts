@@ -107,6 +107,16 @@ describe("diagnósticos (§9)", () => {
     const { diags } = collectFixture("statusbar-bad-command.ts");
     expect(lineOf(only(diags, SIGIL.UnknownCommandReference))).toBe(6);
   });
+
+  it("SIGIL1018 — when com typo em @ContextKey do próprio prefixo", () => {
+    const { diags } = collectFixture("when-bad-key.ts");
+    expect(lineOf(only(diags, SIGIL.UnknownContextKey))).toBe(9);
+  });
+
+  it("SIGIL1019 — when com sintaxe inválida", () => {
+    const { diags } = collectFixture("when-bad-syntax.ts");
+    expect(lineOf(only(diags, SIGIL.InvalidWhenExpression))).toBe(9);
+  });
 });
 
 describe("avaliador estático seguindo consts (item 8)", () => {

@@ -97,9 +97,12 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "tsType": "number",
     },
   ],
+  "contextKeys": [],
   "customEditors": [],
   "displayName": "hello",
+  "events": [],
   "extensionClass": "HelloExtension",
+  "fileWatchers": [],
   "languages": [
     {
       "diagnosticsKey": "MarkdownAssist.pendencias",
@@ -118,6 +121,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
     },
   ],
   "prefix": "hello",
+  "secrets": [],
   "settingsPanel": {
     "commandId": "hello.configure",
     "commandTitle": "Configure",
@@ -162,7 +166,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "sourceFile": "src/views/tasks.ts",
     },
   ],
-  "version": 5,
+  "version": 6,
   "viewContainers": [],
   "watches": [
     {
@@ -337,7 +341,7 @@ export function __sigilActivateLifecycle() {
   registry.lifecycle.get("HelloExtension.onActivate")?.(registry.context);
 }
 
-export function activate(ctx: vscode.ExtensionContext) {
+export async function activate(ctx: vscode.ExtensionContext) {
   registry.context = ctx;
   registry.prefix = "hello";
   ctx.subscriptions.push(bindLog("hello"));
@@ -351,7 +355,9 @@ export function activate(ctx: vscode.ExtensionContext) {
   ctx.subscriptions.push(vscode.commands.registerCommand("hello.configure", guard("comando hello.configure", () => settingsApp.open(), { notify: true })));
   for (const c of COMMANDS) {
     if (!registry.commands.has(c.key)) throw new Error(\`sigil: handler ausente para \${c.key}. Rode 'sigil build'.\`);
-    ctx.subscriptions.push(vscode.commands.registerCommand(c.id, guard(\`comando \${c.id}\`, (...args: unknown[]) => registry.commands.get(c.key)!(...args), { notify: true })));
+    const invoke = (...args: unknown[]) => registry.commands.get(c.key)!(...args);
+    const handler = invoke;
+    ctx.subscriptions.push(vscode.commands.registerCommand(c.id, guard(\`comando \${c.id}\`, handler, { notify: true })));
   }
   ctx.subscriptions.push(bindConfigWatchers(WATCHES));
   __sigilActivateLifecycle();

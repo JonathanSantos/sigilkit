@@ -237,6 +237,76 @@ export interface LanguageProviderEntry {
   triggers?: string[];
 }
 
+export class MementoMock {
+  private readonly store = new Map<string, unknown>();
+  get<T>(key: string, defaultValue?: T): T | undefined {
+    return (this.store.has(key) ? this.store.get(key) : defaultValue) as T | undefined;
+  }
+  update(key: string, value: unknown): Promise<void> {
+    if (value === undefined) this.store.delete(key);
+    else this.store.set(key, value);
+    return Promise.resolve();
+  }
+  keys(): string[] {
+    return [...this.store.keys()];
+  }
+}
+
+export class SecretStorageMock {
+  private readonly values = new Map<string, string>();
+  private readonly listeners: ((e: { key: string }) => void)[] = [];
+  get(key: string): Promise<string | undefined> {
+    return Promise.resolve(this.values.get(key));
+  }
+  store(key: string, value: string): Promise<void> {
+    this.values.set(key, value);
+    this.listeners.forEach((l) => l({ key }));
+    return Promise.resolve();
+  }
+  delete(key: string): Promise<void> {
+    this.values.delete(key);
+    this.listeners.forEach((l) => l({ key }));
+    return Promise.resolve();
+  }
+  onDidChange = (cb: (e: { key: string }) => void): DisposableLike => {
+    this.listeners.push(cb);
+    return { dispose: () => void this.listeners.splice(this.listeners.indexOf(cb), 1) };
+  };
+}
+
+export class FileWatcherMock {
+  readonly changeListeners: ((uri: UriMock) => void)[] = [];
+  readonly createListeners: ((uri: UriMock) => void)[] = [];
+  readonly deleteListeners: ((uri: UriMock) => void)[] = [];
+  constructor(readonly glob: string) {}
+  onDidChange = (cb: (uri: UriMock) => void): DisposableLike => {
+    this.changeListeners.push(cb);
+    return { dispose() {} };
+  };
+  onDidCreate = (cb: (uri: UriMock) => void): DisposableLike => {
+    this.createListeners.push(cb);
+    return { dispose() {} };
+  };
+  onDidDelete = (cb: (uri: UriMock) => void): DisposableLike => {
+    this.deleteListeners.push(cb);
+    return { dispose() {} };
+  };
+  matches(filePath: string): boolean {
+    // placeholders evitam que o output de um replace seja mastigado pelo próximo
+    const pattern = this.glob
+      .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+      .replace(/\*\*\//g, "\u0001")
+      .replace(/\*\*/g, "\u0002")
+      .replace(/\*/g, "[^/]*")
+      .replace(/\?/g, "[^/]")
+      .replace(/\u0001/g, "(?:.*/)?")
+      .replace(/\u0002/g, ".*");
+    const regex = new RegExp(`^${pattern}$`);
+    return regex.test(filePath) || regex.test(filePath.replace(/^\//, ""));
+  }
+  dispose(): void {}
+}
+
 export class ChatResponseStreamMock {
   readonly calls: { kind: string; value: unknown }[] = [];
   markdown(value: unknown): void {
@@ -428,6 +498,16 @@ export interface VscodeMockState {
     followupProvider?: { provideFollowups: (...args: unknown[]) => unknown };
   }[];
   customEditorProviders: Map<string, { resolveCustomTextEditor(document: unknown, panel: unknown): unknown }>;
+  globalState: MementoMock;
+  workspaceState: MementoMock;
+  secretStorage: SecretStorageMock;
+  /** valores publicados via executeCommand("setContext", …) */
+  contextKeys: Map<string, unknown>;
+  fileWatchers: FileWatcherMock[];
+  uriHandler?: { handleUri(uri: unknown): unknown };
+  progressRuns: { title?: string; location?: unknown }[];
+  /** respostas enfileiradas para llm.ask/stream (fila vazia → "resposta simulada") */
+  llmQueue: string[];
   treeProviders: Map<string, TreeDataProviderLike>;
   panels: WebviewPanelMock[];
   webviewViewProviders: Map<string, { resolveWebviewView(view: unknown): unknown }>;
@@ -457,6 +537,14 @@ export function createState(): VscodeMockState {
     diagnosticCollections: [],
     chatParticipants: [],
     customEditorProviders: new Map(),
+    globalState: new MementoMock(),
+    workspaceState: new MementoMock(),
+    secretStorage: new SecretStorageMock(),
+    contextKeys: new Map(),
+    fileWatchers: [],
+    uriHandler: undefined,
+    progressRuns: [],
+    llmQueue: [],
     treeProviders: new Map(),
     panels: [],
     webviewViewProviders: new Map(),
@@ -496,6 +584,14 @@ export function resetState(state: VscodeMockState): void {
   state.diagnosticCollections.length = 0;
   state.chatParticipants.length = 0;
   state.customEditorProviders.clear();
+  state.globalState = new MementoMock();
+  state.workspaceState = new MementoMock();
+  state.secretStorage = new SecretStorageMock();
+  state.contextKeys.clear();
+  state.fileWatchers.length = 0;
+  state.uriHandler = undefined;
+  state.progressRuns.length = 0;
+  state.llmQueue.length = 0;
   state.treeProviders.clear();
   state.panels.length = 0;
   state.webviewViewProviders.clear();
@@ -596,6 +692,27 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
         return collection;
       },
     },
+    ProgressLocation: { SourceControl: 1, Window: 10, Notification: 15 },
+    LanguageModelChatMessage: {
+      User: (content: string) => ({ role: "user", content }),
+      Assistant: (content: string) => ({ role: "assistant", content }),
+    },
+    lm: {
+      selectChatModels: (_selector?: unknown) =>
+        Promise.resolve([
+          {
+            family: "mock-model",
+            sendRequest: (_messages: unknown[], _opts: unknown, _token: unknown) => {
+              const reply = state.llmQueue.shift() ?? "resposta simulada";
+              return Promise.resolve({
+                text: (async function* () {
+                  yield reply;
+                })(),
+              });
+            },
+          },
+        ]),
+    },
     chat: {
       createChatParticipant: (id: string, handler: (...args: unknown[]) => unknown) => {
         const participant: (typeof state.chatParticipants)[number] = { id, handler };
@@ -678,6 +795,19 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
         state.customEditorProviders.set(viewType, provider);
         return { dispose: () => state.customEditorProviders.delete(viewType) };
       },
+      registerUriHandler: (handler: { handleUri(uri: unknown): unknown }) => {
+        state.uriHandler = handler;
+        return { dispose: () => (state.uriHandler = undefined) };
+      },
+      withProgress: (
+        options: { title?: string; location?: unknown },
+        task: (progress: { report(v: unknown): void }, token: unknown) => unknown
+      ) => {
+        state.progressRuns.push({ title: options.title, location: options.location });
+        return Promise.resolve(
+          task({ report() {} }, { isCancellationRequested: false, onCancellationRequested: () => ({ dispose() {} }) })
+        );
+      },
       createOutputChannel: (name: string, _opts?: unknown) => {
         const channel = new OutputChannelMock(name);
         state.outputChannels.push(channel);
@@ -694,6 +824,10 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
         return { dispose: () => state.commands.delete(id) };
       },
       executeCommand: (id: string, ...args: unknown[]) => {
+        if (id === "setContext") {
+          state.contextKeys.set(String(args[0]), args[1]);
+          return Promise.resolve(undefined);
+        }
         const fn = state.commands.get(id);
         if (fn) return Promise.resolve(fn(...args));
         // o VSCode gera "<viewId>.focus" para toda view contribuída
@@ -741,6 +875,11 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
       onDidChangeTextDocument: docListener("change"),
       onDidSaveTextDocument: docListener("save"),
       onDidCloseTextDocument: docListener("close"),
+      createFileSystemWatcher: (glob: string) => {
+        const watcher = new FileWatcherMock(glob);
+        state.fileWatchers.push(watcher);
+        return watcher;
+      },
       applyEdit: (edit: WorkspaceEditMock) => {
         for (const op of edit.replacements) {
           const doc = state.documents.find((d) => d.uri.toString() === op.uri.toString());

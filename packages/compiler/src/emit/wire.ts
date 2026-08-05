@@ -1,6 +1,12 @@
 import path from "node:path";
 import { IR } from "../ir";
 
+function compactEntry<T extends Record<string, unknown>>(obj: T): T {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) if (v !== undefined) out[k] = v;
+  return out as T;
+}
+
 /**
  * O wire mora em src/.generated/wire.ts; imports de arquivos do usuário são
  * relativos a esse diretório (§13). Os caminhos do IR são relativos à raiz.
@@ -21,7 +27,7 @@ function relativeImport(sourceFile: string): string {
  * de comandos — os decorators registram handlers na construção da instância.
  */
 export function emitWire(ir: IR): string {
-  const cmds = ir.commands.map((c) => ({ key: c.key, id: c.id }));
+  const cmds = ir.commands.map((c) => compactEntry({ key: c.key, id: c.id, progress: c.progress }));
   const watches = ir.watches.map((w) => ({ key: w.key, targetConfigId: w.targetConfigId }));
 
   const coreImports = ["registry", "adoptRegistrations", "bindConfigWatchers", "bindLog", "guard"];
@@ -33,6 +39,12 @@ export function emitWire(ir: IR): string {
   if (ir.languages.length > 0) coreImports.push("bindLanguage");
   if (ir.chatParticipants.length > 0) coreImports.push("bindChatParticipant");
   if (ir.customEditors.length > 0) coreImports.push("bindCustomEditor");
+  if (ir.events.length > 0) coreImports.push("bindEvents");
+  if (ir.fileWatchers.length > 0) coreImports.push("bindFileWatchers");
+  if (ir.secrets.length > 0) coreImports.push("bindSecrets");
+  if (ir.contextKeys.length > 0) coreImports.push("bindContextKeys");
+  if (ir.uriHandlerKey) coreImports.push("bindUriHandler");
+  if (ir.commands.some((c) => c.progress)) coreImports.push("withCommandProgress");
 
   const byFile = new Map<string, Set<string>>();
   const addImport = (file: string, cls: string): void => {
@@ -153,6 +165,22 @@ export function emitWire(ir: IR): string {
     })
     .join("");
 
+  const extrasSetup = [
+    ir.contextKeys.length > 0
+      ? `  bindContextKeys(${JSON.stringify(ir.contextKeys.map((c) => ({ id: c.id, default: c.default })))});\n`
+      : "",
+    ir.secrets.length > 0
+      ? `  ctx.subscriptions.push(await bindSecrets(${JSON.stringify(ir.secrets.map((s) => s.name))}));\n`
+      : "",
+    ir.events.length > 0
+      ? `  ctx.subscriptions.push(bindEvents(${JSON.stringify(ir.events.map((e) => compactEntry({ key: e.key, event: e.event, debounce: e.debounce })))}));\n`
+      : "",
+    ir.fileWatchers.length > 0
+      ? `  ctx.subscriptions.push(bindFileWatchers(${JSON.stringify(ir.fileWatchers.map((f) => compactEntry({ key: f.key, glob: f.glob, kind: f.kind, debounce: f.debounce })))}));\n`
+      : "",
+    ir.uriHandlerKey ? `  ctx.subscriptions.push(bindUriHandler(${JSON.stringify(ir.uriHandlerKey)}));\n` : "",
+  ].join("");
+
   const statusBarSetup = ir.statusBars
     .map((s) => {
       const binding = {
@@ -191,14 +219,19 @@ ${hydrateLines}
 export function __sigilActivateLifecycle() {
 ${ir.activateKey ? `  registry.lifecycle.get(${JSON.stringify(ir.activateKey)})?.(registry.context);\n` : ""}}
 
-export function activate(ctx: vscode.ExtensionContext) {
+export async function activate(ctx: vscode.ExtensionContext) {
   registry.context = ctx;
   registry.prefix = ${JSON.stringify(ir.prefix)};
   ctx.subscriptions.push(bindLog(${JSON.stringify(ir.displayName)}));
   __sigilHydrate();
-${treeSetup}${webviewSetup}${languageSetup}${chatSetup}${customEditorSetup}${statusBarSetup}${settingsSetup}  for (const c of COMMANDS) {
+${treeSetup}${webviewSetup}${languageSetup}${chatSetup}${customEditorSetup}${extrasSetup}${statusBarSetup}${settingsSetup}  for (const c of COMMANDS) {
     if (!registry.commands.has(c.key)) throw new Error(\`sigil: handler ausente para \${c.key}. Rode 'sigil build'.\`);
-    ctx.subscriptions.push(vscode.commands.registerCommand(c.id, guard(\`comando \${c.id}\`, (...args: unknown[]) => registry.commands.get(c.key)!(...args), { notify: true })));
+    const invoke = (...args: unknown[]) => registry.commands.get(c.key)!(...args);
+${
+  ir.commands.some((c) => c.progress)
+    ? `    const handler = "progress" in c && c.progress ? withCommandProgress(c.progress, invoke) : invoke;\n`
+    : `    const handler = invoke;\n`
+}    ctx.subscriptions.push(vscode.commands.registerCommand(c.id, guard(\`comando \${c.id}\`, handler, { notify: true })));
   }
   ctx.subscriptions.push(bindConfigWatchers(WATCHES));
   __sigilActivateLifecycle();

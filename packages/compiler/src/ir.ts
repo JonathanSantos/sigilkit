@@ -1,4 +1,4 @@
-export const IR_VERSION = 5;
+export const IR_VERSION = 6;
 
 export interface SourceLoc {
   file: string;
@@ -16,6 +16,8 @@ export interface IRCommand {
   enablement?: string;
   keybinding?: { key: string; mac?: string; linux?: string; win?: string; when?: string };
   menus: { menu: string; group?: string; when?: string }[];
+  /** window.withProgress no handler; token injetado como último argumento */
+  progress?: { title: string; location?: "notification" | "window" | "statusBar"; cancellable?: boolean };
   loc: SourceLoc;
 }
 
@@ -137,6 +139,38 @@ export interface IRCustomEditor {
   loc: SourceLoc;
 }
 
+/** @On: assinatura declarativa de evento do vscode. */
+export interface IREventHandler {
+  key: string;
+  event: string; // "workspace.onDidSaveTextDocument"
+  debounce?: number;
+  loc: SourceLoc;
+}
+
+/** @OnFile: FileSystemWatcher declarativo. */
+export interface IRFileWatcher {
+  key: string;
+  glob: string;
+  kind: "change" | "create" | "delete" | "all";
+  debounce?: number;
+  loc: SourceLoc;
+}
+
+/** @Secret: nome pré-carregado no cache síncrono pelo wire. */
+export interface IRSecret {
+  key: string;
+  name: string;
+  loc: SourceLoc;
+}
+
+/** @ContextKey: id completo + default — e insumo da validação de `when`. */
+export interface IRContextKey {
+  key: string;
+  id: string; // "hello.pronto"
+  default: unknown;
+  loc: SourceLoc;
+}
+
 /** Aba de configurações pronta, habilitada por @Extension({ settings }). */
 export interface IRSettingsPanel {
   commandId: string; // "hello.configure"
@@ -166,4 +200,9 @@ export interface IR {
   languages: IRLanguage[];
   chatParticipants: IRChatParticipant[];
   customEditors: IRCustomEditor[];
+  events: IREventHandler[];
+  fileWatchers: IRFileWatcher[];
+  secrets: IRSecret[];
+  contextKeys: IRContextKey[];
+  uriHandlerKey?: string;
 }

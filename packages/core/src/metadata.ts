@@ -19,6 +19,7 @@ export interface Bucket {
   webviewHandlers: Map<string, (...args: unknown[]) => unknown>;
   languageHandlers: Map<string, (...args: unknown[]) => unknown>;
   chatHandlers: Map<string, (...args: unknown[]) => unknown>;
+  events: Map<string, (...args: unknown[]) => unknown>;
   configDefaults: Map<string, unknown>;
   statusBarText: Map<string, string>;
   statusBarItems: Map<string, StatusBarItemLike>;
@@ -42,6 +43,7 @@ export function bucketOf(metadata: object | undefined): Bucket {
       webviewHandlers: new Map(),
       languageHandlers: new Map(),
       chatHandlers: new Map(),
+      events: new Map(),
       configDefaults: new Map(),
       statusBarText: new Map(),
       statusBarItems: new Map(),
@@ -58,7 +60,8 @@ type BoundMemberKind =
   | "treeHandlers"
   | "webviewHandlers"
   | "languageHandlers"
-  | "chatHandlers";
+  | "chatHandlers"
+  | "events";
 
 /** Fábrica dos decorators de método: registra o método (bound) no bucket da classe. */
 export function registerBoundMember(kind: BoundMemberKind) {
@@ -121,6 +124,9 @@ export function adoptRegistrations(
   }
   for (const [member, fn] of bucket.chatHandlers) {
     registry.chatHandlers.set(`${className}.${member}`, fn);
+  }
+  for (const [member, fn] of bucket.events) {
+    registry.events.set(`${className}.${member}`, fn);
   }
   for (const [member, v] of bucket.configDefaults) {
     registry.configDefaults.set(`${className}.${member}`, v);

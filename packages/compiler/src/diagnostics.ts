@@ -40,6 +40,10 @@ export const SIGIL = {
   MissingRequiredOption: 1016,
   /** referência a comando inexistente (ex.: command de @StatusBar) */
   UnknownCommandReference: 1017,
+  /** cláusula when referencia context key do prefixo que não foi declarada */
+  UnknownContextKey: 1018,
+  /** cláusula when com sintaxe inválida */
+  InvalidWhenExpression: 1019,
 } as const;
 
 export function diagAt(node: ts.Node, code: number, message: string): ts.Diagnostic {

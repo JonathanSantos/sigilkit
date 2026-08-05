@@ -17,6 +17,11 @@ export interface CommandOptions {
   /** group default para entradas de menu que não definem o seu */
   group?: string;
   enablement?: string;
+  /**
+   * Envolve o handler em window.withProgress; o CancellationToken é injetado
+   * como último argumento do método.
+   */
+  progress?: string | { title: string; location?: "notification" | "window" | "statusBar"; cancellable?: boolean };
 }
 
 /**

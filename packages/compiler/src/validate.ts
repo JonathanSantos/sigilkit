@@ -79,6 +79,51 @@ export function validate(ir: IR, program: ts.Program, projectDir: string): ts.Di
     }
   }
 
+  // ── validação de cláusulas `when` (SIGIL1018/1019) ─────────────────────────
+  // O compilador vê os dois lados: as @ContextKey declaradas E as expressões.
+  // Um typo em `when` que falharia em silêncio para sempre vira erro de build.
+  const declaredContextIds = new Set(ir.contextKeys.map((c) => c.id));
+  const knownPrefixTokens = new Set([
+    ...declaredContextIds,
+    ...ir.treeViews.map((t) => t.id),
+    ...ir.webviews.map((w) => w.id),
+    ...ir.commands.map((c) => c.id),
+  ]);
+
+  const WHEN_TOKEN =
+    /\s+|&&|\|\||!=|==|=~|>=|<=|[!()<>]|'[^']*'|"[^"]*"|\/(?:[^/\\]|\\.)+\/|\bin\b|\bnot\b|-?\d+(?:\.\d+)?|[A-Za-z_][\w.:\-]*/y;
+
+  const checkWhen = (expr: string, what: string, loc: (typeof ir.commands)[number]["loc"]): void => {
+    // sintaxe: tokeniza; sobra de caracteres ou parênteses desbalanceados → 1019
+    WHEN_TOKEN.lastIndex = 0;
+    let consumed = 0;
+    let depth = 0;
+    let match: RegExpExecArray | null;
+    while ((match = WHEN_TOKEN.exec(expr)) !== null) {
+      const token = match[0];
+      consumed += token.length;
+      if (token === "(") depth++;
+      if (token === ")") depth--;
+      if (depth < 0) break;
+      // semântica: tokens do NOSSO prefixo precisam existir (context key/view/comando)
+      if (token.startsWith(`${ir.prefix}.`) && !knownPrefixTokens.has(token)) {
+        diags.push(
+          diagAtLoc(program, projectDir, loc, SIGIL.UnknownContextKey, `${what} referencia '${token}', que não é uma @ContextKey (nem view/comando) declarada — declare-a ou corrija o typo`)
+        );
+      }
+    }
+    if (consumed !== expr.length || depth !== 0) {
+      diags.push(diagAtLoc(program, projectDir, loc, SIGIL.InvalidWhenExpression, `${what} tem sintaxe inválida: "${expr}"`));
+    }
+  };
+
+  for (const c of ir.commands) {
+    if (c.when) checkWhen(c.when, `o when de ${c.id}`, c.loc);
+    if (c.enablement) checkWhen(c.enablement, `o enablement de ${c.id}`, c.loc);
+    for (const m of c.menus) if (m.when) checkWhen(m.when, `o when do menu ${m.menu} de ${c.id}`, c.loc);
+    if (c.keybinding?.when) checkWhen(c.keybinding.when, `o when do keybinding de ${c.id}`, c.loc);
+  }
+
   const keybindings = new Map<string, string>();
   for (const c of ir.commands) {
     if (!c.keybinding) continue;
