@@ -44,6 +44,10 @@ Nenhuma linha de `contributes` é escrita à mão. `sigil build` gera:
 | `@sigil/compiler` | build time (AST → IR → emitters) | nunca importa `vscode` (R2); nunca executa código do usuário (R3) |
 | `@sigil/cli` | orquestração e IO | emitters são puros; todo IO fica aqui (R4) |
 
+**Comece pelo [tutorial: sua primeira extensão em 5 minutos](docs/tutorial.md)**
+— comando, config, status bar, watch, aba de opções e `.vsix`, sem abrir o
+VSCode (o teste `tests/tutorial.test.ts` garante que ele nunca apodrece).
+
 O design completo está em [docs/spec.md](docs/spec.md). Leia a §4 (modelo de
 propriedade) antes de mexer em qualquer coisa.
 

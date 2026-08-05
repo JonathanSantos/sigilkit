@@ -4,5 +4,6 @@ out/
 .generated/
 .tmp/
 .vscode-test/
+playground/
 *.tsbuildinfo
 *.vsix
