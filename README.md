@@ -11,6 +11,7 @@
 </p>
 
 <p align="center">
+  <a href="https://www.npmjs.com/org/sigilkit"><img src="https://img.shields.io/npm/v/%40sigilkit%2Fcore?label=npm%20%40sigilkit&color=cb3837" alt="npm @sigilkit"></a>
   <a href="https://github.com/JonathanSantos/sigilkit/actions/workflows/ci.yml"><img src="https://github.com/JonathanSantos/sigilkit/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/licen%C3%A7a-MIT-8b5cf6" alt="Licença MIT"></a>
 </p>
@@ -47,14 +48,24 @@ Nenhuma linha de `contributes` é escrita à mão. `sigil build` gera:
 
 Renomear um comando e esquecer o manifesto deixa de ser um comando fantasma —
 vira **erro de build com posição no arquivo**. Um typo numa expressão `when`,
-que falharia em silêncio para sempre, vira `SIGIL1018` com caret na linha.
+que falharia em silêncio para sempre, vira um erro de build (`SIGIL1018`) com
+caret na linha.
+
+## Em 30 segundos
+
+Hot reload no workbench do `sigil sim --ui`: um comando executa, o handler é
+editado, e o comportamento novo já vale — **sem F5, sem abrir o VSCode**:
+
+<p align="center">
+  <img src="assets/demo-hot-reload.gif" alt="hot reload no sigil sim --ui: comando executado, handler editado, comportamento novo sem F5" width="900">
+</p>
 
 ## Por que sigil
 
 - **Uma fonte de verdade** — identidade (ids, títulos, schemas) sai da AST em
   build time; comportamento (handlers) sai do registry em runtime; o join por
   chave estável é verificado nas duas pontas.
-- **Erros altos, nunca silêncio** (R6) — handler ausente lança na ativação;
+- **Erros altos, nunca silêncio** — handler ausente lança na ativação;
   exceção em comando vira log com stack + notificação "Abrir logs"; API não
   simulada no teste lança erro descritivo.
 - **Dev loop de segundos, não de F5** — quatro marchas: watch incremental,
@@ -66,10 +77,13 @@ que falharia em silêncio para sempre, vira `SIGIL1018` com caret na linha.
 
 ## Começando
 
+Os pacotes estão no npm sob o escopo [`@sigilkit`](https://www.npmjs.com/org/sigilkit):
+
 ```bash
-sigil init minha-extensao
+npm i -D @sigilkit/cli
+npx sigil init minha-extensao
 cd minha-extensao && npm install && npm run build
-# abra no VSCode e aperte F5 — ou: sigil sim --ui minha-extensao
+# abra no VSCode e aperte F5 — ou: npx sigil sim --ui .
 ```
 
 **Siga o [tutorial: sua primeira extensão em 5 minutos](docs/tutorial.md)** —
@@ -202,6 +216,10 @@ trees com expansão, editor de configs, status bar, toasts, Output — e
 que o simulador modela, não um clone do VSCode — para fidelidade total, use o
 sandbox.
 
+<p align="center">
+  <img src="assets/sim-ui.png" alt="workbench do sigil sim --ui com tree view, webview renderizada, command palette, configurações e status bar" width="900">
+</p>
+
 **`sigil sandbox`** baixa um VSCode isolado (user-data e extensões próprios,
 zero poluição do seu) e conecta um companion por socket. O watch decide pelo
 **hash do IR**: corpo de método mudou → **🔥 hot swap** (~3ms, sem reload de
@@ -310,6 +328,13 @@ estado, plataforma de runtime, os quatro modos de desenvolvimento e o
 empacotamento. A [tabela de decorators](#os-decorators) reflete o que está
 implementado e testado — hoje o sigil cobre declarativamente a grande maioria
 dos tipos de extensão do marketplace.
+
+## Estabilidade
+
+Pré-1.0: a API pública pode mudar entre versões minor (`0.x` → `0.y`), sempre
+com nota no [CHANGELOG](CHANGELOG.md) e nas [releases](https://github.com/JonathanSantos/sigilkit/releases).
+Os quatro pacotes versionam em **lockstep** — use sempre a mesma versão de
+todos. A partir do `1.0.0`, semver estrito.
 
 ## Licença
 
