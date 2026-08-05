@@ -63,6 +63,24 @@ export class Registry {
   readonly webviewPosts = new Map<string, (msg: unknown) => void>();
   /** buckets adotados por nome declarado de classe (ver metadata.ts) */
   readonly buckets = new Map<string, import("./metadata").Bucket>();
+  /** instâncias criadas pelo wire, chaveadas pelo CONSTRUTOR (minificação-safe;
+   *  no hot swap o hydrate re-registra com as classes frescas do módulo novo) */
+  readonly instances = new WeakMap<abstract new (...args: never[]) => unknown, unknown>();
+
+  /**
+   * A ponte abençoada entre classes: de qualquer @Webview/@TreeView/etc.,
+   * alcance a instância viva de outra classe gerenciada — tipada.
+   * Lança se a classe não for gerenciada pelo wire (R6).
+   */
+  instance<T>(cls: abstract new (...args: never[]) => T): T {
+    const found = this.instances.get(cls);
+    if (found === undefined) {
+      throw new Error(
+        `sigil: nenhuma instância viva de ${cls.name || "(classe)"} — ela não é uma classe gerenciada (@Extension/@TreeView/@Webview/…) deste wire. Rode 'sigil build' se acabou de decorá-la.`
+      );
+    }
+    return found as T;
+  }
 }
 
 export const registry = new Registry();

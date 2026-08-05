@@ -62,31 +62,27 @@ export function emitWire(ir: IR): string {
     .map(([file, names]) => `import { ${[...names].sort().join(", ")} } from "${relativeImport(file)}";`)
     .join("\n");
 
-  // hidratação: instancia + adota + injeta posts — re-executável (hot swap)
+  // hidratação: instancia + adota + registra em registry.instances (a ponte
+  // tipada entre classes) + injeta posts — re-executável (hot swap)
+  const hydrate = (key: string, extra: string[] = []): string[] => [
+    `  const i_${key} = new ${key}();`,
+    `  adoptRegistrations(${JSON.stringify(key)}, ${key});`,
+    `  registry.instances.set(${key}, i_${key});`,
+    ...extra,
+  ];
   const hydrateLines = [
     `  instance = new ${ir.extensionClass}();`,
     `  adoptRegistrations(${JSON.stringify(ir.extensionClass)}, ${ir.extensionClass});`,
-    ...ir.treeViews.flatMap((t) => [
-      `  new ${t.key}();`,
-      `  adoptRegistrations(${JSON.stringify(t.key)}, ${t.key});`,
-    ]),
-    ...ir.webviews.flatMap((w) => [
-      `  const wv_${w.key} = new ${w.key}();`,
-      `  adoptRegistrations(${JSON.stringify(w.key)}, ${w.key});`,
-      `  (wv_${w.key} as { post?: (msg: unknown) => void }).post = (msg) => registry.webviewPosts.get(${JSON.stringify(w.key)})!(msg);`,
-    ]),
-    ...ir.languages.flatMap((l) => [
-      `  new ${l.key}();`,
-      `  adoptRegistrations(${JSON.stringify(l.key)}, ${l.key});`,
-    ]),
-    ...ir.chatParticipants.flatMap((c) => [
-      `  new ${c.key}();`,
-      `  adoptRegistrations(${JSON.stringify(c.key)}, ${c.key});`,
-    ]),
-    ...ir.customEditors.flatMap((e) => [
-      `  new ${e.key}();`,
-      `  adoptRegistrations(${JSON.stringify(e.key)}, ${e.key});`,
-    ]),
+    `  registry.instances.set(${ir.extensionClass}, instance);`,
+    ...ir.treeViews.flatMap((t) => hydrate(t.key)),
+    ...ir.webviews.flatMap((w) =>
+      hydrate(w.key, [
+        `  (i_${w.key} as { post?: (msg: unknown) => void }).post = (msg) => registry.webviewPosts.get(${JSON.stringify(w.key)})!(msg);`,
+      ])
+    ),
+    ...ir.languages.flatMap((l) => hydrate(l.key)),
+    ...ir.chatParticipants.flatMap((c) => hydrate(c.key)),
+    ...ir.customEditors.flatMap((e) => hydrate(e.key)),
   ].join("\n");
 
   const treeSetup = ir.treeViews

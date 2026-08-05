@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { dual } from "./dual";
 import { registry } from "../registry";
 import { registerBoundMember } from "../metadata";
 import { guard } from "../guard";
@@ -30,14 +31,10 @@ export function ChatParticipant(_opts: ChatParticipantOptions) {
 }
 
 /** handler(request, context, stream, token) — o coração do participante. */
-export function ChatRequest() {
-  return registerBoundMember("chatHandlers");
-}
+export const ChatRequest = dual(() => registerBoundMember("chatHandlers"));
 
 /** provideFollowups(result, context, token) — sugestões pós-resposta. Opcional. */
-export function ChatFollowups() {
-  return registerBoundMember("chatHandlers");
-}
+export const ChatFollowups = dual(() => registerBoundMember("chatHandlers"));
 
 export interface ChatParticipantBinding {
   readonly key: string;

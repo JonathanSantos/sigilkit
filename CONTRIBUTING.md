@@ -64,6 +64,13 @@ TypeScript estrito, sem dependências novas no core (zero deps em runtime é
 requisito — o bundle da extensão embute tudo). Mensagens de erro em pt-BR,
 descritivas e com próximo passo claro, no padrão das existentes.
 
+**Resolução tardia de dependências externas**: tudo que o core toma do
+ambiente (o `fetch`, APIs novas do vscode) é lido NA HORA DA CHAMADA, nunca
+capturado no load do módulo — é o que torna cada peça trocável em teste até
+dentro de um bundle (`http.fetchImpl` lê `globalThis.fetch` por chamada; o
+`vscode.chat`/`vscode.lm` são acessados dinamicamente). Feature nova no core
+segue essa regra.
+
 ## Release (mantenedores)
 
 Os quatro pacotes `@sigilkit/*` versionam em **lockstep** (dependências

@@ -360,10 +360,15 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
       progress = compact(o.progress as { title: string; location?: "notification" | "window" | "statusBar"; cancellable?: boolean });
     }
 
+    if (o.id !== undefined && (typeof o.id !== "string" || o.id.length === 0)) {
+      diagnostics.push(diagAt(optsNode, SIGIL.NotStaticLiteral, "o 'id' de @Command precisa ser uma string literal não vazia"));
+      return;
+    }
+
     commands.push(
       compact({
         key,
-        id: `${prefix}.${methodName}`,
+        id: `${prefix}.${(o.id as string | undefined) ?? methodName}`,
         title: o.title,
         category: o.category as string | undefined,
         icon: o.icon as string | undefined,

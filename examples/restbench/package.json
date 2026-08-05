@@ -37,19 +37,19 @@
   "contributes": {
     "commands": [
       {
-        "command": "restbench.abrir",
-        "title": "Open",
-        "category": "REST Bench"
+        "command": "restbench.clearHistory",
+        "title": "Clear History",
+        "category": "REST Bench",
+        "enablement": "restbench.temHistorico"
       },
       {
         "command": "restbench.configure",
         "title": "Configure"
       },
       {
-        "command": "restbench.limparHistorico",
-        "title": "Clear History",
-        "category": "REST Bench",
-        "enablement": "restbench.temHistorico"
+        "command": "restbench.open",
+        "title": "Open",
+        "category": "REST Bench"
       }
     ],
     "configuration": {

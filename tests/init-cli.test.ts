@@ -68,3 +68,50 @@ describe("sigil init", () => {
     expect(fs.readFileSync(path.join(TMP, "src/extension.ts"), "utf8")).toBe(stamp);
   });
 });
+
+describe("sigil init --template react-webview", () => {
+  const REACT_TMP = path.join(ROOT, "tests/.tmp/init-react");
+  const react = (cmd: string) => {
+    const r = spawnSync(process.execPath, [BIN, cmd, REACT_TMP, "--template=react-webview"], {
+      encoding: "utf8",
+    });
+    return { status: r.status ?? -1, out: `${r.stdout}\n${r.stderr}` };
+  };
+
+  beforeAll(() => fs.rmSync(REACT_TMP, { recursive: true, force: true }));
+  afterAll(() => fs.rmSync(REACT_TMP, { recursive: true, force: true }));
+
+  it("scaffolda a UI React com tsconfig próprio e scripts de bundle", () => {
+    expect(react("init").status).toBe(0);
+    for (const rel of ["ui/index.html", "ui/src/main.tsx", "ui/tsconfig.json"]) {
+      expect(fs.existsSync(path.join(REACT_TMP, rel)), rel).toBe(true);
+    }
+    const pkg = JSON.parse(fs.readFileSync(path.join(REACT_TMP, "package.json"), "utf8"));
+    expect(pkg.dependencies.react).toBeDefined();
+    expect(pkg.scripts["build:ui"]).toContain("--jsx=automatic");
+    expect(pkg.scripts.typecheck).toContain("tsc -p ui");
+  });
+
+  it("sigil build gera manifesto + sigil-env.d.ts do painel", () => {
+    const r = spawnSync(process.execPath, [BIN, "build", REACT_TMP], { encoding: "utf8" });
+    expect(r.status, `${r.stdout}\n${r.stderr}`).toBe(0);
+    const pkg = JSON.parse(fs.readFileSync(path.join(REACT_TMP, "package.json"), "utf8"));
+    expect(pkg.contributes.commands.map((c: { command: string }) => c.command)).toContain(
+      "init-react.openPanel"
+    );
+    const env = fs.readFileSync(path.join(REACT_TMP, "ui/sigil-env.d.ts"), "utf8");
+    expect(env).toContain(`__SigilReq<"saudar"`);
+    expect(env).toContain(`__SigilMsg<"ping"`);
+    expect(env).toContain("MainPanelHostMessage");
+  });
+
+  it("template desconhecido falha alto", () => {
+    const r = spawnSync(
+      process.execPath,
+      [BIN, "init", path.join(ROOT, "tests/.tmp/init-x"), "--template=vue"],
+      { encoding: "utf8" }
+    );
+    expect(r.status).toBe(1);
+    expect(`${r.stdout}\n${r.stderr}`).toContain("template desconhecido");
+  });
+});

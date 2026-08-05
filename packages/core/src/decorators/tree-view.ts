@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { dual } from "./dual";
 import { registry } from "../registry";
 import { registerBoundMember } from "../metadata";
 import { guard } from "../guard";
@@ -31,19 +32,13 @@ export function TreeView(_opts: TreeViewOptions) {
 }
 
 /** Método que retorna os nós raiz da árvore. Obrigatório. */
-export function TreeRoot() {
-  return registerBoundMember("treeHandlers");
-}
+export const TreeRoot = dual(() => registerBoundMember("treeHandlers"));
 
 /** Método que retorna os filhos de um nó. Opcional (árvore rasa sem ele). */
-export function TreeChildren() {
-  return registerBoundMember("treeHandlers");
-}
+export const TreeChildren = dual(() => registerBoundMember("treeHandlers"));
 
 /** Método que converte um nó em vscode.TreeItem. Obrigatório. */
-export function TreeItem() {
-  return registerBoundMember("treeHandlers");
-}
+export const TreeItem = dual(() => registerBoundMember("treeHandlers"));
 
 export interface TreeViewBinding {
   readonly key: string;

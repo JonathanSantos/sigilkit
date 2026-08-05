@@ -327,13 +327,17 @@ let instance: HelloExtension | undefined;
 export function __sigilHydrate() {
   instance = new HelloExtension();
   adoptRegistrations("HelloExtension", HelloExtension);
-  new TasksView();
+  registry.instances.set(HelloExtension, instance);
+  const i_TasksView = new TasksView();
   adoptRegistrations("TasksView", TasksView);
-  const wv_SettingsPanel = new SettingsPanel();
+  registry.instances.set(TasksView, i_TasksView);
+  const i_SettingsPanel = new SettingsPanel();
   adoptRegistrations("SettingsPanel", SettingsPanel);
-  (wv_SettingsPanel as { post?: (msg: unknown) => void }).post = (msg) => registry.webviewPosts.get("SettingsPanel")!(msg);
-  new MarkdownAssist();
+  registry.instances.set(SettingsPanel, i_SettingsPanel);
+  (i_SettingsPanel as { post?: (msg: unknown) => void }).post = (msg) => registry.webviewPosts.get("SettingsPanel")!(msg);
+  const i_MarkdownAssist = new MarkdownAssist();
   adoptRegistrations("MarkdownAssist", MarkdownAssist);
+  registry.instances.set(MarkdownAssist, i_MarkdownAssist);
 }
 
 /** Roda o @Activate — na ativação e depois de cada hot swap. */

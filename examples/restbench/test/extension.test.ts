@@ -14,22 +14,8 @@ const okJson = (value: unknown, status = 200) =>
 
 const originalFetch = globalThis.fetch;
 
-/** RPC como a UI faz: envia com __sigilRpcId e espera o __sigilRpcResult. */
-async function rpc(panel: WebviewPanelMock, type: string, value?: unknown): Promise<unknown> {
-  const id = Math.floor(Math.random() * 1e9);
-  panel.receive({ type, value, __sigilRpcId: id });
-  for (let i = 0; i < 50; i++) {
-    await new Promise((r) => setTimeout(r, 5));
-    const hit = panel.posted.find(
-      (m) => (m as { type?: string; id?: number }).type === "__sigilRpcResult" && (m as { id?: number }).id === id
-    ) as { ok: boolean; value?: unknown; error?: string } | undefined;
-    if (hit) {
-      if (!hit.ok) throw new Error(hit.error);
-      return hit.value;
-    }
-  }
-  throw new Error(`rpc '${type}' sem resposta`);
-}
+// panel.request faz o RPC como a UI real (correlação por __sigilRpcId)
+const rpc = (panel: WebviewPanelMock, type: string, value?: unknown) => panel.request(type, value);
 
 describe("restbench — React na UI, http/estado/secret no host", () => {
   let host: SigilTestHost;
@@ -41,7 +27,7 @@ describe("restbench — React na UI, http/estado/secret no host", () => {
       return nextResponse();
     }) as typeof globalThis.fetch;
     host = await activateExtension({ projectDir });
-    await host.executeCommand("restbench.abrir");
+    await host.executeCommand("restbench.open");
     panel = host.panel("restbench.panel");
   });
 
@@ -51,8 +37,8 @@ describe("restbench — React na UI, http/estado/secret no host", () => {
   });
 
   it("ativação: comandos, settings app e status bar inicial", () => {
-    expect(host.commands).toContain("restbench.abrir");
-    expect(host.commands).toContain("restbench.limparHistorico");
+    expect(host.commands).toContain("restbench.open"); // id explícito — o método chama-se abrir()
+    expect(host.commands).toContain("restbench.clearHistory");
     expect(host.commands).toContain("restbench.configure"); // settings: true
     expect(host.statusBarItems[0]?.text).toBe("$(radio-tower) REST Bench");
   });
@@ -122,7 +108,7 @@ describe("restbench — React na UI, http/estado/secret no host", () => {
     host.configuration.set("restbench.baseUrl", "https://api.base.dev");
     await rpc(panel, "send", { method: "GET", url: "/status" });
     expect(calls.at(-1)!.url).toBe("https://api.base.dev/status");
-    expect(host.logs.map((l) => l.message).join("\n")).toContain("baseUrl agora é https://api.base.dev");
+    expect(host.logText()).toContain("baseUrl agora é https://api.base.dev");
   });
 
   it("histórico: @State persiste, history responde e clear zera tudo", async () => {

@@ -8,6 +8,12 @@ export interface CommandMenuEntry {
 
 export interface CommandOptions {
   title: string;
+  /**
+   * Sufixo do id público (vira `<prefix>.<id>`). Default: o nome do método.
+   * Use quando o id precisa ser estável independente de refactors — renomear
+   * o método muda o id público (keybindings de usuários quebrariam).
+   */
+  id?: string;
   category?: string;
   icon?: string;
   when?: string;

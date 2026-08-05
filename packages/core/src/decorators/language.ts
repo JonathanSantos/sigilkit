@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { dual } from "./dual";
 import { registry } from "../registry";
 import { registerBoundMember } from "../metadata";
 import { guard } from "../guard";
@@ -22,9 +23,7 @@ export function Language(_opts: LanguageOptions) {
 }
 
 /** provideHover(document, position, token) — retorno vira vscode.Hover. */
-export function Hover() {
-  return registerBoundMember("languageHandlers");
-}
+export const Hover = dual(() => registerBoundMember("languageHandlers"));
 
 export interface CompletionOptions {
   triggerCharacters?: string[];
@@ -36,9 +35,7 @@ export function Completion(_opts: CompletionOptions = {}) {
 }
 
 /** provideCodeLenses(document, token). */
-export function CodeLens() {
-  return registerBoundMember("languageHandlers");
-}
+export const CodeLens = dual(() => registerBoundMember("languageHandlers"));
 
 export interface DiagnosticsOptions {
   /** quando revalidar: a cada edição (default) ou só ao salvar */

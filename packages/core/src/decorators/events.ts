@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { dual } from "./dual";
 import { registry } from "../registry";
 import { registerBoundMember } from "../metadata";
 import { guard } from "../guard";
@@ -98,9 +99,7 @@ export function bindFileWatchers(bindings: readonly FileWatcherBinding[]): vscod
  * `@UriHandler()` — deep links vscode://publisher.ext/…; um por extensão.
  * O sigil emite o activationEvent "onUri" e registra com auto-dispose.
  */
-export function UriHandler() {
-  return registerBoundMember("events");
-}
+export const UriHandler = dual(() => registerBoundMember("events"));
 
 export function bindUriHandler(key: string): vscode.Disposable {
   if (!registry.events.has(key)) {

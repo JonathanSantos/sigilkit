@@ -22,16 +22,18 @@ function App() {
   const [ocupado, setOcupado] = useState(false);
 
   useEffect(() => {
-    void callHost<Historico>("history").then(setHist);
-    return onHostMessage<{ type: string; value: unknown }>((msg) => {
-      if (msg.type === "history") setHist(msg.value as Historico);
+    // tudo inferido pela augmentation do sigil-env.d.ts: o retorno de
+    // "history" é HistoryItem[], e msg é a união host→UI (sem casts)
+    void callHost("history").then(setHist);
+    return onHostMessage((msg) => {
+      if (msg.type === "history") setHist(msg.value);
     });
   }, []);
 
   async function enviar() {
     setOcupado(true);
     try {
-      setResp(await callHost<Resultado>("send", { method, url, body: body || undefined }));
+      setResp(await callHost("send", { method, url, body: body || undefined }));
     } catch (e) {
       setResp({ ok: false, status: 0, ms: 0, body: "", error: String(e) });
     } finally {
@@ -40,7 +42,7 @@ function App() {
   }
 
   async function guardarToken() {
-    setTemToken(await callHost<boolean>("setToken", token));
+    setTemToken(await callHost("setToken", token));
     setToken("");
   }
 
@@ -101,7 +103,7 @@ function App() {
         ))}
       </ul>
       {hist.length > 0 && (
-        <button className="secundario" onClick={() => postToHost<RestBenchPanelMessage>({ type: "clear" })}>
+        <button className="secundario" onClick={() => postToHost({ type: "clear" })}>
           Limpar histórico
         </button>
       )}

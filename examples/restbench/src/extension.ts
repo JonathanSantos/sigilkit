@@ -4,7 +4,6 @@ import {
   Config,
   ContextKey,
   Extension,
-  HttpError,
   OnMessage,
   OnRequest,
   Secret,
@@ -45,8 +44,6 @@ export interface HistoryItem {
 
 type HostToUi = { type: "history"; value: HistoryItem[] };
 
-let bench: RestBench; // instância viva da extensão — o painel delega para cá
-
 @Extension({ prefix: "restbench", settings: true })
 export class RestBench {
   @Config({ description: "Prefixo para URLs relativas (ex: https://api.exemplo.com)" })
@@ -70,21 +67,20 @@ export class RestBench {
   @ContextKey()
   accessor temHistorico = false;
 
-  @StatusBar({ alignment: "left", priority: 60, command: "restbench.abrir", tooltip: "Abrir o REST Bench" })
+  @StatusBar({ alignment: "left", priority: 60, command: "restbench.open", tooltip: "Abrir o REST Bench" })
   accessor status: string = "$(radio-tower) REST Bench";
 
-  @Activate()
+  @Activate
   ativar() {
-    bench = this;
     this.temHistorico = this.historico.length > 0;
   }
 
-  @Command({ title: "Open", category: "REST Bench" })
+  @Command({ id: "open", title: "Open", category: "REST Bench" })
   abrir() {
     return registry.webviews.get("RestBenchPanel")!.open();
   }
 
-  @Command({ title: "Clear History", category: "REST Bench", enablement: "restbench.temHistorico" })
+  @Command({ id: "clearHistory", title: "Clear History", category: "REST Bench", enablement: "restbench.temHistorico" })
   limparHistorico() {
     this.historico = [];
     this.temHistorico = false;
@@ -110,28 +106,30 @@ export class RestBenchPanel {
   /** A UI pede o histórico ao montar (callHost("history")). */
   @OnRequest("history")
   historico(): HistoryItem[] {
-    return bench.historico;
+    return registry.instance(RestBench).historico;
   }
 
   /** O coração: a UI envia a spec, o host executa via plataforma http. */
   @OnRequest("send")
   async enviar(spec: RequestSpec): Promise<RequestResult> {
     const result = await executar(spec);
-    bench.registrar({ spec, result, at: new Date().toISOString() });
-    this.post({ type: "history", value: bench.historico });
+    const ext = registry.instance(RestBench);
+    ext.registrar({ spec, result, at: new Date().toISOString() });
+    this.post({ type: "history", value: ext.historico });
     return result;
   }
 
   /** true = token guardado; string vazia remove. */
   @OnRequest("setToken")
   guardarToken(token: string): boolean {
-    bench.token = token.trim() === "" ? undefined : token.trim();
-    return bench.token !== undefined;
+    const ext = registry.instance(RestBench);
+    ext.token = token.trim() === "" ? undefined : token.trim();
+    return ext.token !== undefined;
   }
 
   @OnMessage("clear")
   limpar() {
-    bench.limparHistorico();
+    registry.instance(RestBench).limparHistorico();
   }
 
   post!: (msg: HostToUi) => void; // injetado pelo wire
@@ -139,7 +137,8 @@ export class RestBenchPanel {
 
 async function executar(spec: RequestSpec): Promise<RequestResult> {
   const started = Date.now();
-  const url = /^https?:\/\//.test(spec.url) ? spec.url : bench.baseUrl + spec.url;
+  const ext = registry.instance(RestBench);
+  const url = /^https?:\/\//.test(spec.url) ? spec.url : ext.baseUrl + spec.url;
 
   let body: unknown;
   if (spec.body !== undefined && spec.body.trim() !== "") {
@@ -150,21 +149,21 @@ async function executar(spec: RequestSpec): Promise<RequestResult> {
     }
   }
 
-  const headers: Record<string, string> = bench.token
-    ? { authorization: `Bearer ${bench.token}` }
+  const headers: Record<string, string> = ext.token
+    ? { authorization: `Bearer ${ext.token}` }
     : {};
 
   try {
-    // http.request lança HttpError em não-2xx, então sucesso aqui é 2xx.
-    const value = await http.request<unknown>(spec.method, url, body, {
-      timeout: bench.timeoutMs,
-      headers,
-    });
-    return { ok: true, status: 200, ms: Date.now() - started, body: pretty(value) };
+    // http.send: a resposta como ela é — status real, sem lançar em não-2xx
+    const res = await http.send(spec.method, url, body, { timeout: ext.timeoutMs, headers });
+    return {
+      ok: res.ok,
+      status: res.status,
+      ms: Date.now() - started,
+      body: pretty(res.json()),
+      error: res.ok ? undefined : `HTTP ${res.status} ${res.statusText}`.trim(),
+    };
   } catch (err) {
-    if (err instanceof HttpError) {
-      return { ok: false, status: err.status, ms: Date.now() - started, body: err.body, error: err.message };
-    }
     return {
       ok: false,
       status: 0,

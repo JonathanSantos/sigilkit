@@ -100,19 +100,31 @@ binds de webview não recebem mais instância — post vai em registry.webviewPo
 e o wire injeta forwarders.
 
 Protocolo de UI tipado (emit/ui-env.ts): sigil build gera sigil-env.d.ts na
-pasta do `ui:` de cada webview/custom editor — script GLOBAL (sem import/
-export de topo; `type X = import(...)` mantém ambient) tipando
-acquireVsCodeApi com os @OnMessage/@OnRequest; `value` derivado por
-Parameters<InstanceType<import()>> (muda tipo no host → UI vê sem reemitir;
-add/remove de mensagem é mudança de IR). Sem mudança de IR (opcionalidade do
-value resolvida em type-level: `undefined extends V`). Uma pasta+tsconfig por
-webview (globais colidem em pasta compartilhada — união documentada). O
-tsconfig da UI precisa incluir "../src/.generated/config.d.ts" (a augmentation
-do getConfig não entra sozinha no programa da UI e o host quebraria o check).
-JS puro + // @ts-check funciona (checkJs). Vitrine: examples/notes (script
-externo). Sem bundling de UI por decisão (nível 0: build externo aponta ui:
-para o dist; tipos independem de quem bundla). tests/ui-types.test.ts tem o
-teste negativo (typo → TS2820 com sugestão).
+pasta do `ui:` de cada webview/custom editor — arquivo MÓDULO (`export {}`)
+com `declare global` (acquireVsCodeApi + tipos nomeados) e `declare module
+"@sigilkit/core/ui"` (augmentation de SigilUiMessages/SigilUiRequests/
+SigilUiFromHost → postToHost/callHost/onHostMessage tipados por chave; os
+overloads seguem a lição do getConfig: fallback vira `never` quando o
+registro está preenchido). `value` derivado do handler via __SigilValueOf
+(extração LAZY — Parameters<F>[0] direto em handler SEM parâmetro é TS2493
+em tupla vazia e degrada TUDO para any sob skipLibCheck; idem __SigilHostOf
+p/ o post: checagem estrutural, nunca indexar chave possivelmente ausente).
+Uma pasta+tsconfig por webview (globais colidem em pasta compartilhada). O
+tsconfig da UI precisa incluir "../src/.generated/config.d.ts". JS puro +
+// @ts-check funciona (checkJs). Vitrines: examples/notes (JS puro) e
+examples/restbench (React/tsx, inferência completa sem generics). Sem
+bundling de UI por decisão (nível 0). tests/ui-types.test.ts tem os
+negativos (postMessage, callHost e postToHost com typo).
+
+DX do dogfood (0.3.0): registry.instance(Classe) — WeakMap por CONSTRUTOR
+em registry.instances, preenchido pelo wire no hydrate (hot-swap safe);
+http.send() cru (request usa send por baixo); decorators zero-arg são
+DUAIS via dual() em decorators/dual.ts (@Activate ≡ @Activate(); detecção:
+2º arg com "kind"); @Command({id}) troca só o sufixo do id público (key
+continua Classe.membro — join intacto); panel.request()/host.logText() no
+test; sigil init --template=react-webview (registry.instance + protocolo
+tipado no template). Princípio nomeado no CONTRIBUTING: resolução tardia
+de dependências externas (fetch/vscode.* lidos na chamada, nunca no load).
 
 Quarto pacote: @sigilkit/test (packages/test) — simulador do vscode para testar
 extensões sem host: ativa o bundle real interceptando require("vscode"),

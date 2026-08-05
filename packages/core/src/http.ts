@@ -28,12 +28,30 @@ export interface HttpOptions {
   signal?: AbortSignal;
 }
 
-async function request<T = unknown>(
+/** Resposta crua de http.send — nunca lança por status; só por falha de rede/timeout. */
+export interface HttpResponse {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  url: string;
+  headers: Record<string, string>;
+  /** corpo como texto, sempre disponível */
+  text: string;
+  /** corpo parseado: JSON quando o content-type indicar, senão o próprio texto */
+  json<T = unknown>(): T;
+}
+
+/**
+ * Caso "quero a resposta como ela é" (clientes REST, APIs com status
+ * significativo): retorna status/headers/corpo SEM lançar em não-2xx.
+ * Rede/timeout continuam lançando — isso é falha, não resposta.
+ */
+async function send(
   method: string,
   url: string,
   body?: unknown,
   opts: HttpOptions = {}
-): Promise<T> {
+): Promise<HttpResponse> {
   const target = new URL(url);
   if (opts.query) {
     for (const [key, value] of Object.entries(opts.query)) {
@@ -62,20 +80,39 @@ async function request<T = unknown>(
     });
     const text = await response.text();
     log.debug(`http ${method} ${target.toString()} → ${response.status} (${Date.now() - started}ms)`);
-    if (!response.ok) {
-      throw new HttpError(response.status, response.statusText, target.toString(), text);
-    }
-    if (text.length === 0) return undefined as T;
+    const headers: Record<string, string> = {};
+    response.headers.forEach((v, k) => (headers[k] = v));
     const contentType = response.headers.get("content-type") ?? "";
-    return (contentType.includes("json") ? JSON.parse(text) : text) as T;
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      url: target.toString(),
+      headers,
+      text,
+      json: <T = unknown>() =>
+        (text.length > 0 && contentType.includes("json") ? JSON.parse(text) : text) as T,
+    };
   } catch (err) {
-    if (!(err instanceof HttpError)) {
-      log.debug(`http ${method} ${target.toString()} falhou (${Date.now() - started}ms): ${String(err)}`);
-    }
+    log.debug(`http ${method} ${target.toString()} falhou (${Date.now() - started}ms): ${String(err)}`);
     throw err;
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function request<T = unknown>(
+  method: string,
+  url: string,
+  body?: unknown,
+  opts: HttpOptions = {}
+): Promise<T> {
+  const response = await send(method, url, body, opts);
+  if (!response.ok) {
+    throw new HttpError(response.status, response.statusText, response.url, response.text);
+  }
+  if (response.text.length === 0) return undefined as T;
+  return response.json<T>();
 }
 
 export const http = {
@@ -83,6 +120,7 @@ export const http = {
   fetchImpl: ((input: string | URL, init?: RequestInit) =>
     globalThis.fetch(input, init)) as typeof globalThis.fetch,
   request,
+  send,
   get: <T = unknown>(url: string, opts?: HttpOptions) => request<T>("GET", url, undefined, opts),
   post: <T = unknown>(url: string, body?: unknown, opts?: HttpOptions) =>
     request<T>("POST", url, body, opts),

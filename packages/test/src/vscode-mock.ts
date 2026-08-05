@@ -401,6 +401,11 @@ export class WebviewPanelMock {
   private receiveHandler?: (msg: unknown) => void;
   private disposeHandlers: (() => void)[] = [];
   private htmlValue = "";
+  private rpcSequence = 0;
+  private readonly rpcPending = new Map<
+    number,
+    { resolve: (v: unknown) => void; reject: (e: Error) => void }
+  >();
 
   constructor(viewType: string, title: string) {
     this.viewType = viewType;
@@ -417,6 +422,16 @@ export class WebviewPanelMock {
       asWebviewUri: (uri: UriMock) => ({ toString: () => `sigil-webview://${uri.path}` }),
       postMessage: (msg: unknown) => {
         self.posted.push(msg);
+        // resolve requests pendentes de panel.request() (correlação como a UI real)
+        const envelope = msg as { type?: string; id?: number; ok?: boolean; value?: unknown; error?: string };
+        if (envelope?.type === "__sigilRpcResult" && typeof envelope.id === "number") {
+          const pending = self.rpcPending.get(envelope.id);
+          if (pending) {
+            self.rpcPending.delete(envelope.id);
+            if (envelope.ok) pending.resolve(envelope.value);
+            else pending.reject(new Error(envelope.error ?? "erro no host"));
+          }
+        }
         return Promise.resolve(true);
       },
       onDidReceiveMessage: (cb: (msg: unknown) => void) => {
@@ -437,6 +452,19 @@ export class WebviewPanelMock {
       throw new Error(`sigil-test: o painel '${this.viewType}' não registrou onDidReceiveMessage`);
     }
     this.receiveHandler(msg);
+  }
+
+  /**
+   * RPC como a UI real faz (callHost): envia o @OnRequest com __sigilRpcId e
+   * devolve a Promise resolvida/rejeitada pelo __sigilRpcResult correlacionado.
+   */
+  request<T = unknown>(type: string, value?: unknown): Promise<T> {
+    const id = ++this.rpcSequence;
+    const promise = new Promise<T>((resolve, reject) => {
+      this.rpcPending.set(id, { resolve: resolve as (v: unknown) => void, reject });
+    });
+    this.receive({ type, value, __sigilRpcId: id });
+    return promise;
   }
 
   reveal(): void {

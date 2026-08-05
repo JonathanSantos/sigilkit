@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { dual } from "./dual";
 import { registry } from "../registry";
 import { bucketOf } from "../metadata";
 
@@ -37,8 +38,8 @@ export function State(scope: "global" | "workspace" = "global") {
   };
 }
 
-export function Secret() {
-  return function (
+export const Secret = dual(() =>
+  function (
     _target: ClassAccessorDecoratorTarget<any, string | undefined>,
     ctx: ClassAccessorDecoratorContext<any, string | undefined>
   ): ClassAccessorDecoratorResult<any, string | undefined> {
@@ -60,8 +61,8 @@ export function Secret() {
         return initial;
       },
     };
-  };
-}
+  }
+);
 
 /** Pré-carrega os @Secret no cache síncrono e acompanha mudanças externas. */
 export async function bindSecrets(names: readonly string[]): Promise<vscode.Disposable> {
@@ -80,8 +81,8 @@ export async function bindSecrets(names: readonly string[]): Promise<vscode.Disp
   });
 }
 
-export function ContextKey() {
-  return function <T>(
+export const ContextKey = dual(() =>
+  function <T>(
     _target: ClassAccessorDecoratorTarget<any, T>,
     ctx: ClassAccessorDecoratorContext<any, T>
   ): ClassAccessorDecoratorResult<any, T> {
@@ -103,8 +104,8 @@ export function ContextKey() {
         return initial;
       },
     };
-  };
-}
+  }
+);
 
 export interface ContextKeyBinding {
   readonly id: string; // "hello.pronto"

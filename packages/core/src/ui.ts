@@ -21,12 +21,46 @@ function vscodeApi(): VsCodeWebviewApi {
   return (api ??= acquireVsCodeApi());
 }
 
-export function postToHost<T = unknown>(msg: T): void {
+/**
+ * Registros vazios, preenchidos pela augmentation do `sigil-env.d.ts` gerado
+ * na pasta da UI (mesmo padrão do SigilConfigRegistry do getConfig). Com o
+ * arquivo gerado no programa, postToHost/callHost ficam tipados por chave e
+ * um typo vira erro de build; sem ele, seguem livres.
+ */
+export interface SigilUiMessages {} // { [type]: tipo do value do @OnMessage }
+export interface SigilUiRequests {} // { [type]: { value; result } do @OnRequest }
+export interface SigilUiFromHost {} // { message: união das mensagens host→UI }
+
+type OutboundMessage = {
+  [K in keyof SigilUiMessages & string]: undefined extends SigilUiMessages[K]
+    ? { type: K; value?: SigilUiMessages[K] }
+    : { type: K; value: SigilUiMessages[K] };
+}[keyof SigilUiMessages & string];
+
+/** `true` quando o registro está vazio (projeto sem o d.ts gerado). */
+type FreeForm<T> = [keyof T] extends [never] ? true : false;
+
+type RequestValue<K extends keyof SigilUiRequests> = SigilUiRequests[K] extends { value: infer V }
+  ? V
+  : never;
+type RequestResult<K extends keyof SigilUiRequests> = SigilUiRequests[K] extends { result: infer R }
+  ? R
+  : never;
+
+type HostMessage = SigilUiFromHost extends { message: infer M }
+  ? [M] extends [never]
+    ? unknown
+    : M
+  : unknown;
+
+export function postToHost(msg: OutboundMessage): void;
+export function postToHost(msg: FreeForm<SigilUiMessages> extends true ? unknown : never): void;
+export function postToHost(msg: unknown): void {
   vscodeApi().postMessage(msg);
 }
 
 /** Registra um handler para mensagens do host. Retorna a função de unsubscribe. */
-export function onHostMessage<T = unknown>(handler: (msg: T) => void): () => void {
+export function onHostMessage<T = HostMessage>(handler: (msg: T) => void): () => void {
   const listener = (event: { data: unknown }) => handler(event.data as T);
   window.addEventListener("message", listener);
   return () => window.removeEventListener("message", listener);
@@ -74,15 +108,22 @@ export function onDocument(handler: (doc: SigilDocumentState) => void): () => vo
 /**
  * Request/response para um @OnRequest do host: o retorno do handler resolve a
  * Promise; um throw no host a rejeita. Correlação automática por id.
+ * Com o `sigil-env.d.ts` gerado no programa da UI, o `type` autocompleta, o
+ * `value` é validado e o retorno já vem tipado pelo handler do host.
  */
-export function callHost<TResult = unknown, TValue = unknown>(
-  type: string,
-  value?: TValue
-): Promise<TResult> {
+export function callHost<K extends keyof SigilUiRequests & string>(
+  type: K,
+  ...args: undefined extends RequestValue<K> ? [value?: RequestValue<K>] : [value: RequestValue<K>]
+): Promise<RequestResult<K>>;
+export function callHost(
+  type: FreeForm<SigilUiRequests> extends true ? string : never,
+  value?: unknown
+): Promise<unknown>;
+export function callHost(type: string, value?: unknown): Promise<unknown> {
   ensureRpcListener();
   const id = ++rpcSequence;
-  return new Promise<TResult>((resolve, reject) => {
-    pendingRpc.set(id, { resolve: resolve as (v: unknown) => void, reject });
+  return new Promise<unknown>((resolve, reject) => {
+    pendingRpc.set(id, { resolve, reject });
     vscodeApi().postMessage({ type, value, __sigilRpcId: id });
   });
 }

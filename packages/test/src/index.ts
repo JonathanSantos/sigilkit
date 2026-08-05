@@ -189,6 +189,11 @@ export class SigilTestHost {
     return this.state.outputChannels.flatMap((c) => c.entries);
   }
 
+  /** Os logs como texto ("[info] mensagem" por linha) — pronto para toContain. */
+  logText(): string {
+    return this.logs.map((l) => `[${l.level}] ${l.message}`).join("\n");
+  }
+
   /** Canais de output criados pela extensão. */
   get outputChannels() {
     return [...this.state.outputChannels];

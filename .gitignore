@@ -7,3 +7,4 @@ out/
 playground/
 *.tsbuildinfo
 *.vsix
+tests/.tmp-ui-*

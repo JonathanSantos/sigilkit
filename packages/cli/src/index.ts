@@ -10,6 +10,7 @@ const USAGE = `sigil — framework declarativo para extensões do VSCode
 
 Uso:
   sigil init    [dir]   cria um projeto de extensão novo (template do §16)
+                        --template=react-webview: painel React com protocolo tipado
   sigil build   [dir]   decorators → package.json + src/.generated/
   sigil check   [dir]   falha (exit 1) se o manifesto estiver desatualizado; use no CI
   sigil dev     [dir]   watch mode — reconstrói a cada mudança
@@ -24,11 +25,19 @@ export function main(argv: string[] = process.argv.slice(2)): void {
   const projectDir = path.resolve(dirArg);
   const flags = rest.filter((a) => a.startsWith("-"));
   const portFlag = flags.find((f) => f.startsWith("--port="));
+  const templateFlag = flags.find((f) => f.startsWith("--template="));
 
   switch (cmd) {
-    case "init":
-      process.exitCode = runInit(projectDir);
+    case "init": {
+      const template = templateFlag?.slice("--template=".length) ?? "basic";
+      if (template !== "basic" && template !== "react-webview") {
+        console.error(`sigil init: template desconhecido '${template}' — use 'basic' ou 'react-webview'`);
+        process.exitCode = 1;
+        break;
+      }
+      process.exitCode = runInit(projectDir, template);
       break;
+    }
     case "build":
       process.exitCode = runBuild(projectDir);
       break;

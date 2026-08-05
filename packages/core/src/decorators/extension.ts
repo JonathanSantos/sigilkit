@@ -1,4 +1,5 @@
 import { registry } from "../registry";
+import { dual } from "./dual";
 import { registerBoundMember } from "../metadata";
 
 export interface ExtensionOptions {
@@ -27,11 +28,7 @@ export function Extension(opts: ExtensionOptions = {}) {
 }
 
 /** Método chamado depois do wiring, no activate() gerado. */
-export function Activate() {
-  return registerBoundMember("lifecycle");
-}
+export const Activate = dual(() => registerBoundMember("lifecycle"));
 
 /** Método chamado no deactivate() gerado. */
-export function Deactivate() {
-  return registerBoundMember("lifecycle");
-}
+export const Deactivate = dual(() => registerBoundMember("lifecycle"));

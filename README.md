@@ -116,7 +116,7 @@ npm test                         # unidade + simulador + E2E do CLI
 | Decorator | Em | O que declara |
 |---|---|---|
 | `@Extension({ prefix?, settings? })` | classe | a extensão; `settings: true` gera a aba de opções (`<prefix>.configure`) |
-| `@Command({ title, keybinding?, menus?, enablement?, progress? })` | método | comando + keybindings + menus; `progress` envolve em `withProgress` (token é o último argumento) |
+| `@Command({ title, id?, keybinding?, menus?, enablement?, progress? })` | método | comando + keybindings + menus; `id` fixa o id público independente do nome do método; `progress` envolve em `withProgress` (token é o último argumento) |
 | `@Config({ description?, ... })` | accessor | configuração — tipo, default e enum saem da declaração TS |
 | `@Watch("chave")` | método | reação a mudança de config |
 | `@Activate` / `@Deactivate` | método | lifecycle |
@@ -124,7 +124,7 @@ npm test                         # unidade + simulador + E2E do CLI
 | `@On("ns.evento", { debounce? })` | método | evento da API com auto-dispose |
 | `@OnFile(glob, kind, { debounce? })` | método | `FileSystemWatcher` declarativo |
 | `@UriHandler()` | método | deep links `vscode://…` (+ `activationEvent` automático) |
-| `@State("global" \| "workspace")` | accessor | persistência em `Memento`, tipada |
+| `@State("global" \| "workspace")` | accessor | persistência em `Memento`, tipada — **reatribua** (`this.x = [...]`); mutação interna (`push`) não persiste |
 | `@Secret()` | accessor | `SecretStorage` com cache síncrono |
 | `@ContextKey()` | accessor | `setContext` ao atribuir — e habilita a validação de `when` |
 | `@TreeView({ name, container? })` + `@TreeRoot`/`@TreeChildren`/`@TreeItem` | classe | view na sidebar com `TreeDataProvider` adaptado |
@@ -204,8 +204,13 @@ vscode.postMessage({ type: "addd", value: "x" });      // erro: Did you mean '"a
 vscode.postMessage({ type: "remove", value: "sete" }); // erro: onRemove espera number
 ```
 
-São só tipos — funciona com qualquer bundler (ou nenhum): um app React/Vite
-inclui o arquivo no tsconfig **dele** e ganha o mesmo contrato. Convenção
+Os helpers de `@sigilkit/core/ui` saem tipados pelo mesmo arquivo:
+`callHost("send", …)` infere o retorno do handler, `postToHost` valida a
+mensagem, `onHostMessage` recebe a união host→UI derivada do tipo do `post` —
+typo em qualquer chave é erro de build. São só tipos — funciona com qualquer
+bundler (ou nenhum): um app React/Vite inclui o arquivo no tsconfig **dele** e
+ganha o mesmo contrato (`sigil init --template=react-webview` scaffolda tudo
+pronto). Convenção
 recomendada: uma pasta (com um tsconfig `lib: DOM` + `checkJs`) por webview —
 [examples/notes](examples/notes) é a vitrine.
 
@@ -219,7 +224,12 @@ Além dos decorators, o `@sigilkit/core` traz a base que toda extensão reescrev
   erro vira log com stack + notificação com botão "Abrir logs"; trees degradam
   para item de aviso.
 - **HTTP** — `http.get/post/…` sobre o fetch global: JSON automático, timeout,
-  `HttpError` com status/corpo, `http.fetchImpl` trocável em teste.
+  `HttpError` com status/corpo, `http.fetchImpl` trocável em teste; e
+  `http.send()` quando você quer a resposta crua (`{ status, headers, text,
+  json() }`) sem lançar em não-2xx.
+- **Ponte entre classes** — `registry.instance(MinhaExtensao)` devolve a
+  instância viva e tipada de qualquer classe gerenciada (do painel para a
+  extensão, por exemplo); classe não gerenciada lança na hora.
 - **Recursos** — `resources.readText/readJson/readBytes` para arquivos
   empacotados (via `workspace.fs`, funciona no vscode.dev).
 - **RPC host↔UI** — `@OnMessage` (fire-and-forget) e `@OnRequest` respondendo
