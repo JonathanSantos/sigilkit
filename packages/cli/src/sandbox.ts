@@ -105,6 +105,16 @@ export function runSandbox(projectDir: string): number {
 
   // ── companion: extensão minúscula gerada por rodada ────────────────────────
   const writeCompanion = (dir: string, port: number): void => {
+    // a notificação de boas-vindas usa o nome real da extensão do projeto e
+    // abre a palette já filtrada pela categoria dos comandos dela
+    const projectPkg = JSON.parse(fs.readFileSync(path.join(projectDir, "package.json"), "utf8")) as {
+      name?: string;
+      displayName?: string;
+      contributes?: { commands?: { category?: string }[] };
+    };
+    const display = projectPkg.displayName ?? projectPkg.name ?? "extensão";
+    const filter =
+      projectPkg.contributes?.commands?.find((c) => c.category)?.category ?? display;
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(
       path.join(dir, "package.json"),
@@ -128,13 +138,32 @@ const net = require("net");
 const vscode = require("vscode");
 const PORT = ${port};
 const CHUNK = ${JSON.stringify(bundlePath)};
+const DISPLAY = ${JSON.stringify(display)};
+const FILTER = ${JSON.stringify(filter)};
 
 let sock;
 let buffer = "";
+let notified = false;
 
 function connect() {
   sock = net.connect(PORT, "127.0.0.1");
-  sock.on("connect", () => send({ op: "hello", version: vscode.version }));
+  sock.on("connect", () => {
+    send({ op: "hello", version: vscode.version });
+    if (notified) return;
+    notified = true;
+    // dev extensions não aparecem na aba Extensions — a notificação é a prova
+    // visível de que a extensão está carregada e o hot swap ativo
+    void vscode.window
+      .showInformationMessage(
+        "🔥 sigil sandbox: '" + DISPLAY + "' carregada — hot swap ativo, sem F5",
+        "Ver comandos"
+      )
+      .then((choice) => {
+        if (choice === "Ver comandos") {
+          void vscode.commands.executeCommand("workbench.action.quickOpen", ">" + FILTER + " ");
+        }
+      });
+  });
   sock.on("data", (data) => {
     buffer += String(data);
     let idx;

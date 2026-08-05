@@ -256,7 +256,11 @@ sandbox.
 </p>
 
 **`sigil sandbox`** baixa um VSCode isolado (user-data e extensões próprios,
-zero poluição do seu) e conecta um companion por socket. O watch decide pelo
+zero poluição do seu) e conecta um companion por socket. A janela abre com a
+pasta do projeto e uma notificação confirma a extensão carregada, com botão
+que abre a palette já filtrada nos comandos dela — ela roda em **modo de
+desenvolvimento** (como no F5), então não aparece na aba Extensions, e isso é
+esperado. O watch decide pelo
 **hash do IR**: corpo de método mudou → **🔥 hot swap** (~3ms, sem reload de
 janela — o companion recarrega o bundle e chama `__sigilHydrate()`); manifesto
 mudou → reload de janela automático. Estado de instância zera no swap (como
