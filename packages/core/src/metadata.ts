@@ -16,7 +16,9 @@ export interface Bucket {
   lifecycle: Map<string, (...args: unknown[]) => unknown>;
   watches: Map<string, (next: unknown, prev: unknown) => unknown>;
   treeHandlers: Map<string, (...args: unknown[]) => unknown>;
-  webviewHandlers: Map<string, (value: unknown) => unknown>;
+  webviewHandlers: Map<string, (...args: unknown[]) => unknown>;
+  languageHandlers: Map<string, (...args: unknown[]) => unknown>;
+  chatHandlers: Map<string, (...args: unknown[]) => unknown>;
   configDefaults: Map<string, unknown>;
   statusBarText: Map<string, string>;
   statusBarItems: Map<string, StatusBarItemLike>;
@@ -38,6 +40,8 @@ export function bucketOf(metadata: object | undefined): Bucket {
       watches: new Map(),
       treeHandlers: new Map(),
       webviewHandlers: new Map(),
+      languageHandlers: new Map(),
+      chatHandlers: new Map(),
       configDefaults: new Map(),
       statusBarText: new Map(),
       statusBarItems: new Map(),
@@ -47,7 +51,14 @@ export function bucketOf(metadata: object | undefined): Bucket {
   return bucket;
 }
 
-type BoundMemberKind = "commands" | "lifecycle" | "watches" | "treeHandlers" | "webviewHandlers";
+type BoundMemberKind =
+  | "commands"
+  | "lifecycle"
+  | "watches"
+  | "treeHandlers"
+  | "webviewHandlers"
+  | "languageHandlers"
+  | "chatHandlers";
 
 /** Fábrica dos decorators de método: registra o método (bound) no bucket da classe. */
 export function registerBoundMember(kind: BoundMemberKind) {
@@ -76,12 +87,15 @@ export function adoptRegistrations(
 ): void {
   const metadataSymbol = (Symbol as { metadata?: symbol }).metadata!;
   const metadata = (cls as unknown as Record<symbol, object | undefined>)[metadataSymbol];
-  const bucket = metadata ? buckets.get(metadata) : undefined;
-  if (!bucket) {
+  if (!metadata) {
+    // sem Symbol.metadata a classe não passou por decorator nenhum — bundle quebrado
     throw new Error(
       `sigil: nenhuma registração encontrada para ${className} — a classe tem decorators do sigil? Rode 'sigil build'.`
     );
   }
+  // classe só com o marcador (@Extension sem membros, por exemplo) é válida:
+  // bucket vazio. Handler realmente ausente explode no join, por chave (R6).
+  const bucket = bucketOf(metadata);
   // hot swap: itens de status bar VIVOS migram do bucket anterior para o novo
   // (o item foi criado uma vez pelo bind; a classe nova precisa alcançá-lo)
   const previous = registry.buckets.get(className);
@@ -101,6 +115,12 @@ export function adoptRegistrations(
   }
   for (const [member, fn] of bucket.webviewHandlers) {
     registry.webviewHandlers.set(`${className}.${member}`, fn);
+  }
+  for (const [member, fn] of bucket.languageHandlers) {
+    registry.languageHandlers.set(`${className}.${member}`, fn);
+  }
+  for (const [member, fn] of bucket.chatHandlers) {
+    registry.chatHandlers.set(`${className}.${member}`, fn);
   }
   for (const [member, v] of bucket.configDefaults) {
     registry.configDefaults.set(`${className}.${member}`, v);

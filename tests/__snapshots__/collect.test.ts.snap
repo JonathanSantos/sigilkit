@@ -3,6 +3,7 @@
 exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
 {
   "activateKey": "HelloExtension.onActivate",
+  "chatParticipants": [],
   "commands": [
     {
       "category": "Hello",
@@ -11,7 +12,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 3,
         "file": "src/extension.ts",
-        "line": 31,
+        "line": 43,
       },
       "menus": [],
       "title": "Open settings",
@@ -39,7 +40,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 3,
         "file": "src/extension.ts",
-        "line": 26,
+        "line": 38,
       },
       "menus": [
         {
@@ -60,7 +61,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 3,
         "file": "src/extension.ts",
-        "line": 19,
+        "line": 31,
       },
       "menus": [],
       "title": "Say hello",
@@ -76,7 +77,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 12,
         "file": "src/extension.ts",
-        "line": 9,
+        "line": 21,
       },
       "tsType": "string",
     },
@@ -89,15 +90,33 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 12,
         "file": "src/extension.ts",
-        "line": 12,
+        "line": 24,
       },
       "maximum": 10,
       "minimum": 1,
       "tsType": "number",
     },
   ],
+  "customEditors": [],
   "displayName": "hello",
   "extensionClass": "HelloExtension",
+  "languages": [
+    {
+      "diagnosticsKey": "MarkdownAssist.pendencias",
+      "diagnosticsOn": "change",
+      "hoverKey": "MarkdownAssist.hover",
+      "key": "MarkdownAssist",
+      "loc": {
+        "character": 14,
+        "file": "src/extension.ts",
+        "line": 61,
+      },
+      "selector": [
+        "markdown",
+      ],
+      "sourceFile": "src/extension.ts",
+    },
+  ],
   "prefix": "hello",
   "settingsPanel": {
     "commandId": "hello.configure",
@@ -105,7 +124,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
     "loc": {
       "character": 14,
       "file": "src/extension.ts",
-      "line": 7,
+      "line": 19,
     },
     "title": "hello — Configurações",
     "viewType": "hello.sigilSettings",
@@ -119,7 +138,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 12,
         "file": "src/extension.ts",
-        "line": 16,
+        "line": 28,
       },
       "priority": 100,
       "text": "$(megaphone) Olá",
@@ -143,7 +162,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "sourceFile": "src/views/tasks.ts",
     },
   ],
-  "version": 4,
+  "version": 5,
   "viewContainers": [],
   "watches": [
     {
@@ -151,7 +170,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 3,
         "file": "src/extension.ts",
-        "line": 36,
+        "line": 48,
       },
       "targetConfigId": "hello.greeting",
     },
@@ -263,8 +282,8 @@ exports[`coletor sobre examples/hello > snapshot do manifesto 1`] = `
 exports[`coletor sobre examples/hello > snapshot do wire 1`] = `
 "// GERADO POR sigil — NÃO EDITE
 import * as vscode from "vscode";
-import { registry, adoptRegistrations, bindConfigWatchers, bindLog, guard, bindTreeView, bindWebview, bindStatusBar, bindSettingsApp } from "@sigil/core";
-import { HelloExtension } from "../extension";
+import { registry, adoptRegistrations, bindConfigWatchers, bindLog, guard, bindTreeView, bindWebview, bindStatusBar, bindSettingsApp, bindLanguage } from "@sigil/core";
+import { HelloExtension, MarkdownAssist } from "../extension";
 import { TasksView } from "../views/tasks";
 import { SettingsPanel } from "../panels/settings";
 
@@ -309,6 +328,8 @@ export function __sigilHydrate() {
   const wv_SettingsPanel = new SettingsPanel();
   adoptRegistrations("SettingsPanel", SettingsPanel);
   (wv_SettingsPanel as { post?: (msg: unknown) => void }).post = (msg) => registry.webviewPosts.get("SettingsPanel")!(msg);
+  new MarkdownAssist();
+  adoptRegistrations("MarkdownAssist", MarkdownAssist);
 }
 
 /** Roda o @Activate — na ativação e depois de cada hot swap. */
@@ -323,6 +344,7 @@ export function activate(ctx: vscode.ExtensionContext) {
   __sigilHydrate();
   ctx.subscriptions.push(bindTreeView({"key":"TasksView","id":"hello.tasks","rootsKey":"TasksView.roots","childrenKey":"TasksView.children","itemKey":"TasksView.render"}));
   ctx.subscriptions.push(bindWebview({"key":"SettingsPanel","id":"hello.settings","title":"Hello Settings","uiEntry":"ui/settings.html","handlers":[{"type":"reset","key":"SettingsPanel.onReset"},{"type":"save","key":"SettingsPanel.onSave"}],"requests":[]}, ctx));
+  ctx.subscriptions.push(bindLanguage({"key":"MarkdownAssist","selector":["markdown"],"hoverKey":"MarkdownAssist.hover","diagnosticsKey":"MarkdownAssist.pendencias","diagnosticsOn":"change"}, ctx));
   ctx.subscriptions.push(bindStatusBar({"key":"HelloExtension.status","alignment":"left","priority":100,"command":"hello.sayHello","tooltip":"Diga olá"}));
   const settingsApp = bindSettingsApp({"viewType":"hello.sigilSettings","title":"hello — Configurações","prefix":"hello","fields":[{"id":"hello.greeting","label":"greeting","type":"string","description":"Texto exibido na saudação","default":"Olá"},{"id":"hello.retries","label":"retries","type":"number","description":"Número de tentativas","minimum":1,"maximum":10,"default":3}]}, ctx);
   ctx.subscriptions.push(settingsApp);

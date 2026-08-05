@@ -46,6 +46,22 @@ export function validate(ir: IR, program: ts.Program, projectDir: string): ts.Di
     webviewIds.add(w.id);
   }
 
+  const chatIds = new Set<string>();
+  for (const c of ir.chatParticipants) {
+    if (chatIds.has(c.id)) {
+      diags.push(diagAtLoc(program, projectDir, c.loc, SIGIL.DuplicateViewId, `id de chat participant duplicado: ${c.id}`));
+    }
+    chatIds.add(c.id);
+  }
+
+  const editorTypes = new Set<string>();
+  for (const e of ir.customEditors) {
+    if (editorTypes.has(e.viewType)) {
+      diags.push(diagAtLoc(program, projectDir, e.loc, SIGIL.DuplicateViewId, `viewType de custom editor duplicado: ${e.viewType}`));
+    }
+    editorTypes.add(e.viewType);
+  }
+
   // SIGIL1017: @StatusBar apontando para comando da própria extensão que não existe
   const knownCommandIds = new Set(ir.commands.map((c) => c.id));
 

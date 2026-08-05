@@ -101,5 +101,8 @@
         }
       ]
     }
-  }
+  },
+  "activationEvents": [
+    "onLanguage:markdown"
+  ]
 }

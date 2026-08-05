@@ -121,6 +121,27 @@ describe("@sigil/test — hello no simulador", () => {
     expect(host.statusBarItems[0]!.text).toBe("$(megaphone) Olá!");
   });
 
+  it("@Language: hover e diagnostics vivos para markdown", async () => {
+    const vs = host.vscode as Record<string, any>;
+    const editor = (await host.openTextDocument("# Título\nTODO: revisar", "markdown")) as any;
+    const doc = editor.document;
+
+    // @Diagnostics(on: "change") roda já no open do documento
+    const diags = host.diagnosticsFor(doc);
+    expect(diags).toHaveLength(1);
+    expect(diags[0]!.message).toBe("pendência anotada");
+    expect(diags[0]!.range.start.line).toBe(1);
+
+    const hover = (await host.provideHover(doc, { line: 0, character: 2 })) as { contents: string[] };
+    expect(hover.contents[0]).toContain("Linha 1 de 2");
+
+    // resolver a pendência limpa o diagnostic na próxima validação
+    await editor.edit((b: any) =>
+      b.replace(new vs.Range(new vs.Position(1, 0), new vs.Position(1, 4)), "FEITO")
+    );
+    expect(host.diagnosticsFor(doc)).toHaveLength(0);
+  });
+
   it("hot swap: __sigilHydrate re-executa e os registros vivos apontam para os handlers novos", async () => {
     // simula o que o companion do sandbox faz: re-hidratar sem re-registrar
     (host.module.__sigilHydrate as () => void)();

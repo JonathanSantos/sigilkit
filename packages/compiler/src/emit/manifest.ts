@@ -17,7 +17,7 @@ export type OwnedContributeKey = (typeof OWNED_CONTRIBUTES)[number];
  * sigil as emite, mas NUNCA removidas quando ausentes — o usuário pode
  * mantê-las à mão enquanto não usar a forma declarativa (container inline).
  */
-export const CONDITIONAL_CONTRIBUTES = ["viewsContainers"] as const;
+export const CONDITIONAL_CONTRIBUTES = ["viewsContainers", "chatParticipants", "customEditors"] as const;
 export type ConditionalContributeKey = (typeof CONDITIONAL_CONTRIBUTES)[number];
 
 export type Contributes = Partial<Record<OwnedContributeKey | ConditionalContributeKey, unknown>>;
@@ -103,5 +103,41 @@ export function emitManifest(ir: IR): Contributes {
     out.viewsContainers = grouped;
   }
 
+  if (ir.chatParticipants.length > 0) {
+    out.chatParticipants = ir.chatParticipants.map((c) =>
+      compact({
+        id: c.id,
+        name: c.name,
+        fullName: c.fullName,
+        description: c.description,
+        isSticky: c.isSticky,
+      })
+    );
+  }
+
+  if (ir.customEditors.length > 0) {
+    out.customEditors = ir.customEditors.map((e) =>
+      compact({
+        viewType: e.viewType,
+        displayName: e.displayName,
+        selector: e.patterns.map((p) => ({ filenamePattern: p })),
+        priority: e.priority,
+      })
+    );
+  }
+
   return out;
+}
+
+/**
+ * activationEvents que o VSCode NÃO gera sozinho: providers de linguagem
+ * precisam de onLanguage:<id>. O merge gerencia só o SUBCONJUNTO onLanguage:*
+ * do array — o resto (onStartupFinished etc.) fica intacto na mão do usuário.
+ */
+export function emitActivationEvents(ir: IR): string[] {
+  const events = new Set<string>();
+  for (const lang of ir.languages) {
+    for (const id of lang.selector) events.add(`onLanguage:${id}`);
+  }
+  return [...events].sort();
 }

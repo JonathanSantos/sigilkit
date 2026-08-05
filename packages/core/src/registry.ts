@@ -51,7 +51,9 @@ export class Registry {
   readonly trees = new Map<string, TreeHandle>();
   readonly treeHandlers = new Map<string, (...args: unknown[]) => unknown>();
   readonly webviews = new Map<string, WebviewHandle>();
-  readonly webviewHandlers = new Map<string, (value: unknown) => unknown>();
+  readonly webviewHandlers = new Map<string, (...args: unknown[]) => unknown>();
+  readonly languageHandlers = new Map<string, (...args: unknown[]) => unknown>();
+  readonly chatHandlers = new Map<string, (...args: unknown[]) => unknown>();
   /** post de cada webview (preenchido pelo bind); o wire injeta forwarders nas instâncias */
   readonly webviewPosts = new Map<string, (msg: unknown) => void>();
   /** buckets adotados por nome declarado de classe (ver metadata.ts) */

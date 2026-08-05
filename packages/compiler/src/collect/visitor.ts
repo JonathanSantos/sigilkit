@@ -2,8 +2,11 @@ import ts from "typescript";
 import path from "node:path";
 import {
   IR,
+  IRChatParticipant,
   IRCommand,
   IRConfig,
+  IRCustomEditor,
+  IRLanguage,
   IRSettingsPanel,
   IRStatusBar,
   IRTreeView,
@@ -66,7 +69,12 @@ const EVAL_FAILED: unique symbol = Symbol("sigil.evalFailed");
 const EXTENSION_MEMBERS = ["Command", "Config", "Watch", "Activate", "Deactivate", "StatusBar"] as const;
 const TREE_MEMBERS = ["TreeRoot", "TreeChildren", "TreeItem", "Command"] as const;
 const WEBVIEW_MEMBERS = ["OnMessage", "OnRequest"] as const;
-const ALL_MEMBERS = [...new Set([...EXTENSION_MEMBERS, ...TREE_MEMBERS, ...WEBVIEW_MEMBERS])];
+const LANGUAGE_MEMBERS = ["Hover", "Completion", "CodeLens", "Diagnostics"] as const;
+const CHAT_MEMBERS = ["ChatRequest", "ChatFollowups"] as const;
+const ALL_MEMBERS = [
+  ...new Set([...EXTENSION_MEMBERS, ...TREE_MEMBERS, ...WEBVIEW_MEMBERS, ...LANGUAGE_MEMBERS, ...CHAT_MEMBERS]),
+];
+const CLASS_MARKS = ["Extension", "TreeView", "Webview", "Language", "ChatParticipant", "CustomEditor"] as const;
 
 export function collect(program: ts.Program, opts: CollectOptions): CollectResult {
   const checker = program.getTypeChecker();
@@ -123,12 +131,13 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
   const extensionClasses: ts.ClassDeclaration[] = [];
   const treeClasses: ts.ClassDeclaration[] = [];
   const webviewClasses: ts.ClassDeclaration[] = [];
+  const languageClasses: ts.ClassDeclaration[] = [];
+  const chatClasses: ts.ClassDeclaration[] = [];
+  const customEditorClasses: ts.ClassDeclaration[] = [];
 
   const visit = (node: ts.Node): void => {
     if (ts.isClassDeclaration(node)) {
-      const marks = ["Extension", "TreeView", "Webview"].filter((n) =>
-        getDecorator(node, checker, n)
-      );
+      const marks = CLASS_MARKS.filter((n) => getDecorator(node, checker, n));
       if (marks.length > 1) {
         diagnostics.push(
           diagAt(node.name ?? node, SIGIL.WrongClassForMember, `uma classe não pode ser ${marks.map((m) => `@${m}`).join(" e ")} ao mesmo tempo`)
@@ -139,6 +148,12 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
         treeClasses.push(node);
       } else if (marks[0] === "Webview") {
         webviewClasses.push(node);
+      } else if (marks[0] === "Language") {
+        languageClasses.push(node);
+      } else if (marks[0] === "ChatParticipant") {
+        chatClasses.push(node);
+      } else if (marks[0] === "CustomEditor") {
+        customEditorClasses.push(node);
       } else {
         // SIGIL1008: decorator do sigil em classe sem marcador nunca seria
         // registrado — falhar alto (R6) em vez de membro fantasma.
@@ -223,6 +238,9 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
   const webviews: IRWebview[] = [];
   const viewContainers: IRViewContainer[] = [];
   const statusBars: IRStatusBar[] = [];
+  const languages: IRLanguage[] = [];
+  const chatParticipants: IRChatParticipant[] = [];
+  const customEditors: IRCustomEditor[] = [];
   let activateKey: string | undefined;
   let deactivateKey: string | undefined;
 
@@ -343,7 +361,15 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
 
   // ── membros da classe @Extension ───────────────────────────────────────────
   function collectExtensionMethod(m: ts.MethodDeclaration): void {
-    if (rejectMember(m, ["TreeRoot", "TreeChildren", "TreeItem", "OnMessage"], "@Extension")) return;
+    if (
+      rejectMember(
+        m,
+        ["TreeRoot", "TreeChildren", "TreeItem", "OnMessage", "OnRequest", ...LANGUAGE_MEMBERS, ...CHAT_MEMBERS],
+        "@Extension"
+      )
+    ) {
+      return;
+    }
 
     const methodName = memberNameOf(m.name);
     const key = `${className}.${methodName}`;
@@ -525,7 +551,15 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
         continue;
       }
       if (!ts.isMethodDeclaration(member)) continue;
-      if (rejectMember(member, ["Watch", "Activate", "Deactivate", "OnMessage"], "@TreeView")) continue;
+      if (
+        rejectMember(
+          member,
+          ["Watch", "Activate", "Deactivate", "OnMessage", "OnRequest", ...LANGUAGE_MEMBERS, ...CHAT_MEMBERS],
+          "@TreeView"
+        )
+      ) {
+        continue;
+      }
 
       const key = `${treeClassName}.${memberNameOf(member.name)}`;
       if (markerFor(member, "TreeRoot")) {
@@ -573,6 +607,69 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     );
   }
 
+  /** @OnMessage/@OnRequest de uma classe de UI (@Webview ou @CustomEditor). */
+  function collectUiHandlers(
+    cls: ts.ClassDeclaration,
+    className: string,
+    where: string
+  ): { handlers: { type: string; key: string }[]; requests: { type: string; key: string }[] } {
+    const handlers: { type: string; key: string }[] = [];
+    const requests: { type: string; key: string }[] = [];
+    const seen = new Set<string>();
+
+    for (const member of cls.members) {
+      if (ts.isPropertyDeclaration(member)) {
+        rejectMember(member, ["Config", "StatusBar"], `${where} (pertence à classe @Extension)`);
+        continue;
+      }
+      if (!ts.isMethodDeclaration(member)) continue;
+      if (
+        rejectMember(
+          member,
+          ["Command", "Watch", "Activate", "Deactivate", "TreeRoot", "TreeChildren", "TreeItem", ...LANGUAGE_MEMBERS, ...CHAT_MEMBERS],
+          where
+        )
+      ) {
+        continue;
+      }
+
+      const msgDec = getDecorator(member, checker, "OnMessage");
+      const reqDec = getDecorator(member, checker, "OnRequest");
+      if (msgDec && reqDec) {
+        diagnostics.push(
+          diagAt(reqDec, SIGIL.WrongClassForMember, "um método não pode ser @OnMessage e @OnRequest ao mesmo tempo")
+        );
+        continue;
+      }
+      const dec = msgDec ?? reqDec;
+      if (!dec) continue;
+      const decoratorName = msgDec ? "OnMessage" : "OnRequest";
+      const arg = optionsNodeOf(dec);
+      const type = arg ? tryEval(arg) : undefined;
+      if (type === EVAL_FAILED) continue;
+      if (typeof type !== "string" || type.length === 0) {
+        diagnostics.push(
+          diagAt(arg ?? member.name, SIGIL.NotStaticLiteral, `@${decoratorName} precisa de um tipo de mensagem literal (string)`)
+        );
+        continue;
+      }
+      if (seen.has(type)) {
+        diagnostics.push(
+          diagAt(arg ?? member.name, SIGIL.DuplicateMessageType, `tipo de mensagem duplicado em @${decoratorName}: '${type}'`)
+        );
+        continue;
+      }
+      seen.add(type);
+      (msgDec ? handlers : requests).push({ type, key: `${className}.${memberNameOf(member.name)}` });
+    }
+
+    const byType = (a: { type: string }, b: { type: string }) =>
+      a.type < b.type ? -1 : a.type > b.type ? 1 : 0;
+    handlers.sort(byType);
+    requests.sort(byType);
+    return { handlers, requests };
+  }
+
   // ── classes @Webview (§15.2) — painel sob demanda ou view de sidebar ───────
   function collectWebviewClass(wv: ts.ClassDeclaration): void {
     if (!wv.name) {
@@ -608,56 +705,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
       return;
     }
 
-    const handlers: { type: string; key: string }[] = [];
-    const requests: { type: string; key: string }[] = [];
-    const seen = new Set<string>();
-
-    for (const member of wv.members) {
-      if (ts.isPropertyDeclaration(member)) {
-        rejectMember(member, ["Config", "StatusBar"], "@Webview (pertence à classe @Extension)");
-        continue;
-      }
-      if (!ts.isMethodDeclaration(member)) continue;
-      if (
-        rejectMember(member, ["Command", "Watch", "Activate", "Deactivate", "TreeRoot", "TreeChildren", "TreeItem"], "@Webview")
-      ) {
-        continue;
-      }
-
-      const msgDec = getDecorator(member, checker, "OnMessage");
-      const reqDec = getDecorator(member, checker, "OnRequest");
-      if (msgDec && reqDec) {
-        diagnostics.push(
-          diagAt(reqDec, SIGIL.WrongClassForMember, "um método não pode ser @OnMessage e @OnRequest ao mesmo tempo")
-        );
-        continue;
-      }
-      const dec = msgDec ?? reqDec;
-      if (!dec) continue;
-      const decoratorName = msgDec ? "OnMessage" : "OnRequest";
-      const arg = optionsNodeOf(dec);
-      const type = arg ? tryEval(arg) : undefined;
-      if (type === EVAL_FAILED) continue;
-      if (typeof type !== "string" || type.length === 0) {
-        diagnostics.push(
-          diagAt(arg ?? member.name, SIGIL.NotStaticLiteral, `@${decoratorName} precisa de um tipo de mensagem literal (string)`)
-        );
-        continue;
-      }
-      if (seen.has(type)) {
-        diagnostics.push(
-          diagAt(arg ?? member.name, SIGIL.DuplicateMessageType, `tipo de mensagem duplicado em @${decoratorName}: '${type}'`)
-        );
-        continue;
-      }
-      seen.add(type);
-      (msgDec ? handlers : requests).push({ type, key: `${wvClassName}.${memberNameOf(member.name)}` });
-    }
-
-    const byType = (a: { type: string }, b: { type: string }) =>
-      a.type < b.type ? -1 : a.type > b.type ? 1 : 0;
-    handlers.sort(byType);
-    requests.sort(byType);
+    const { handlers, requests } = collectUiHandlers(wv, wvClassName, "@Webview");
 
     webviews.push(
       compact({
@@ -676,8 +724,226 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     );
   }
 
+  // ── classes @Language: providers de hover/completion/code lens/diagnostics ─
+  function collectLanguageClass(lang: ts.ClassDeclaration): void {
+    if (!lang.name) {
+      diagnostics.push(diagAt(lang, SIGIL.MissingRequiredOption, "a classe @Language precisa de um nome"));
+      return;
+    }
+    const langClassName = lang.name.text;
+    const dec = getDecorator(lang, checker, "Language")!;
+    const optsNode = optionsNodeOf(dec);
+    const raw = optsNode ? tryEval(optsNode) : undefined;
+    if (raw === EVAL_FAILED) return;
+    const o = (raw ?? {}) as Record<string, unknown>;
+    const rawId = o.id;
+    const selector = (typeof rawId === "string" ? [rawId] : Array.isArray(rawId) ? rawId : []).filter(
+      (s): s is string => typeof s === "string" && s.length > 0
+    );
+    if (selector.length === 0) {
+      diagnostics.push(diagAt(optsNode ?? lang.name, SIGIL.MissingRequiredOption, "@Language exige 'id' (string ou string[])"));
+      return;
+    }
+    selector.sort();
+
+    let hoverKey: string | undefined;
+    let completionKey: string | undefined;
+    let completionTriggers: string[] | undefined;
+    let codeLensKey: string | undefined;
+    let diagnosticsKey: string | undefined;
+    let diagnosticsOn: "change" | "save" | undefined;
+
+    const single = (current: string | undefined, name: string, node: ts.Node): boolean => {
+      if (current) {
+        diagnostics.push(diagAt(node, SIGIL.TreeViewIncomplete, `apenas um @${name} por @Language`));
+        return false;
+      }
+      return true;
+    };
+
+    for (const member of lang.members) {
+      if (!ts.isMethodDeclaration(member)) continue;
+      if (
+        rejectMember(
+          member,
+          ["Command", "Config", "Watch", "Activate", "Deactivate", "OnMessage", "OnRequest", "TreeRoot", "TreeChildren", "TreeItem", ...CHAT_MEMBERS],
+          "@Language"
+        )
+      ) {
+        continue;
+      }
+      const key = `${langClassName}.${memberNameOf(member.name)}`;
+      const hoverDec = getDecorator(member, checker, "Hover");
+      const complDec = getDecorator(member, checker, "Completion");
+      const lensDec = getDecorator(member, checker, "CodeLens");
+      const diagDec = getDecorator(member, checker, "Diagnostics");
+      if (hoverDec && single(hoverKey, "Hover", member.name)) hoverKey = key;
+      else if (complDec && single(completionKey, "Completion", member.name)) {
+        completionKey = key;
+        const cOpts = optionsNodeOf(complDec) ? tryEval(optionsNodeOf(complDec)!) : {};
+        if (cOpts === EVAL_FAILED) return;
+        const triggers = (cOpts as { triggerCharacters?: unknown } | null)?.triggerCharacters;
+        if (Array.isArray(triggers)) completionTriggers = triggers.map(String);
+      } else if (lensDec && single(codeLensKey, "CodeLens", member.name)) codeLensKey = key;
+      else if (diagDec && single(diagnosticsKey, "Diagnostics", member.name)) {
+        diagnosticsKey = key;
+        const dOpts = optionsNodeOf(diagDec) ? tryEval(optionsNodeOf(diagDec)!) : {};
+        if (dOpts === EVAL_FAILED) return;
+        const on = (dOpts as { on?: unknown } | null)?.on;
+        if (on === "save" || on === "change") diagnosticsOn = on;
+      }
+    }
+
+    if (!hoverKey && !completionKey && !codeLensKey && !diagnosticsKey) {
+      diagnostics.push(
+        diagAt(lang.name, SIGIL.TreeViewIncomplete, `@Language '${langClassName}' precisa de ao menos um provider (@Hover, @Completion, @CodeLens ou @Diagnostics)`)
+      );
+      return;
+    }
+
+    languages.push(
+      compact({
+        key: langClassName,
+        selector,
+        hoverKey,
+        completionKey,
+        completionTriggers,
+        codeLensKey,
+        diagnosticsKey,
+        diagnosticsOn,
+        sourceFile: sourceFileOf(lang),
+        loc: locOf(lang.name),
+      }) as IRLanguage
+    );
+  }
+
+  // ── classes @ChatParticipant ───────────────────────────────────────────────
+  function collectChatClass(chat: ts.ClassDeclaration): void {
+    if (!chat.name) {
+      diagnostics.push(diagAt(chat, SIGIL.MissingRequiredOption, "a classe @ChatParticipant precisa de um nome"));
+      return;
+    }
+    const chatClassName = chat.name.text;
+    const dec = getDecorator(chat, checker, "ChatParticipant")!;
+    const optsNode = optionsNodeOf(dec);
+    const raw = optsNode ? tryEval(optsNode) : undefined;
+    if (raw === EVAL_FAILED) return;
+    const o = (raw ?? {}) as Record<string, unknown>;
+    for (const field of ["id", "name"] as const) {
+      if (typeof o[field] !== "string" || (o[field] as string).length === 0) {
+        diagnostics.push(diagAt(optsNode ?? chat.name, SIGIL.MissingRequiredOption, `@ChatParticipant exige '${field}' (string não vazia)`));
+        return;
+      }
+    }
+
+    let requestKey: string | undefined;
+    let followupsKey: string | undefined;
+    for (const member of chat.members) {
+      if (!ts.isMethodDeclaration(member)) continue;
+      if (
+        rejectMember(
+          member,
+          ["Command", "Config", "Watch", "Activate", "Deactivate", "OnMessage", "OnRequest", "TreeRoot", "TreeChildren", "TreeItem", ...LANGUAGE_MEMBERS],
+          "@ChatParticipant"
+        )
+      ) {
+        continue;
+      }
+      const key = `${chatClassName}.${memberNameOf(member.name)}`;
+      if (getDecorator(member, checker, "ChatRequest")) {
+        if (requestKey) {
+          diagnostics.push(diagAt(member.name, SIGIL.TreeViewIncomplete, "apenas um @ChatRequest por @ChatParticipant"));
+          continue;
+        }
+        requestKey = key;
+      } else if (getDecorator(member, checker, "ChatFollowups")) {
+        if (followupsKey) {
+          diagnostics.push(diagAt(member.name, SIGIL.TreeViewIncomplete, "apenas um @ChatFollowups por @ChatParticipant"));
+          continue;
+        }
+        followupsKey = key;
+      }
+    }
+
+    if (!requestKey) {
+      diagnostics.push(
+        diagAt(chat.name, SIGIL.TreeViewIncomplete, `@ChatParticipant '${chatClassName}' precisa de um método @ChatRequest`)
+      );
+      return;
+    }
+
+    chatParticipants.push(
+      compact({
+        key: chatClassName,
+        id: `${prefix}.${o.id as string}`,
+        name: o.name as string,
+        fullName: o.fullName as string | undefined,
+        description: o.description as string | undefined,
+        isSticky: o.isSticky as boolean | undefined,
+        requestKey,
+        followupsKey,
+        sourceFile: sourceFileOf(chat),
+        loc: locOf(chat.name),
+      }) as IRChatParticipant
+    );
+  }
+
+  // ── classes @CustomEditor ──────────────────────────────────────────────────
+  function collectCustomEditorClass(ce: ts.ClassDeclaration): void {
+    if (!ce.name) {
+      diagnostics.push(diagAt(ce, SIGIL.MissingRequiredOption, "a classe @CustomEditor precisa de um nome"));
+      return;
+    }
+    const ceClassName = ce.name.text;
+    const dec = getDecorator(ce, checker, "CustomEditor")!;
+    const optsNode = optionsNodeOf(dec);
+    const raw = optsNode ? tryEval(optsNode) : undefined;
+    if (raw === EVAL_FAILED) return;
+    const o = (raw ?? {}) as Record<string, unknown>;
+    for (const field of ["id", "displayName", "ui"] as const) {
+      if (typeof o[field] !== "string" || (o[field] as string).length === 0) {
+        diagnostics.push(diagAt(optsNode ?? ce.name, SIGIL.MissingRequiredOption, `@CustomEditor exige '${field}' (string não vazia)`));
+        return;
+      }
+    }
+    const rawPatterns = o.filenamePattern;
+    const patterns = (typeof rawPatterns === "string" ? [rawPatterns] : Array.isArray(rawPatterns) ? rawPatterns : []).filter(
+      (p): p is string => typeof p === "string" && p.length > 0
+    );
+    if (patterns.length === 0) {
+      diagnostics.push(diagAt(optsNode ?? ce.name, SIGIL.MissingRequiredOption, "@CustomEditor exige 'filenamePattern' (string ou string[])"));
+      return;
+    }
+    patterns.sort();
+    const priority = o.priority;
+    if (priority !== undefined && priority !== "default" && priority !== "option") {
+      diagnostics.push(diagAt(optsNode ?? ce.name, SIGIL.MissingRequiredOption, `priority de @CustomEditor precisa ser "default" ou "option"`));
+      return;
+    }
+
+    const { handlers, requests } = collectUiHandlers(ce, ceClassName, "@CustomEditor");
+
+    customEditors.push(
+      compact({
+        key: ceClassName,
+        viewType: `${prefix}.${o.id as string}`,
+        displayName: o.displayName as string,
+        patterns,
+        priority: priority as "default" | "option" | undefined,
+        uiEntry: toPosix(o.ui as string).replace(/^\.\//, ""),
+        messageHandlers: handlers,
+        requestHandlers: requests,
+        sourceFile: sourceFileOf(ce),
+        loc: locOf(ce.name),
+      }) as IRCustomEditor
+    );
+  }
+
   for (const tree of treeClasses) collectTreeClass(tree);
   for (const wv of webviewClasses) collectWebviewClass(wv);
+  for (const lang of languageClasses) collectLanguageClass(lang);
+  for (const chat of chatClasses) collectChatClass(chat);
+  for (const ce of customEditorClasses) collectCustomEditorClass(ce);
 
   // ── §8.5: ordem determinística é requisito do `sigil check`, não polimento ─
   const byId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
@@ -689,6 +955,9 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
   webviews.sort(byId);
   viewContainers.sort(byId);
   statusBars.sort(byKey);
+  languages.sort(byKey);
+  chatParticipants.sort(byId);
+  customEditors.sort((a, b) => (a.viewType < b.viewType ? -1 : a.viewType > b.viewType ? 1 : 0));
 
   const ir = compact({
     version: IR_VERSION,
@@ -706,6 +975,9 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     webviews,
     viewContainers,
     statusBars,
+    languages,
+    chatParticipants,
+    customEditors,
   }) as IR;
 
   return { ir, diagnostics };

@@ -1,4 +1,4 @@
-export const IR_VERSION = 4;
+export const IR_VERSION = 5;
 
 export interface SourceLoc {
   file: string;
@@ -95,6 +95,48 @@ export interface IRWebview {
   loc: SourceLoc;
 }
 
+/** Providers de linguagem de uma classe @Language. */
+export interface IRLanguage {
+  key: string; // nome da classe
+  selector: string[]; // ids de linguagem (emite activationEvents onLanguage:*)
+  hoverKey?: string;
+  completionKey?: string;
+  completionTriggers?: string[];
+  codeLensKey?: string;
+  diagnosticsKey?: string;
+  diagnosticsOn?: "change" | "save";
+  sourceFile: string;
+  loc: SourceLoc;
+}
+
+/** Participante de chat (@ChatParticipant). */
+export interface IRChatParticipant {
+  key: string;
+  id: string; // "hello.assist"
+  name: string;
+  fullName?: string;
+  description?: string;
+  isSticky?: boolean;
+  requestKey: string;
+  followupsKey?: string;
+  sourceFile: string;
+  loc: SourceLoc;
+}
+
+/** Editor customizado de texto (@CustomEditor). */
+export interface IRCustomEditor {
+  key: string;
+  viewType: string; // "hello.preview"
+  displayName: string;
+  patterns: string[];
+  priority?: "default" | "option";
+  uiEntry: string;
+  messageHandlers: { type: string; key: string }[];
+  requestHandlers: { type: string; key: string }[];
+  sourceFile: string;
+  loc: SourceLoc;
+}
+
 /** Aba de configurações pronta, habilitada por @Extension({ settings }). */
 export interface IRSettingsPanel {
   commandId: string; // "hello.configure"
@@ -121,4 +163,7 @@ export interface IR {
   webviews: IRWebview[];
   viewContainers: IRViewContainer[];
   statusBars: IRStatusBar[];
+  languages: IRLanguage[];
+  chatParticipants: IRChatParticipant[];
+  customEditors: IRCustomEditor[];
 }

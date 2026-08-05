@@ -29,6 +29,15 @@ export type { WebviewOptions } from "./decorators/webview";
 export { StatusBar, bindStatusBar } from "./decorators/status-bar";
 export type { StatusBarOptions, StatusBarBinding } from "./decorators/status-bar";
 
+export { Language, Hover, Completion, CodeLens, Diagnostics, bindLanguage } from "./decorators/language";
+export type { LanguageOptions, CompletionOptions, DiagnosticsOptions, LanguageBinding } from "./decorators/language";
+
+export { ChatParticipant, ChatRequest, ChatFollowups, bindChatParticipant } from "./decorators/chat";
+export type { ChatParticipantOptions, ChatParticipantBinding } from "./decorators/chat";
+
+export { CustomEditor, bindCustomEditor } from "./custom-editor";
+export type { CustomEditorOptions, CustomEditorBinding, SigilEditorContext } from "./custom-editor";
+
 export { adoptRegistrations, bucketOf } from "./metadata";
 export type { Bucket } from "./metadata";
 

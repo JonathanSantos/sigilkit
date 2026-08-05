@@ -71,6 +71,52 @@ cd examples/hello && npm run bundle
 # abra examples/hello no VSCode e aperte F5
 ```
 
+## Linguagem, Chat e Custom Editors
+
+As superfícies que fecham o mapa do marketplace, no mesmo modelo declarativo:
+
+```ts
+@Language({ id: "markdown" })
+export class MarkdownAssist {
+  @Hover()          hover(doc, pos) { return new vscode.Hover("…"); }
+  @Completion({ triggerCharacters: ["("] })  complete(doc, pos) { … }
+  @CodeLens()       lenses(doc) { … }
+  @Diagnostics({ on: "change" })  validate(doc) { return [/* Diagnostic[] */]; }
+}
+```
+
+O sigil emite os `activationEvents: onLanguage:<id>` (a ponte que o VSCode não
+gera sozinho — e só gerencia o subconjunto `onLanguage:*`, o resto do array é
+seu), registra os providers com dispatch dinâmico (hot-swappáveis) e cuida do
+`DiagnosticCollection` inteiro: revalida em change/save/open e limpa no close.
+
+```ts
+@ChatParticipant({ id: "guru", name: "guru", description: "…" })
+export class Guru {
+  @ChatRequest()
+  async responder(request, ctx, stream, token) { stream.markdown("…"); }
+}
+```
+
+Entra em `contributes.chatParticipants` (ativação automática); exige VSCode
+≥ 1.90 em runtime — em hosts antigos o bind falha alto com mensagem clara, e
+a API é acessada dinamicamente para não exigir `@types/vscode` novo de quem
+não usa chat.
+
+```ts
+@CustomEditor({ id: "caps", displayName: "CAPS", filenamePattern: "*.caps", ui: "./ui/editor.html" })
+export class CapsEditor {
+  @OnMessage("gritar")
+  gritar(_v: unknown, editor: SigilEditorContext) {
+    void editor.applyEdit(editor.getText().toUpperCase());  // undo funciona (WorkspaceEdit)
+  }
+}
+```
+
+Mesmo shell dos webviews (CSP + nonce + `asWebviewUri` + RPC); os handlers
+recebem o **contexto do documento** como segundo argumento, a UI recebe o
+conteúdo no load e a cada mudança (`onDocument` em `@sigil/core/ui`).
+
 ## Plataforma de runtime
 
 Além dos decorators, o `@sigil/core` traz a base que toda extensão reescreve:

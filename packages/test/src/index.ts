@@ -2,7 +2,10 @@ import Module from "node:module";
 import fs from "node:fs";
 import path from "node:path";
 import {
+  ChatResponseStreamMock,
+  DiagnosticMock,
   DisposableLike,
+  TextDocumentMock,
   TreeDataProviderLike,
   TreeItemMock,
   VscodeMockState,
@@ -13,7 +16,13 @@ import {
 } from "./vscode-mock";
 
 export {
+  ChatResponseStreamMock,
+  CodeLensMock,
+  CompletionItemMock,
+  DiagnosticCollectionMock,
+  DiagnosticMock,
   EventEmitterMock,
+  HoverMock,
   OutputChannelMock,
   PositionMock,
   RangeMock,
@@ -23,6 +32,7 @@ export {
   TextEditorMock,
   TreeItemMock,
   WebviewPanelMock,
+  WorkspaceEditMock,
   createState,
   createVscodeMock,
   resetState,
@@ -214,6 +224,64 @@ export class SigilTestHost {
   /** viewTypes das webviews de SIDEBAR registradas (resolvidas ou não). */
   get webviewViewIds(): string[] {
     return [...this.state.webviewViewProviders.keys()].sort();
+  }
+
+  private languageProvider(kind: "hover" | "completion" | "codeLens", doc: TextDocumentMock) {
+    const entry = this.state.languageProviders.find(
+      (p) => p.kind === kind && p.selector.includes(doc.languageId)
+    );
+    if (!entry) {
+      throw new Error(
+        `sigil-test: nenhum provider de ${kind} para a linguagem '${doc.languageId}' (registrados: ${this.state.languageProviders.map((p) => `${p.kind}:${p.selector.join("/")}`).join(", ") || "nenhum"})`
+      );
+    }
+    return entry.provider;
+  }
+
+  /** Invoca o @Hover registrado para a linguagem do documento. */
+  async provideHover(doc: TextDocumentMock, position: { line: number; character: number }) {
+    return this.languageProvider("hover", doc).provideHover!(doc, position, {});
+  }
+
+  /** Invoca o @Completion registrado para a linguagem do documento. */
+  async provideCompletions(doc: TextDocumentMock, position: { line: number; character: number }) {
+    return this.languageProvider("completion", doc).provideCompletionItems!(doc, position, {}, {});
+  }
+
+  /** Invoca o @CodeLens registrado para a linguagem do documento. */
+  async provideCodeLenses(doc: TextDocumentMock) {
+    return this.languageProvider("codeLens", doc).provideCodeLenses!(doc, {});
+  }
+
+  /** Diagnostics correntes do documento (todas as collections). */
+  diagnosticsFor(doc: TextDocumentMock): DiagnosticMock[] {
+    return this.state.diagnosticCollections.flatMap((c) => c.byUri.get(doc.uri.toString()) ?? []);
+  }
+
+  /** Envia um request de chat ao participante; retorna o stream gravado. */
+  async chatRequest(participantId: string, prompt: string): Promise<ChatResponseStreamMock> {
+    const participant = this.state.chatParticipants.find((p) => p.id === participantId);
+    if (!participant) {
+      throw new Error(
+        `sigil-test: participante '${participantId}' não registrado (registrados: ${this.state.chatParticipants.map((p) => p.id).join(", ") || "nenhum"})`
+      );
+    }
+    const stream = new ChatResponseStreamMock();
+    await participant.handler({ prompt }, { history: [] }, stream, { isCancellationRequested: false });
+    return stream;
+  }
+
+  /** Abre um documento num @CustomEditor (resolve o provider com um painel fake). */
+  async openCustomEditor(viewType: string, doc: TextDocumentMock): Promise<WebviewPanelMock> {
+    const provider = this.state.customEditorProviders.get(viewType);
+    if (!provider) {
+      throw new Error(
+        `sigil-test: custom editor '${viewType}' não registrado (registrados: ${[...this.state.customEditorProviders.keys()].join(", ") || "nenhum"})`
+      );
+    }
+    const panel = new WebviewPanelMock(viewType, viewType);
+    await provider.resolveCustomTextEditor(doc, panel);
+    return panel;
   }
 
   /** Abre um documento fake e o torna o activeTextEditor. */

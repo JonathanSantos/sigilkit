@@ -5,6 +5,7 @@ import {
   IR,
   collect,
   createProgramFromTsconfig,
+  emitActivationEvents,
   emitManifest,
   emitTypes,
   emitWire,
@@ -67,7 +68,11 @@ export function computeProject(projectDir: string, existingProgram?: ts.Program)
 
   const genDir = path.join(projectDir, "src", ".generated");
   const files: OutputFile[] = [
-    { path: pkgPath, label: "package.json", content: mergePackageJson(pkgText, emitManifest(ir)) },
+    {
+      path: pkgPath,
+      label: "package.json",
+      content: mergePackageJson(pkgText, emitManifest(ir), emitActivationEvents(ir)),
+    },
     { path: path.join(genDir, "wire.ts"), label: "src/.generated/wire.ts", content: emitWire(ir) },
     { path: path.join(genDir, "config.d.ts"), label: "src/.generated/config.d.ts", content: emitTypes(ir) },
   ];

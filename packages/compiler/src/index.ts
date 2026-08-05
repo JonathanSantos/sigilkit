@@ -8,7 +8,7 @@ export { typeNodeToSchema, schemaFromValue } from "./collect/type-to-schema";
 export type { SchemaInfo } from "./collect/type-to-schema";
 export { validate } from "./validate";
 export { diagAt, diagAtLoc, diagGlobal, formatDiagnostics, SIGIL } from "./diagnostics";
-export { emitManifest, OWNED_CONTRIBUTES, CONDITIONAL_CONTRIBUTES } from "./emit/manifest";
+export { emitManifest, emitActivationEvents, OWNED_CONTRIBUTES, CONDITIONAL_CONTRIBUTES } from "./emit/manifest";
 export type { Contributes, OwnedContributeKey, ConditionalContributeKey } from "./emit/manifest";
 export { emitWire } from "./emit/wire";
 export { emitTypes } from "./emit/types";

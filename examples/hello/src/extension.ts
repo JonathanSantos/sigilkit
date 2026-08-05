@@ -1,5 +1,17 @@
 import * as vscode from "vscode";
-import { Extension, Command, Config, Watch, Activate, StatusBar, log, registry } from "@sigil/core";
+import {
+  Extension,
+  Command,
+  Config,
+  Watch,
+  Activate,
+  StatusBar,
+  Language,
+  Hover,
+  Diagnostics,
+  log,
+  registry,
+} from "@sigil/core";
 
 // settings: true → comando hello.configure abre a aba de configurações
 // pronta do sigil, com formulário derivado do schema das @Config
@@ -40,5 +52,34 @@ export class HelloExtension {
   @Activate()
   onActivate(ctx: vscode.ExtensionContext) {
     // opcional; roda depois do wiring
+  }
+}
+
+// Providers de linguagem: o sigil emite "activationEvents": ["onLanguage:markdown"]
+// e registra os providers com dispatch dinâmico (hot-swappable).
+@Language({ id: "markdown" })
+export class MarkdownAssist {
+  @Hover()
+  hover(doc: vscode.TextDocument, pos: vscode.Position): vscode.Hover {
+    return new vscode.Hover(`Linha ${pos.line + 1} de ${doc.lineCount} — ${doc.getText().length} caracteres`);
+  }
+
+  @Diagnostics({ on: "change" })
+  pendencias(doc: vscode.TextDocument): vscode.Diagnostic[] {
+    const found: vscode.Diagnostic[] = [];
+    const lines = doc.getText().split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const col = lines[i]!.indexOf("TODO");
+      if (col >= 0) {
+        found.push(
+          new vscode.Diagnostic(
+            new vscode.Range(new vscode.Position(i, col), new vscode.Position(i, col + 4)),
+            "pendência anotada",
+            vscode.DiagnosticSeverity.Warning
+          )
+        );
+      }
+    }
+    return found;
   }
 }

@@ -160,6 +160,8 @@ class TextEditorEditMock {
 
 export class TextEditorMock {
   selection: SelectionMock;
+  /** fire de onDidChangeTextDocument — ligado pelo createVscodeMock */
+  onEdited?: (doc: TextDocumentMock) => void;
 
   constructor(readonly document: TextDocumentMock) {
     this.selection = new SelectionMock(new PositionMock(0, 0), new PositionMock(0, 0));
@@ -169,7 +171,85 @@ export class TextEditorMock {
     const builder = new TextEditorEditMock(this.document);
     callback(builder);
     builder.apply();
+    this.onEdited?.(this.document);
     return Promise.resolve(true);
+  }
+}
+
+export class HoverMock {
+  readonly contents: unknown[];
+  constructor(contents: unknown) {
+    this.contents = Array.isArray(contents) ? contents : [contents];
+  }
+}
+
+export class CompletionItemMock {
+  constructor(
+    public label: unknown,
+    public kind?: number
+  ) {}
+}
+
+export class CodeLensMock {
+  constructor(
+    public range: RangeMock,
+    public command?: unknown
+  ) {}
+}
+
+export class DiagnosticMock {
+  constructor(
+    public range: RangeMock,
+    public message: string,
+    public severity?: number
+  ) {}
+}
+
+export class WorkspaceEditMock {
+  readonly replacements: { uri: UriMock; range: RangeMock; newText: string }[] = [];
+  replace(uri: UriMock, range: RangeMock, newText: string): void {
+    this.replacements.push({ uri, range, newText });
+  }
+}
+
+export class DiagnosticCollectionMock {
+  readonly byUri = new Map<string, DiagnosticMock[]>();
+  constructor(readonly name: string) {}
+  set(uri: UriMock, diagnostics: DiagnosticMock[] | undefined): void {
+    if (!diagnostics || diagnostics.length === 0) this.byUri.delete(uri.toString());
+    else this.byUri.set(uri.toString(), diagnostics);
+  }
+  delete(uri: UriMock): void {
+    this.byUri.delete(uri.toString());
+  }
+  clear(): void {
+    this.byUri.clear();
+  }
+  dispose(): void {
+    this.byUri.clear();
+  }
+}
+
+export interface LanguageProviderEntry {
+  kind: "hover" | "completion" | "codeLens";
+  selector: string[];
+  provider: Record<string, (...args: unknown[]) => unknown>;
+  triggers?: string[];
+}
+
+export class ChatResponseStreamMock {
+  readonly calls: { kind: string; value: unknown }[] = [];
+  markdown(value: unknown): void {
+    this.calls.push({ kind: "markdown", value });
+  }
+  progress(value: unknown): void {
+    this.calls.push({ kind: "progress", value });
+  }
+  button(value: unknown): void {
+    this.calls.push({ kind: "button", value });
+  }
+  anchor(value: unknown): void {
+    this.calls.push({ kind: "anchor", value });
   }
 }
 
@@ -334,6 +414,20 @@ export interface VscodeMockState {
   quickPickCalls: { items: unknown; options?: unknown }[];
   documents: TextDocumentMock[];
   activeTextEditor?: TextEditorMock;
+  docListeners: {
+    open: ((doc: TextDocumentMock) => void)[];
+    change: ((e: { document: TextDocumentMock }) => void)[];
+    save: ((doc: TextDocumentMock) => void)[];
+    close: ((doc: TextDocumentMock) => void)[];
+  };
+  languageProviders: LanguageProviderEntry[];
+  diagnosticCollections: DiagnosticCollectionMock[];
+  chatParticipants: {
+    id: string;
+    handler: (...args: unknown[]) => unknown;
+    followupProvider?: { provideFollowups: (...args: unknown[]) => unknown };
+  }[];
+  customEditorProviders: Map<string, { resolveCustomTextEditor(document: unknown, panel: unknown): unknown }>;
   treeProviders: Map<string, TreeDataProviderLike>;
   panels: WebviewPanelMock[];
   webviewViewProviders: Map<string, { resolveWebviewView(view: unknown): unknown }>;
@@ -358,6 +452,11 @@ export function createState(): VscodeMockState {
     quickPickCalls: [],
     documents: [],
     activeTextEditor: undefined,
+    docListeners: { open: [], change: [], save: [], close: [] },
+    languageProviders: [],
+    diagnosticCollections: [],
+    chatParticipants: [],
+    customEditorProviders: new Map(),
     treeProviders: new Map(),
     panels: [],
     webviewViewProviders: new Map(),
@@ -392,6 +491,11 @@ export function resetState(state: VscodeMockState): void {
   state.quickPickCalls.length = 0;
   state.documents.length = 0;
   state.activeTextEditor = undefined;
+  state.docListeners = { open: [], change: [], save: [], close: [] };
+  state.languageProviders.length = 0;
+  state.diagnosticCollections.length = 0;
+  state.chatParticipants.length = 0;
+  state.customEditorProviders.clear();
   state.treeProviders.clear();
   state.panels.length = 0;
   state.webviewViewProviders.clear();
@@ -428,6 +532,25 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
     return view;
   };
 
+  const fireDoc = {
+    open: (doc: TextDocumentMock) => state.docListeners.open.forEach((l) => l(doc)),
+    change: (doc: TextDocumentMock) => state.docListeners.change.forEach((l) => l({ document: doc })),
+    save: (doc: TextDocumentMock) => state.docListeners.save.forEach((l) => l(doc)),
+    close: (doc: TextDocumentMock) => state.docListeners.close.forEach((l) => l(doc)),
+  };
+  const docListener = (kind: keyof typeof fireDoc) => (cb: never): DisposableLike => {
+    (state.docListeners[kind] as unknown[]).push(cb);
+    return {
+      dispose: () => {
+        const list = state.docListeners[kind] as unknown[];
+        const idx = list.indexOf(cb);
+        if (idx >= 0) list.splice(idx, 1);
+      },
+    };
+  };
+  const toSelectorArray = (selector: unknown): string[] =>
+    typeof selector === "string" ? [selector] : Array.isArray(selector) ? selector.map(String) : [];
+
   return {
     EventEmitter: EventEmitterMock,
     TreeItem: TreeItemMock,
@@ -435,10 +558,56 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
     ViewColumn: { Active: -1, Beside: -2, One: 1, Two: 2, Three: 3 },
     ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
     StatusBarAlignment: { Left: 1, Right: 2 },
+    DiagnosticSeverity: { Error: 0, Warning: 1, Information: 2, Hint: 3 },
+    CompletionItemKind: { Text: 0, Method: 1, Function: 2, Keyword: 13, Snippet: 14 },
     Position: PositionMock,
     Range: RangeMock,
     Selection: SelectionMock,
+    Hover: HoverMock,
+    CompletionItem: CompletionItemMock,
+    CodeLens: CodeLensMock,
+    Diagnostic: DiagnosticMock,
+    WorkspaceEdit: WorkspaceEditMock,
     __resolveWebviewView: resolveWebviewView,
+    __fireDoc: fireDoc,
+    languages: {
+      registerHoverProvider: (selector: unknown, provider: Record<string, (...args: unknown[]) => unknown>) => {
+        const entry: LanguageProviderEntry = { kind: "hover", selector: toSelectorArray(selector), provider };
+        state.languageProviders.push(entry);
+        return { dispose: () => void state.languageProviders.splice(state.languageProviders.indexOf(entry), 1) };
+      },
+      registerCompletionItemProvider: (
+        selector: unknown,
+        provider: Record<string, (...args: unknown[]) => unknown>,
+        ...triggers: string[]
+      ) => {
+        const entry: LanguageProviderEntry = { kind: "completion", selector: toSelectorArray(selector), provider, triggers };
+        state.languageProviders.push(entry);
+        return { dispose: () => void state.languageProviders.splice(state.languageProviders.indexOf(entry), 1) };
+      },
+      registerCodeLensProvider: (selector: unknown, provider: Record<string, (...args: unknown[]) => unknown>) => {
+        const entry: LanguageProviderEntry = { kind: "codeLens", selector: toSelectorArray(selector), provider };
+        state.languageProviders.push(entry);
+        return { dispose: () => void state.languageProviders.splice(state.languageProviders.indexOf(entry), 1) };
+      },
+      createDiagnosticCollection: (name: string) => {
+        const collection = new DiagnosticCollectionMock(name);
+        state.diagnosticCollections.push(collection);
+        return collection;
+      },
+    },
+    chat: {
+      createChatParticipant: (id: string, handler: (...args: unknown[]) => unknown) => {
+        const participant: (typeof state.chatParticipants)[number] = { id, handler };
+        state.chatParticipants.push(participant);
+        return {
+          set followupProvider(p: { provideFollowups: (...args: unknown[]) => unknown }) {
+            participant.followupProvider = p;
+          },
+          dispose: () => void state.chatParticipants.splice(state.chatParticipants.indexOf(participant), 1),
+        };
+      },
+    },
     Uri: {
       file: uriFile,
       joinPath: (base: UriMock, ...parts: string[]) => uriFile(path.join(base.fsPath, ...parts)),
@@ -475,6 +644,7 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
       },
       showTextDocument: (doc: TextDocumentMock) => {
         const editor = new TextEditorMock(doc);
+        editor.onEdited = (d) => fireDoc.change(d);
         state.activeTextEditor = editor;
         return Promise.resolve(editor);
       },
@@ -499,6 +669,14 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
         const item = new StatusBarItemMock(alignment ?? 1, priority);
         state.statusBarItems.push(item);
         return item;
+      },
+      registerCustomEditorProvider: (
+        viewType: string,
+        provider: { resolveCustomTextEditor(document: unknown, panel: unknown): unknown },
+        _options?: unknown
+      ) => {
+        state.customEditorProviders.set(viewType, provider);
+        return { dispose: () => state.customEditorProviders.delete(viewType) };
       },
       createOutputChannel: (name: string, _opts?: unknown) => {
         const channel = new OutputChannelMock(name);
@@ -559,6 +737,21 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
           },
         };
       },
+      onDidOpenTextDocument: docListener("open"),
+      onDidChangeTextDocument: docListener("change"),
+      onDidSaveTextDocument: docListener("save"),
+      onDidCloseTextDocument: docListener("close"),
+      applyEdit: (edit: WorkspaceEditMock) => {
+        for (const op of edit.replacements) {
+          const doc = state.documents.find((d) => d.uri.toString() === op.uri.toString());
+          if (!doc) continue;
+          const start = doc.offsetAt(op.range.start);
+          const end = doc.offsetAt(op.range.end);
+          doc.text = doc.text.slice(0, start) + op.newText + doc.text.slice(end);
+          fireDoc.change(doc);
+        }
+        return Promise.resolve(true);
+      },
       fs: {
         readFile: (uri: UriMock): Promise<Uint8Array> =>
           Promise.resolve(new Uint8Array(fs.readFileSync(uri.fsPath))),
@@ -571,6 +764,7 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
           const uri = options as UriMock;
           const doc = new TextDocumentMock(fs.readFileSync(uri.fsPath, "utf8"), "plaintext", uri);
           state.documents.push(doc);
+          fireDoc.open(doc);
           return Promise.resolve(doc);
         }
         const o = (options ?? {}) as { content?: string; language?: string };
@@ -580,6 +774,7 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
           uriFile(`/untitled-${state.documents.length + 1}`)
         );
         state.documents.push(doc);
+        fireDoc.open(doc);
         return Promise.resolve(doc);
       },
       get workspaceFolders() {

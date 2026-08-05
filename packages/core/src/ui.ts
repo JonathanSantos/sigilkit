@@ -52,6 +52,25 @@ function ensureRpcListener(): void {
   });
 }
 
+export interface SigilDocumentState {
+  text: string;
+  uri?: string;
+  languageId?: string;
+}
+
+/**
+ * Lado UI de um @CustomEditor: recebe o conteúdo do documento no load e a
+ * cada mudança (edits externos inclusive). Retorna o unsubscribe.
+ */
+export function onDocument(handler: (doc: SigilDocumentState) => void): () => void {
+  const listener = (event: { data: unknown }) => {
+    const msg = event.data as { type?: string; value?: SigilDocumentState } | undefined;
+    if (msg?.type === "__sigilDocument" && msg.value) handler(msg.value);
+  };
+  window.addEventListener("message", listener);
+  return () => window.removeEventListener("message", listener);
+}
+
 /**
  * Request/response para um @OnRequest do host: o retorno do handler resolve a
  * Promise; um throw no host a rejeita. Correlação automática por id.

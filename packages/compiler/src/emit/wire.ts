@@ -30,6 +30,9 @@ export function emitWire(ir: IR): string {
   if (ir.webviews.some((w) => w.location === "sidebar")) coreImports.push("bindWebviewView");
   if (ir.statusBars.length > 0) coreImports.push("bindStatusBar");
   if (ir.settingsPanel) coreImports.push("bindSettingsApp");
+  if (ir.languages.length > 0) coreImports.push("bindLanguage");
+  if (ir.chatParticipants.length > 0) coreImports.push("bindChatParticipant");
+  if (ir.customEditors.length > 0) coreImports.push("bindCustomEditor");
 
   const byFile = new Map<string, Set<string>>();
   const addImport = (file: string, cls: string): void => {
@@ -40,6 +43,9 @@ export function emitWire(ir: IR): string {
   addImport(ir.sourceFile, ir.extensionClass);
   for (const t of ir.treeViews) addImport(t.sourceFile, t.key);
   for (const w of ir.webviews) addImport(w.sourceFile, w.key);
+  for (const l of ir.languages) addImport(l.sourceFile, l.key);
+  for (const c of ir.chatParticipants) addImport(c.sourceFile, c.key);
+  for (const e of ir.customEditors) addImport(e.sourceFile, e.key);
   const userImports = [...byFile.entries()]
     .map(([file, names]) => `import { ${[...names].sort().join(", ")} } from "${relativeImport(file)}";`)
     .join("\n");
@@ -56,6 +62,18 @@ export function emitWire(ir: IR): string {
       `  const wv_${w.key} = new ${w.key}();`,
       `  adoptRegistrations(${JSON.stringify(w.key)}, ${w.key});`,
       `  (wv_${w.key} as { post?: (msg: unknown) => void }).post = (msg) => registry.webviewPosts.get(${JSON.stringify(w.key)})!(msg);`,
+    ]),
+    ...ir.languages.flatMap((l) => [
+      `  new ${l.key}();`,
+      `  adoptRegistrations(${JSON.stringify(l.key)}, ${l.key});`,
+    ]),
+    ...ir.chatParticipants.flatMap((c) => [
+      `  new ${c.key}();`,
+      `  adoptRegistrations(${JSON.stringify(c.key)}, ${c.key});`,
+    ]),
+    ...ir.customEditors.flatMap((e) => [
+      `  new ${e.key}();`,
+      `  adoptRegistrations(${JSON.stringify(e.key)}, ${e.key});`,
     ]),
   ].join("\n");
 
@@ -98,6 +116,42 @@ export function emitWire(ir: IR): string {
         })),
       })}, ctx);\n  ctx.subscriptions.push(settingsApp);\n  ctx.subscriptions.push(vscode.commands.registerCommand(${JSON.stringify(ir.settingsPanel.commandId)}, guard(${JSON.stringify(`comando ${ir.settingsPanel.commandId}`)}, () => settingsApp.open(), { notify: true })));\n`
     : "";
+
+  const languageSetup = ir.languages
+    .map((l) => {
+      const binding = {
+        key: l.key,
+        selector: l.selector,
+        hoverKey: l.hoverKey,
+        completionKey: l.completionKey,
+        completionTriggers: l.completionTriggers,
+        codeLensKey: l.codeLensKey,
+        diagnosticsKey: l.diagnosticsKey,
+        diagnosticsOn: l.diagnosticsOn,
+      };
+      return `  ctx.subscriptions.push(bindLanguage(${JSON.stringify(binding)}, ctx));\n`;
+    })
+    .join("");
+
+  const chatSetup = ir.chatParticipants
+    .map((c) => {
+      const binding = { key: c.key, id: c.id, requestKey: c.requestKey, followupsKey: c.followupsKey };
+      return `  ctx.subscriptions.push(bindChatParticipant(${JSON.stringify(binding)}, ctx));\n`;
+    })
+    .join("");
+
+  const customEditorSetup = ir.customEditors
+    .map((e) => {
+      const binding = {
+        key: e.key,
+        viewType: e.viewType,
+        uiEntry: e.uiEntry,
+        handlers: e.messageHandlers,
+        requests: e.requestHandlers,
+      };
+      return `  ctx.subscriptions.push(bindCustomEditor(${JSON.stringify(binding)}, ctx));\n`;
+    })
+    .join("");
 
   const statusBarSetup = ir.statusBars
     .map((s) => {
@@ -142,7 +196,7 @@ export function activate(ctx: vscode.ExtensionContext) {
   registry.prefix = ${JSON.stringify(ir.prefix)};
   ctx.subscriptions.push(bindLog(${JSON.stringify(ir.displayName)}));
   __sigilHydrate();
-${treeSetup}${webviewSetup}${statusBarSetup}${settingsSetup}  for (const c of COMMANDS) {
+${treeSetup}${webviewSetup}${languageSetup}${chatSetup}${customEditorSetup}${statusBarSetup}${settingsSetup}  for (const c of COMMANDS) {
     if (!registry.commands.has(c.key)) throw new Error(\`sigil: handler ausente para \${c.key}. Rode 'sigil build'.\`);
     ctx.subscriptions.push(vscode.commands.registerCommand(c.id, guard(\`comando \${c.id}\`, (...args: unknown[]) => registry.commands.get(c.key)!(...args), { notify: true })));
   }

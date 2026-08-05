@@ -58,6 +58,18 @@ sim` = hot reload simulado (watch incremental → esbuild → activateExtension
 no @sigil/test, configs preservadas entre reloads) com REPL; cli depende de
 @sigil/test e esbuild.
 
+Superfícies de linguagem/chat/editor: @Language({id}) com @Hover/@Completion/
+@CodeLens/@Diagnostics (bindLanguage; activationEvents onLanguage:* são
+SUBCONJUNTO gerenciado no merge — resto do array é do usuário);
+@ChatParticipant/@ChatRequest/@ChatFollowups (bindChatParticipant; API de
+chat acessada dinamicamente — sem exigir @types >= 1.90; host antigo → erro
+alto no bind); @CustomEditor reusa o shell de webview + @OnMessage/@OnRequest
+com SigilEditorContext como 2º argumento dos handlers (makeRouter aceita
+`extra`); applyEdit via WorkspaceEdit; doc→UI por mensagens __sigilDocument
+(helper onDocument em @sigil/core/ui). chatParticipants/customEditors são
+chaves CONDICIONAIS no merge. adoptRegistrations tolera classe só com
+marcador (bucket vazio) — o R6 real é o join por chave.
+
 `sigil sim --ui` = workbench visual (cli/src/sim-ui.ts + sim-ui-page.ts):
 servidor http sem deps, SSE para push de estado (buildSnapshot serializa
 palette/trees/configs/statusbar/logs/webviews), POST /api/* para interações;

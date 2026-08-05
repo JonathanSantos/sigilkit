@@ -30,9 +30,15 @@ export function makeNonce(): string {
 
 type IncomingMessage = { type?: string; value?: unknown; __sigilRpcId?: number } | undefined;
 
-function makeRouter(
-  binding: WebviewBinding,
-  post: (msg: unknown) => void
+/**
+ * Roteador de mensagens UI → host. `extra` é um segundo argumento passado aos
+ * handlers (o contexto de documento dos custom editors); para webviews comuns
+ * é undefined e inofensivo.
+ */
+export function makeRouter(
+  binding: Pick<WebviewBinding, "key" | "handlers" | "requests">,
+  post: (msg: unknown) => void,
+  extra?: unknown
 ): (msg: IncomingMessage) => void {
   return (msg) => {
     const rpcId = msg?.__sigilRpcId;
@@ -49,7 +55,7 @@ function makeRouter(
       const fn = registry.webviewHandlers.get(req.key);
       if (!fn) throw new Error(`sigil: handler ausente para ${req.key}. Rode 'sigil build'.`);
       Promise.resolve()
-        .then(() => fn(msg?.value))
+        .then(() => fn(msg?.value, extra))
         .then(
           (value) => post({ type: "__sigilRpcResult", id: rpcId, ok: true, value }),
           (err: unknown) => {
@@ -68,13 +74,13 @@ function makeRouter(
     }
     const fn = registry.webviewHandlers.get(handler.key);
     if (!fn) throw new Error(`sigil: handler ausente para ${handler.key}. Rode 'sigil build'.`);
-    guard(`@OnMessage '${String(msg?.type)}' em ${binding.key}`, fn)(msg?.value);
+    guard(`@OnMessage '${String(msg?.type)}' em ${binding.key}`, fn)(msg?.value, extra);
   };
 }
 
-async function fillWebview(
+export async function fillWebview(
   webview: vscode.Webview,
-  binding: WebviewBinding,
+  binding: Pick<WebviewBinding, "uiEntry">,
   ctx: vscode.ExtensionContext
 ): Promise<void> {
   const uiUri = vscode.Uri.joinPath(ctx.extensionUri, binding.uiEntry);
