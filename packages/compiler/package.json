@@ -1,0 +1,14 @@
+{
+  "name": "@sigil/compiler",
+  "version": "0.1.0",
+  "description": "Build time do sigil — AST → IR → manifesto/wire/tipos. Nunca entra no bundle da extensão; nunca importa vscode (R2).",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -b ."
+  },
+  "dependencies": {
+    "typescript": "^5.7.3"
+  }
+}

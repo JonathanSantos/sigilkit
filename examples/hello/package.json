@@ -1,0 +1,98 @@
+{
+  "name": "hello",
+  "displayName": "Hello (exemplo sigil)",
+  "description": "Extensão de exemplo do sigil — nenhuma linha de contributes é escrita à mão.",
+  "version": "0.0.1",
+  "publisher": "sigil-example",
+  "private": true,
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "build": "sigil build && npm run bundle",
+    "bundle": "esbuild src/.generated/wire.ts --bundle --platform=node --format=cjs --target=es2022 --external:vscode --keep-names --sourcemap --outfile=out/extension.js",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "node e2e/run.js"
+  },
+  "dependencies": {
+    "@sigil/core": "0.1.0"
+  },
+  "devDependencies": {
+    "@sigil/cli": "0.1.0",
+    "@types/vscode": "^1.75.0",
+    "@vscode/test-electron": "^3.1.0",
+    "esbuild": "^0.24.2"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "hello.openSettings",
+        "title": "Open settings",
+        "category": "Hello"
+      },
+      {
+        "command": "hello.refreshTasks",
+        "title": "Refresh tasks",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "hello.reset",
+        "title": "Reset"
+      },
+      {
+        "command": "hello.sayHello",
+        "title": "Say hello",
+        "category": "Hello"
+      }
+    ],
+    "configuration": {
+      "title": "Hello",
+      "properties": {
+        "hello.greeting": {
+          "type": "string",
+          "default": "Olá",
+          "description": "Texto exibido na saudação"
+        },
+        "hello.retries": {
+          "type": "number",
+          "default": 3,
+          "description": "Número de tentativas",
+          "minimum": 1,
+          "maximum": 10
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "hello.sayHello",
+        "key": "ctrl+alt+h"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "hello.refreshTasks",
+          "when": "view == hello.tasks"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "hello.reset",
+          "when": "editorFocus"
+        }
+      ]
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "hello.tasks",
+          "name": "Tasks"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "sigil",
+  "private": true,
+  "description": "Framework declarativo para extensões do VSCode — o TypeScript é a fonte única de verdade, o manifesto é derivado.",
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "build": "tsc -b packages/core packages/compiler packages/cli packages/test",
+    "test": "npm run build && node packages/cli/bin/sigil.js build examples/hello && npm run bundle -w hello && vitest run",
+    "test:e2e": "npm run build && node packages/cli/bin/sigil.js build examples/hello && npm run bundle -w hello && node examples/hello/e2e/run.js",
+    "example:build": "npm run build && node packages/cli/bin/sigil.js build examples/hello"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

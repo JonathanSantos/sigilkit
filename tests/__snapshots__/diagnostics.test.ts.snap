@@ -1,0 +1,63 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`inferência de schema (§8.3) > snapshot do IR 1`] = `
+{
+  "commands": [],
+  "configs": [
+    {
+      "default": true,
+      "id": "fx.enabled",
+      "jsonType": "boolean",
+      "key": "Fx.enabled",
+      "loc": {
+        "character": 12,
+        "file": "union-and-array.ts",
+        "line": 12,
+      },
+      "tsType": "boolean",
+    },
+    {
+      "default": "fast",
+      "description": "modo de execução",
+      "enum": [
+        "fast",
+        "slow",
+      ],
+      "id": "fx.mode",
+      "jsonType": "string",
+      "key": "Fx.mode",
+      "loc": {
+        "character": 12,
+        "file": "union-and-array.ts",
+        "line": 6,
+      },
+      "tsType": ""fast" | "slow"",
+    },
+    {
+      "default": [
+        "a",
+        "b",
+      ],
+      "id": "fx.tags",
+      "items": {
+        "type": "string",
+      },
+      "jsonType": "array",
+      "key": "Fx.tags",
+      "loc": {
+        "character": 12,
+        "file": "union-and-array.ts",
+        "line": 9,
+      },
+      "tsType": "string[]",
+    },
+  ],
+  "extensionClass": "Fx",
+  "prefix": "fx",
+  "sourceFile": "union-and-array.ts",
+  "treeViews": [],
+  "version": 2,
+  "watches": [],
+  "webviews": [],
+}
+`;

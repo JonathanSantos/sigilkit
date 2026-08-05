@@ -1,0 +1,139 @@
+# sigil
+
+Framework declarativo para extensões do VSCode. O arquivo TypeScript é a
+**fonte única de verdade**; o `contributes` do `package.json` é **derivado**
+dele em build time. Renomear um comando no código e esquecer o manifesto deixa
+de ser um comando fantasma — vira erro de build com posição no arquivo.
+
+```ts
+import * as vscode from "vscode";
+import { Extension, Command, Config, Watch } from "@sigil/core";
+
+@Extension({ prefix: "hello" })
+export class HelloExtension {
+  @Config({ description: "Texto exibido na saudação" })
+  accessor greeting: string = "Olá";
+
+  @Command({ title: "Say hello", category: "Hello", keybinding: "ctrl+alt+h" })
+  sayHello() {
+    vscode.window.showInformationMessage(`${this.greeting}!`);
+  }
+
+  @Watch("greeting")
+  onGreetingChanged(next: string, prev: string) {}
+}
+```
+
+Nenhuma linha de `contributes` é escrita à mão. `sigil build` gera:
+
+- o bloco `contributes` no `package.json` (merge — chaves não gerenciadas são preservadas);
+- `src/.generated/wire.ts` — o `activate()` real, que faz o join entre as chaves
+  emitidas pelo compilador e os handlers registrados em runtime, e **lança erro**
+  se faltar handler;
+- `src/.generated/config.d.ts` — tipos das configs.
+
+## Estrutura
+
+| Pacote | Papel | Regra inviolável |
+|---|---|---|
+| `@sigil/core` | runtime (vai para o bundle) | nunca importa `typescript` (R1) |
+| `@sigil/compiler` | build time (AST → IR → emitters) | nunca importa `vscode` (R2); nunca executa código do usuário (R3) |
+| `@sigil/cli` | orquestração e IO | emitters são puros; todo IO fica aqui (R4) |
+
+O design completo está em [docs/spec.md](docs/spec.md). Leia a §4 (modelo de
+propriedade) antes de mexer em qualquer coisa.
+
+## Uso
+
+Projeto novo:
+
+```bash
+sigil init minha-extensao
+cd minha-extensao && npm install && npm run build
+# abra no VSCode e aperte F5
+```
+
+Neste monorepo:
+
+```bash
+npm install          # workspaces
+npm run build        # compila os quatro pacotes
+npm run example:build
+cd examples/hello && npm run bundle
+# abra examples/hello no VSCode e aperte F5
+```
+
+## Testando extensões sem o VSCode — `@sigil/test`
+
+Um ambiente simulado do subconjunto da API `vscode` que o sigil toca. Ativa o
+**bundle real** da extensão interceptando `require("vscode")`, semeia os
+defaults de config a partir do manifesto (como o VSCode faz) e expõe sondas:
+
+```ts
+import { activateExtension } from "@sigil/test";
+
+const host = await activateExtension({ projectDir: "examples/hello" });
+host.commands;                                  // ids registrados
+await host.executeCommand("hello.sayHello");
+host.infoMessages;                              // ["Olá!"]
+host.configuration.set("hello.greeting", "Oi"); // simula editar Settings → dispara @Watch
+const tree = host.tree("hello.tasks");
+await tree.roots();                             // nós da view
+const panel = host.panel("hello.settings");     // depois de abrir via comando
+panel.receive({ type: "save", value: {...} });  // simula a UI → roteador @OnMessage
+panel.posted;                                   // mensagens do host para a UI
+await host.dispose();
+```
+
+Fidelidade onde importa (semântica de `affectsConfiguration`, update dispara
+change, registro duplicado lança, painel singleton) e honestidade nas bordas:
+API não simulada lança erro descritivo em vez de `undefined` silencioso (R6).
+O que o simulador não cobre, o E2E cobre no host real:
+
+```bash
+npm run test:e2e     # @vscode/test-electron sobre examples/hello (caminho feliz)
+```
+
+Requisitos do projeto do usuário (ver §6 e §16 do spec):
+
+- `target: ES2022`, `experimentalDecorators: false`, `useDefineForClassFields: true`
+  (decorators **stage 3**; `@Config` exige a palavra-chave `accessor`);
+- bundle com esbuild usando `--keep-names` (a chave de registry depende do nome
+  da classe) **e `--target=es2022`** (sem target o esbuild deixa a sintaxe de
+  decorator crua no bundle e o extension host não a executa);
+- `engines.vscode >= 1.75` — `activationEvents` de comandos são automáticos, o
+  sigil não os emite.
+
+## Status
+
+- **Fase 1 — Núcleo: completa.** `@Extension`, `@Command`, `@Config`, `@Watch`,
+  `@Activate`/`@Deactivate`, coletor AST, IR determinístico, emitters de
+  manifesto/wire/tipos, merge de `package.json`, `sigil build`.
+- **Fase 2 — Robustez: completa.** Todos os diagnósticos com caret na posição
+  exata; `sigil check` (CI — exit 1 em manifesto stale); `sigil dev` (watch
+  mode com anti-loop); cache incremental por hash do IR (mudança que não
+  altera o IR não reemite nada).
+- **Fase 3 — UI: completa.** `@TreeView`/`@TreeRoot`/`@TreeChildren`/`@TreeItem`
+  com adaptador de `TreeDataProvider` e refresh via `registry.trees`; comandos
+  dentro da classe da view (menu `view/title` ganha `when: view == <id>`
+  automático); `@Webview`/`@OnMessage` com shell HTML (CSP + nonce +
+  `asWebviewUri`), `retainContextWhenHidden`, roteador de mensagens tipado por
+  `type` (tipo desconhecido vira warning — R6), `post` injetado e painel
+  singleton via `registry.webviews.get(...)!.open()`; runtime do lado UI em
+  `@sigil/core/ui` (`postToHost`/`onHostMessage`). Diagnósticos SIGIL1012–1016.
+
+## Testes
+
+```bash
+npm test             # unidade + simulador + E2E do CLI
+npm run test:e2e     # extension host real (baixa o VSCode na primeira vez)
+```
+
+Camadas (§14): fixtures em `tests/fixtures/` com um caso por diagnóstico
+(asserção de código **e** linha do caret), snapshot de IR e de emitters sobre
+`examples/hello`, teste de merge (chaves não gerenciadas sobrevivem), teste de
+fronteira (falha o build se R1/R2 forem violadas — imports extraídos por AST,
+não regex), E2E dos comandos do CLI (`init`/`build`/`check` sobre cópias
+isoladas), o simulador `@sigil/test` sobre o bundle real, e o caminho feliz no
+extension host via `@vscode/test-electron`. O CI (GitHub Actions) roda tudo,
+incluindo `sigil check` como guardião de manifesto stale.

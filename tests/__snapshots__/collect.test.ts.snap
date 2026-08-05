@@ -1,0 +1,294 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
+{
+  "activateKey": "HelloExtension.onActivate",
+  "commands": [
+    {
+      "category": "Hello",
+      "id": "hello.openSettings",
+      "key": "HelloExtension.openSettings",
+      "loc": {
+        "character": 3,
+        "file": "src/extension.ts",
+        "line": 23,
+      },
+      "menus": [],
+      "title": "Open settings",
+    },
+    {
+      "icon": "$(refresh)",
+      "id": "hello.refreshTasks",
+      "key": "TasksView.refreshTasks",
+      "loc": {
+        "character": 3,
+        "file": "src/views/tasks.ts",
+        "line": 45,
+      },
+      "menus": [
+        {
+          "menu": "view/title",
+          "when": "view == hello.tasks",
+        },
+      ],
+      "title": "Refresh tasks",
+    },
+    {
+      "id": "hello.reset",
+      "key": "HelloExtension.reset",
+      "loc": {
+        "character": 3,
+        "file": "src/extension.ts",
+        "line": 18,
+      },
+      "menus": [
+        {
+          "menu": "editor/context",
+          "when": "editorFocus",
+        },
+      ],
+      "title": "Reset",
+      "when": "editorFocus",
+    },
+    {
+      "category": "Hello",
+      "id": "hello.sayHello",
+      "key": "HelloExtension.sayHello",
+      "keybinding": {
+        "key": "ctrl+alt+h",
+      },
+      "loc": {
+        "character": 3,
+        "file": "src/extension.ts",
+        "line": 13,
+      },
+      "menus": [],
+      "title": "Say hello",
+    },
+  ],
+  "configs": [
+    {
+      "default": "Olá",
+      "description": "Texto exibido na saudação",
+      "id": "hello.greeting",
+      "jsonType": "string",
+      "key": "HelloExtension.greeting",
+      "loc": {
+        "character": 12,
+        "file": "src/extension.ts",
+        "line": 7,
+      },
+      "tsType": "string",
+    },
+    {
+      "default": 3,
+      "description": "Número de tentativas",
+      "id": "hello.retries",
+      "jsonType": "number",
+      "key": "HelloExtension.retries",
+      "loc": {
+        "character": 12,
+        "file": "src/extension.ts",
+        "line": 10,
+      },
+      "maximum": 10,
+      "minimum": 1,
+      "tsType": "number",
+    },
+  ],
+  "extensionClass": "HelloExtension",
+  "prefix": "hello",
+  "sourceFile": "src/extension.ts",
+  "treeViews": [
+    {
+      "childrenKey": "TasksView.children",
+      "container": "explorer",
+      "id": "hello.tasks",
+      "itemKey": "TasksView.render",
+      "key": "TasksView",
+      "loc": {
+        "character": 14,
+        "file": "src/views/tasks.ts",
+        "line": 23,
+      },
+      "name": "Tasks",
+      "rootsKey": "TasksView.roots",
+      "sourceFile": "src/views/tasks.ts",
+    },
+  ],
+  "version": 2,
+  "watches": [
+    {
+      "key": "HelloExtension.onGreetingChanged",
+      "loc": {
+        "character": 3,
+        "file": "src/extension.ts",
+        "line": 28,
+      },
+      "targetConfigId": "hello.greeting",
+    },
+  ],
+  "webviews": [
+    {
+      "id": "hello.settings",
+      "key": "SettingsPanel",
+      "loc": {
+        "character": 14,
+        "file": "src/panels/settings.ts",
+        "line": 12,
+      },
+      "messageHandlers": [
+        {
+          "key": "SettingsPanel.onReset",
+          "type": "reset",
+        },
+        {
+          "key": "SettingsPanel.onSave",
+          "type": "save",
+        },
+      ],
+      "sourceFile": "src/panels/settings.ts",
+      "title": "Hello Settings",
+      "uiEntry": "ui/settings.html",
+    },
+  ],
+}
+`;
+
+exports[`coletor sobre examples/hello > snapshot do manifesto 1`] = `
+{
+  "commands": [
+    {
+      "category": "Hello",
+      "command": "hello.openSettings",
+      "title": "Open settings",
+    },
+    {
+      "command": "hello.refreshTasks",
+      "icon": "$(refresh)",
+      "title": "Refresh tasks",
+    },
+    {
+      "command": "hello.reset",
+      "title": "Reset",
+    },
+    {
+      "category": "Hello",
+      "command": "hello.sayHello",
+      "title": "Say hello",
+    },
+  ],
+  "configuration": {
+    "properties": {
+      "hello.greeting": {
+        "default": "Olá",
+        "description": "Texto exibido na saudação",
+        "type": "string",
+      },
+      "hello.retries": {
+        "default": 3,
+        "description": "Número de tentativas",
+        "maximum": 10,
+        "minimum": 1,
+        "type": "number",
+      },
+    },
+    "title": "Hello",
+  },
+  "keybindings": [
+    {
+      "command": "hello.sayHello",
+      "key": "ctrl+alt+h",
+    },
+  ],
+  "menus": {
+    "editor/context": [
+      {
+        "command": "hello.reset",
+        "when": "editorFocus",
+      },
+    ],
+    "view/title": [
+      {
+        "command": "hello.refreshTasks",
+        "when": "view == hello.tasks",
+      },
+    ],
+  },
+  "views": {
+    "explorer": [
+      {
+        "id": "hello.tasks",
+        "name": "Tasks",
+      },
+    ],
+  },
+}
+`;
+
+exports[`coletor sobre examples/hello > snapshot do wire 1`] = `
+"// GERADO POR sigil — NÃO EDITE
+import * as vscode from "vscode";
+import { registry, bindConfigWatchers, bindTreeView, bindWebview } from "@sigil/core";
+import { HelloExtension } from "../extension";
+import { TasksView } from "../views/tasks";
+import { SettingsPanel } from "../panels/settings";
+
+const COMMANDS = [
+  {
+    "key": "HelloExtension.openSettings",
+    "id": "hello.openSettings"
+  },
+  {
+    "key": "TasksView.refreshTasks",
+    "id": "hello.refreshTasks"
+  },
+  {
+    "key": "HelloExtension.reset",
+    "id": "hello.reset"
+  },
+  {
+    "key": "HelloExtension.sayHello",
+    "id": "hello.sayHello"
+  }
+] as const;
+const WATCHES = [
+  {
+    "key": "HelloExtension.onGreetingChanged",
+    "targetConfigId": "hello.greeting"
+  }
+] as const;
+
+let instance: HelloExtension | undefined;
+
+export function activate(ctx: vscode.ExtensionContext) {
+  registry.prefix = "hello";
+  instance = new HelloExtension();
+  new TasksView();
+  ctx.subscriptions.push(bindTreeView({"key":"TasksView","id":"hello.tasks","rootsKey":"TasksView.roots","childrenKey":"TasksView.children","itemKey":"TasksView.render"}));
+  ctx.subscriptions.push(bindWebview(new SettingsPanel(), {"key":"SettingsPanel","id":"hello.settings","title":"Hello Settings","uiEntry":"ui/settings.html","handlers":[{"type":"reset","key":"SettingsPanel.onReset"},{"type":"save","key":"SettingsPanel.onSave"}]}, ctx));
+  for (const c of COMMANDS) {
+    const fn = registry.commands.get(c.key);
+    if (!fn) throw new Error(\`sigil: handler ausente para \${c.key}. Rode 'sigil build'.\`);
+    ctx.subscriptions.push(vscode.commands.registerCommand(c.id, fn));
+  }
+  ctx.subscriptions.push(bindConfigWatchers(WATCHES));
+  registry.lifecycle.get("HelloExtension.onActivate")?.(ctx);
+}
+
+export function deactivate() {
+  instance = undefined;
+}
+"
+`;
+
+exports[`coletor sobre examples/hello > snapshot dos tipos 1`] = `
+"// GERADO POR sigil — NÃO EDITE
+export interface SigilConfig {
+  "hello.greeting": string;
+  "hello.retries": number;
+}
+
+export declare function getConfig<K extends keyof SigilConfig>(key: K): SigilConfig[K];
+"
+`;

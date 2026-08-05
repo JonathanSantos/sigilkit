@@ -1,0 +1,7 @@
+node_modules/
+dist/
+out/
+.generated/
+.tmp/
+.vscode-test/
+*.tsbuildinfo

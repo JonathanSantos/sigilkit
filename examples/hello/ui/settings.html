@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Hello Settings</title>
+  <style>
+    body { font-family: var(--vscode-font-family); padding: 1rem; }
+    button { margin-right: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Hello Settings</h1>
+  <p>Saudação atual: <strong id="greeting">…</strong></p>
+  <input id="input" type="text" placeholder="Nova saudação">
+  <button id="save">Salvar</button>
+  <button id="reset">Reset</button>
+  <script>
+    const vscode = acquireVsCodeApi();
+    document.getElementById("save").addEventListener("click", () => {
+      vscode.postMessage({ type: "save", value: { greeting: document.getElementById("input").value } });
+    });
+    document.getElementById("reset").addEventListener("click", () => {
+      vscode.postMessage({ type: "reset" });
+    });
+    window.addEventListener("message", (event) => {
+      const msg = event.data;
+      if (msg.type === "state") {
+        document.getElementById("greeting").textContent = msg.value.greeting;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`shell HTML do webview (§15.2) > snapshot do shell completo 1`] = `
+"<!DOCTYPE html>
+<html><head>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-NONCE123'; style-src https://csp.example 'unsafe-inline'; img-src https://csp.example https: data:;"><title>t</title></head>
+<body><img src="resolved:a.png"><script nonce="NONCE123">go()</script></body></html>"
+`;

@@ -1,0 +1,14 @@
+export * from "./ir";
+export { hashIR } from "./ir-hash";
+export { collect, getDecorator } from "./collect/visitor";
+export type { CollectOptions, CollectResult } from "./collect/visitor";
+export { createProgramFromTsconfig } from "./collect/program";
+export { evalStatic, StaticEvalError } from "./collect/static-eval";
+export { typeNodeToSchema, schemaFromValue } from "./collect/type-to-schema";
+export type { SchemaInfo } from "./collect/type-to-schema";
+export { validate } from "./validate";
+export { diagAt, diagAtLoc, diagGlobal, formatDiagnostics, SIGIL } from "./diagnostics";
+export { emitManifest, OWNED_CONTRIBUTES } from "./emit/manifest";
+export type { Contributes, OwnedContributeKey } from "./emit/manifest";
+export { emitWire } from "./emit/wire";
+export { emitTypes } from "./emit/types";
