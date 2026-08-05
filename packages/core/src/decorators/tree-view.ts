@@ -1,10 +1,20 @@
 import * as vscode from "vscode";
 import { registry } from "../registry";
+import { registerBoundMember } from "../metadata";
+
+/** Container customizado declarado inline; o sigil emite contributes.viewsContainers. */
+export interface ViewContainerSpec {
+  id: string;
+  title: string;
+  /** caminho do ícone relativo à raiz da extensão (ex.: "media/icon.svg") */
+  icon: string;
+  location?: "activitybar" | "panel";
+}
 
 export interface TreeViewOptions {
   id: string;
   name: string;
-  container?: "explorer" | "scm" | "debug" | (string & {});
+  container?: "explorer" | "scm" | "debug" | (string & {}) | ViewContainerSpec;
 }
 
 /**
@@ -19,31 +29,19 @@ export function TreeView(_opts: TreeViewOptions) {
   ): void {};
 }
 
-function treeHandlerDecorator() {
-  return function <This, Value extends (this: This, ...args: any[]) => any>(
-    value: Value,
-    ctx: ClassMethodDecoratorContext<This, Value>
-  ): void {
-    ctx.addInitializer(function (this: This) {
-      const key = `${(this as object).constructor.name}.${String(ctx.name)}`;
-      registry.treeHandlers.set(key, (value as (...args: unknown[]) => unknown).bind(this));
-    });
-  };
-}
-
 /** Método que retorna os nós raiz da árvore. Obrigatório. */
 export function TreeRoot() {
-  return treeHandlerDecorator();
+  return registerBoundMember("treeHandlers");
 }
 
 /** Método que retorna os filhos de um nó. Opcional (árvore rasa sem ele). */
 export function TreeChildren() {
-  return treeHandlerDecorator();
+  return registerBoundMember("treeHandlers");
 }
 
 /** Método que converte um nó em vscode.TreeItem. Obrigatório. */
 export function TreeItem() {
-  return treeHandlerDecorator();
+  return registerBoundMember("treeHandlers");
 }
 
 export interface TreeViewBinding {

@@ -52,4 +52,22 @@ describe("merge do package.json (§11)", () => {
     const keys = Object.keys(JSON.parse(out));
     expect(keys).toEqual(["name", "version", "engines", "main", "contributes", "scripts"]);
   });
+
+  it("viewsContainers é condicional: preservado quando não emitido, substituído quando emitido", () => {
+    const withContainers = JSON.stringify({
+      name: "x",
+      contributes: {
+        viewsContainers: { activitybar: [{ id: "hand", title: "Hand", icon: "i.svg" }] },
+      },
+    });
+    const kept = JSON.parse(mergePackageJson(withContainers, {}));
+    expect(kept.contributes.viewsContainers.activitybar[0].id).toBe("hand");
+
+    const replaced = JSON.parse(
+      mergePackageJson(withContainers, {
+        viewsContainers: { activitybar: [{ id: "gen", title: "G", icon: "g.svg" }] },
+      })
+    );
+    expect(replaced.contributes.viewsContainers.activitybar[0].id).toBe("gen");
+  });
 });

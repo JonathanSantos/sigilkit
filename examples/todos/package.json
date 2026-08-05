@@ -14,7 +14,7 @@
   "main": "./out/extension.js",
   "scripts": {
     "build": "sigil build && npm run bundle",
-    "bundle": "esbuild src/.generated/wire.ts --bundle --platform=node --format=cjs --target=es2022 --external:vscode --keep-names --sourcemap --outfile=out/extension.js",
+    "bundle": "esbuild src/.generated/wire.ts --bundle --platform=node --format=cjs --target=es2022 --external:vscode --sourcemap --outfile=out/extension.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -40,7 +40,8 @@
       },
       {
         "command": "todos.toggleDone",
-        "title": "Toggle Done"
+        "title": "Toggle Done",
+        "icon": "$(check)"
       }
     ],
     "configuration": {
@@ -63,15 +64,25 @@
       "view/item/context": [
         {
           "command": "todos.toggleDone",
-          "when": "view == todos.list"
+          "when": "view == todos.list",
+          "group": "inline"
         }
       ]
     },
     "views": {
-      "explorer": [
+      "todos-suite": [
         {
           "id": "todos.list",
           "name": "Todos"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "todos-suite",
+          "title": "Todos",
+          "icon": "media/icon.svg"
         }
       ]
     }

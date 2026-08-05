@@ -1,4 +1,5 @@
 import { registry } from "../registry";
+import { registerBoundMember } from "../metadata";
 
 export interface ExtensionOptions {
   prefix?: string;
@@ -21,26 +22,10 @@ export function Extension(opts: ExtensionOptions = {}) {
 
 /** Método chamado depois do wiring, no activate() gerado. */
 export function Activate() {
-  return function <This, Value extends (this: This, ...args: any[]) => any>(
-    value: Value,
-    ctx: ClassMethodDecoratorContext<This, Value>
-  ): void {
-    ctx.addInitializer(function (this: This) {
-      const key = `${(this as object).constructor.name}.${String(ctx.name)}`;
-      registry.lifecycle.set(key, (value as (...args: unknown[]) => unknown).bind(this));
-    });
-  };
+  return registerBoundMember("lifecycle");
 }
 
 /** Método chamado no deactivate() gerado. */
 export function Deactivate() {
-  return function <This, Value extends (this: This, ...args: any[]) => any>(
-    value: Value,
-    ctx: ClassMethodDecoratorContext<This, Value>
-  ): void {
-    ctx.addInitializer(function (this: This) {
-      const key = `${(this as object).constructor.name}.${String(ctx.name)}`;
-      registry.lifecycle.set(key, (value as (...args: unknown[]) => unknown).bind(this));
-    });
-  };
+  return registerBoundMember("lifecycle");
 }

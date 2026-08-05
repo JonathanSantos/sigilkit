@@ -18,14 +18,22 @@ describe("todos — tree interativa", () => {
     await host.dispose();
   });
 
-  it("manifesto: menus view/* escopados automaticamente à própria view", () => {
+  it("manifesto: container inline, menus por entrada e when auto-escopado", () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(projectDir, "package.json"), "utf8"));
-    expect(pkg.contributes.views.explorer).toEqual([{ id: "todos.list", name: "Todos" }]);
+    // container customizado declarado inline no @TreeView
+    expect(pkg.contributes.viewsContainers).toEqual({
+      activitybar: [{ id: "todos-suite", title: "Todos", icon: "media/icon.svg" }],
+    });
+    expect(pkg.contributes.views["todos-suite"]).toEqual([{ id: "todos.list", name: "Todos" }]);
+    // título via const local (avaliador estático segue consts)
+    const add = pkg.contributes.commands.find((c: { command: string }) => c.command === "todos.addTodo");
+    expect(add.title).toBe("Add Todo");
     expect(pkg.contributes.menus["view/title"]).toEqual([
       { command: "todos.addTodo", when: "view == todos.list" },
     ]);
+    // forma por-entrada: group definido só nesta entrada
     expect(pkg.contributes.menus["view/item/context"]).toEqual([
-      { command: "todos.toggleDone", when: "view == todos.list" },
+      { command: "todos.toggleDone", group: "inline", when: "view == todos.list" },
     ]);
   });
 

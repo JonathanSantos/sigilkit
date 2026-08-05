@@ -47,10 +47,17 @@ export class TodosExtension {
   }
 }
 
-// Tree rasa (sem @TreeChildren) sobre estado mutável. Os comandos de menu
-// "view/*" ganham `when: view == todos.list` automático — não aparecem em
-// views de outras extensões.
-@TreeView({ id: "list", name: "Todos", container: "explorer" })
+// título via const: o avaliador estático segue `const` com initializer literal
+const ADD_TODO_TITLE = "Add Todo";
+
+// Tree rasa (sem @TreeChildren) sobre estado mutável, num container CUSTOMIZADO
+// declarado inline — o sigil emite contributes.viewsContainers. Os comandos de
+// menu "view/*" ganham `when: view == todos.list` automático.
+@TreeView({
+  id: "list",
+  name: "Todos",
+  container: { id: "todos-suite", title: "Todos", icon: "media/icon.svg" },
+})
 export class TodoList {
   @TreeRoot()
   roots(): Todo[] {
@@ -69,7 +76,7 @@ export class TodoList {
     return item;
   }
 
-  @Command({ title: "Add Todo", icon: "$(add)", menu: "view/title" })
+  @Command({ title: ADD_TODO_TITLE, icon: "$(add)", menu: "view/title" })
   async addTodo() {
     const label = await vscode.window.showInputBox({ prompt: "Novo todo" });
     if (!label) return;
@@ -77,8 +84,9 @@ export class TodoList {
     refresh();
   }
 
-  // o VSCode passa o ELEMENTO da tree (nosso Todo) como argumento
-  @Command({ title: "Toggle Done", menu: "view/item/context" })
+  // o VSCode passa o ELEMENTO da tree (nosso Todo) como argumento;
+  // forma por-entrada de menu: group "inline" mostra a ação no próprio item
+  @Command({ title: "Toggle Done", icon: "$(check)", menu: [{ id: "view/item/context", group: "inline" }] })
   toggleDone(todo: Todo) {
     store.toggle(todo.id);
     refresh();

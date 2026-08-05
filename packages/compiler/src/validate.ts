@@ -46,6 +46,16 @@ export function validate(ir: IR, program: ts.Program, projectDir: string): ts.Di
     webviewIds.add(w.id);
   }
 
+  // SIGIL1017: @StatusBar apontando para comando da própria extensão que não existe
+  const knownCommandIds = new Set(ir.commands.map((c) => c.id));
+  for (const sb of ir.statusBars) {
+    if (sb.command && sb.command.startsWith(`${ir.prefix}.`) && !knownCommandIds.has(sb.command)) {
+      diags.push(
+        diagAtLoc(program, projectDir, sb.loc, SIGIL.UnknownCommandReference, `@StatusBar referencia comando inexistente: ${sb.command}`)
+      );
+    }
+  }
+
   const keybindings = new Map<string, string>();
   for (const c of ir.commands) {
     if (!c.keybinding) continue;

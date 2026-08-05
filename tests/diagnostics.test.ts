@@ -102,6 +102,26 @@ describe("diagnósticos (§9)", () => {
     const { diags } = collectFixture("missing-option.ts");
     expect(lineOf(only(diags, SIGIL.MissingRequiredOption))).toBe(6);
   });
+
+  it("SIGIL1017 — @StatusBar referencia comando inexistente", () => {
+    const { diags } = collectFixture("statusbar-bad-command.ts");
+    expect(lineOf(only(diags, SIGIL.UnknownCommandReference))).toBe(6);
+  });
+});
+
+describe("avaliador estático seguindo consts (item 8)", () => {
+  it("resolve identificadores para const de literal — inclusive objetos e `as const`", () => {
+    const { ir, diags } = collectFixture("const-options.ts");
+    expect(diags).toEqual([]);
+    expect(ir!.commands.map((c) => c.title)).toEqual(["From Const", "Object Const"]);
+    expect(ir!.commands[1]!.category).toBe("Fx");
+    expect(ir!.configs[0]).toMatchObject({ id: "fx.greeting", default: "hi" });
+  });
+
+  it("`let` continua sendo rejeitado (SIGIL1001)", () => {
+    const { diags } = collectFixture("non-literal.ts");
+    expect(diags.some((d) => d.code === SIGIL.NotStaticLiteral)).toBe(true);
+  });
 });
 
 describe("inferência de schema (§8.3)", () => {
@@ -112,9 +132,10 @@ describe("inferência de schema (§8.3)", () => {
   });
 
   it("união de literais string → enum; array → items; sem anotação → infere do default", () => {
-    expect(ir!.configs.map((c) => c.id)).toEqual(["fx.enabled", "fx.mode", "fx.tags"]);
-    const [enabled, mode, tags] = ir!.configs;
+    expect(ir!.configs.map((c) => c.id)).toEqual(["fx.enabled", "fx.legacy", "fx.mode", "fx.tags"]);
+    const [enabled, legacy, mode, tags] = ir!.configs;
     expect(enabled).toMatchObject({ jsonType: "boolean", default: true });
+    expect(legacy).toMatchObject({ deprecationMessage: "use mode" });
     expect(mode).toMatchObject({
       jsonType: "string",
       enum: ["fast", "slow"],

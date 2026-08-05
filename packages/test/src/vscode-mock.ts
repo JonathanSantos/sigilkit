@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 
 /**
@@ -69,6 +70,30 @@ export interface TreeDataProviderLike {
   getChildren(element?: unknown): unknown;
 }
 
+export class StatusBarItemMock {
+  text = "";
+  tooltip?: string;
+  command?: string;
+  name?: string;
+  shown = false;
+
+  constructor(
+    readonly alignment: number,
+    readonly priority?: number
+  ) {}
+
+  show(): void {
+    this.shown = true;
+  }
+  hide(): void {
+    this.shown = false;
+  }
+  dispose(): void {
+    this.shown = false;
+  }
+}
+
+/** Serve tanto de WebviewPanel quanto de WebviewView (sidebar) fake. */
 export class WebviewPanelMock {
   readonly viewType: string;
   title: string;
@@ -79,6 +104,8 @@ export class WebviewPanelMock {
   readonly webview: {
     cspSource: string;
     html: string;
+    /** WebviewView: options são atribuídas no resolve */
+    options?: unknown;
     asWebviewUri(uri: UriMock): { toString(): string };
     postMessage(msg: unknown): Promise<boolean>;
     onDidReceiveMessage(cb: (msg: unknown) => void): DisposableLike;
@@ -128,6 +155,11 @@ export class WebviewPanelMock {
     this.revealCount++;
   }
 
+  /** WebviewView usa show() em vez de reveal() */
+  show(): void {
+    this.revealCount++;
+  }
+
   onDidDispose(cb: () => void): DisposableLike {
     this.disposeHandlers.push(cb);
     return { dispose() {} };
@@ -155,6 +187,9 @@ export interface VscodeMockState {
   quickPickQueue: unknown[];
   treeProviders: Map<string, TreeDataProviderLike>;
   panels: WebviewPanelMock[];
+  webviewViewProviders: Map<string, { resolveWebviewView(view: unknown): unknown }>;
+  webviewViews: Map<string, WebviewPanelMock>;
+  statusBarItems: StatusBarItemMock[];
   configListeners: ((e: { affectsConfiguration(section: string): boolean }) => void)[];
   fireConfigChange(changedId: string): void;
 }
@@ -171,6 +206,9 @@ export function createState(): VscodeMockState {
     quickPickQueue: [],
     treeProviders: new Map(),
     panels: [],
+    webviewViewProviders: new Map(),
+    webviewViews: new Map(),
+    statusBarItems: [],
     configListeners: [],
     fireConfigChange(changedId: string) {
       const event = {
@@ -192,12 +230,33 @@ function unsupported(what: string): never {
 export function createVscodeMock(state: VscodeMockState): Record<string, unknown> {
   const fullId = (section: string, key: string) => (section ? `${section}.${key}` : key);
 
+  /** VSCode resolve a view no primeiro show; o comando "<id>.focus" faz isso aqui. */
+  const resolveWebviewView = async (viewId: string): Promise<WebviewPanelMock> => {
+    const provider = state.webviewViewProviders.get(viewId);
+    if (!provider) {
+      throw new Error(
+        `sigil-test: nenhum WebviewViewProvider registrado como '${viewId}' (registrados: ${[...state.webviewViewProviders.keys()].sort().join(", ") || "nenhum"})`
+      );
+    }
+    const existing = state.webviewViews.get(viewId);
+    if (existing && !existing.disposed) {
+      existing.show();
+      return existing;
+    }
+    const view = new WebviewPanelMock(viewId, viewId);
+    state.webviewViews.set(viewId, view);
+    await provider.resolveWebviewView(view);
+    return view;
+  };
+
   return {
     EventEmitter: EventEmitterMock,
     TreeItem: TreeItemMock,
     TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
     ViewColumn: { Active: -1, Beside: -2, One: 1, Two: 2, Three: 3 },
     ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
+    StatusBarAlignment: { Left: 1, Right: 2 },
+    __resolveWebviewView: resolveWebviewView,
     Uri: {
       file: uriFile,
       joinPath: (base: UriMock, ...parts: string[]) => uriFile(path.join(base.fsPath, ...parts)),
@@ -232,6 +291,15 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
         state.panels.push(panel);
         return panel;
       },
+      registerWebviewViewProvider: (id: string, provider: { resolveWebviewView(view: unknown): unknown }) => {
+        state.webviewViewProviders.set(id, provider);
+        return { dispose: () => state.webviewViewProviders.delete(id) };
+      },
+      createStatusBarItem: (alignment?: number, priority?: number) => {
+        const item = new StatusBarItemMock(alignment ?? 1, priority);
+        state.statusBarItems.push(item);
+        return item;
+      },
     },
     commands: {
       registerCommand: (id: string, fn: (...args: unknown[]) => unknown) => {
@@ -244,14 +312,19 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
       },
       executeCommand: (id: string, ...args: unknown[]) => {
         const fn = state.commands.get(id);
-        if (!fn) {
-          return Promise.reject(
-            new Error(
-              `sigil-test: comando desconhecido '${id}' — o simulador só conhece comandos registrados pela extensão (${[...state.commands.keys()].sort().join(", ") || "nenhum"})`
-            )
-          );
+        if (fn) return Promise.resolve(fn(...args));
+        // o VSCode gera "<viewId>.focus" para toda view contribuída
+        if (id.endsWith(".focus")) {
+          const viewId = id.slice(0, -".focus".length);
+          if (state.webviewViewProviders.has(viewId)) {
+            return resolveWebviewView(viewId).then(() => undefined);
+          }
         }
-        return Promise.resolve(fn(...args));
+        return Promise.reject(
+          new Error(
+            `sigil-test: comando desconhecido '${id}' — o simulador só conhece comandos registrados pela extensão (${[...state.commands.keys()].sort().join(", ") || "nenhum"})`
+          )
+        );
       },
       getCommands: () => Promise.resolve([...state.commands.keys()]),
     },
@@ -280,6 +353,10 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
             state.configListeners = state.configListeners.filter((l) => l !== cb);
           },
         };
+      },
+      fs: {
+        readFile: (uri: UriMock): Promise<Uint8Array> =>
+          Promise.resolve(new Uint8Array(fs.readFileSync(uri.fsPath))),
       },
       get workspaceFolders() {
         return unsupported("workspace.workspaceFolders");

@@ -34,6 +34,17 @@ describe("@sigil/test — hello no simulador", () => {
     ]);
   });
 
+  it("status bar criada na ativação com texto default lido da AST", () => {
+    expect(host.statusBarItems).toHaveLength(1);
+    const item = host.statusBarItems[0]!;
+    expect(item.shown).toBe(true);
+    expect(item.text).toBe("$(megaphone) Olá");
+    expect(item.command).toBe("hello.sayHello");
+    expect(item.alignment).toBe(1); // Left
+    expect(item.priority).toBe(100);
+    expect(item.tooltip).toBe("Diga olá");
+  });
+
   it("comando lê a config viva (default semeado do manifesto)", async () => {
     await host.executeCommand("hello.sayHello");
     expect(host.infoMessages).toEqual(["Olá!"]);
@@ -102,5 +113,10 @@ describe("@sigil/test — hello no simulador", () => {
     await host.executeCommand("hello.openSettings");
     expect(host.webviewPanels).toHaveLength(1);
     expect(host.panel("hello.settings").revealCount).toBe(1);
+  });
+
+  it("atribuir ao accessor @StatusBar atualiza o item vivo", async () => {
+    await host.executeCommand("hello.sayHello");
+    expect(host.statusBarItems[0]!.text).toBe("$(megaphone) Olá!");
   });
 });

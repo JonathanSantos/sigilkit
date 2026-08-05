@@ -17,6 +17,20 @@ exports[`inferência de schema (§8.3) > snapshot do IR 1`] = `
       "tsType": "boolean",
     },
     {
+      "default": "x",
+      "deprecationMessage": "use mode",
+      "description": "antiga",
+      "id": "fx.legacy",
+      "jsonType": "string",
+      "key": "Fx.legacy",
+      "loc": {
+        "character": 12,
+        "file": "union-and-array.ts",
+        "line": 15,
+      },
+      "tsType": "string",
+    },
+    {
       "default": "fast",
       "description": "modo de execução",
       "enum": [
@@ -55,8 +69,10 @@ exports[`inferência de schema (§8.3) > snapshot do IR 1`] = `
   "extensionClass": "Fx",
   "prefix": "fx",
   "sourceFile": "union-and-array.ts",
+  "statusBars": [],
   "treeViews": [],
-  "version": 2,
+  "version": 3,
+  "viewContainers": [],
   "watches": [],
   "webviews": [],
 }

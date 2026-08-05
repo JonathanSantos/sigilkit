@@ -44,7 +44,7 @@ function templateFiles(name: string): TemplateFile[] {
     scripts: {
       build: "sigil build && npm run bundle",
       bundle:
-        "esbuild src/.generated/wire.ts --bundle --platform=node --format=cjs --target=es2022 --external:vscode --keep-names --sourcemap --outfile=out/extension.js",
+        "esbuild src/.generated/wire.ts --bundle --platform=node --format=cjs --target=es2022 --external:vscode --sourcemap --outfile=out/extension.js",
       check: "sigil check",
       dev: "sigil dev",
       typecheck: "tsc --noEmit",

@@ -7,10 +7,15 @@ export interface TreeHandle {
 }
 
 export interface WebviewHandle {
-  /** Cria o painel (ou revela, se já aberto). */
-  open(): void;
-  /** Envia mensagem para o lado UI; descarta com warning se o painel estiver fechado. */
+  /** Painel: cria (ou revela). Sidebar: foca a view (o resolve acontece no primeiro show). */
+  open(): Promise<void>;
+  /** Envia mensagem para o lado UI; descarta com warning se o alvo não estiver visível. */
   post(msg: unknown): void;
+}
+
+export interface StatusBarItemLike {
+  text: string;
+  dispose(): void;
 }
 
 /**
@@ -32,6 +37,8 @@ export class Registry {
   readonly treeHandlers = new Map<string, (...args: unknown[]) => unknown>();
   readonly webviews = new Map<string, WebviewHandle>();
   readonly webviewHandlers = new Map<string, (value: unknown) => unknown>();
+  /** buckets adotados por nome declarado de classe (ver metadata.ts) */
+  readonly buckets = new Map<string, import("./metadata").Bucket>();
 }
 
 export const registry = new Registry();

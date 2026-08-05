@@ -50,9 +50,12 @@ describe("counter — o menor sigil possível", () => {
     expect(host.infoMessages.length).toBe(before);
   });
 
-  it("reset zera", async () => {
+  it("reset zera o contador e devolve o step para 1 via setConfig tipado", async () => {
     host.configuration.set("counter.mode", "verbose");
     await host.executeCommand("counter.reset");
     expect(host.infoMessages.at(-1)).toBe("Counter: 0");
+    // setConfig("counter.step", 1) escreveu no workspace e disparou o @Watch
+    expect(host.configuration.get("counter.step")).toBe(1);
+    expect(logSpy).toHaveBeenCalledWith("step: 10 → 1");
   });
 });

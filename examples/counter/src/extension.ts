@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { Extension, Command, Config, Watch } from "@sigil/core";
+import { Extension, Command, Config, Watch, setConfig } from "@sigil/core";
 
 // O menor sigil possível: sem prefix explícito (deriva do `name` do
 // package.json → "counter"), uma classe, um arquivo.
@@ -28,6 +28,8 @@ export class CounterExtension {
   @Command({ title: "Reset", category: "Counter" })
   reset() {
     this.count = 0;
+    // setConfig tipado pela augmentation: "counter.step" só aceita number
+    void setConfig("counter.step", 1);
     vscode.window.showInformationMessage("Counter: 0");
   }
 

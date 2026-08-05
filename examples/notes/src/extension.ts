@@ -14,13 +14,14 @@ export class NotesExtension {
 
   @Command({ title: "Open Notes", category: "Notes" })
   open() {
-    registry.webviews.get("NotesPanel")!.open();
+    return registry.webviews.get("NotesPanel")!.open();
   }
 }
 
-// O estado vive na instância (criada uma vez na ativação), não no painel:
-// fechar e reabrir o webview não perde as notas.
-@Webview({ id: "panel", title: "Notes", ui: "./ui/notes.html" })
+// Webview de SIDEBAR: entra em contributes.views (type "webview") e o open()
+// foca a view. O estado vive na instância, não na view: fechar e reabrir a
+// sidebar não perde as notas.
+@Webview({ id: "panel", title: "Notes", ui: "./ui/notes.html", location: "sidebar", container: "explorer" })
 export class NotesPanel {
   private notes: Note[] = [];
   private nextId = 1;

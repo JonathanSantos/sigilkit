@@ -24,9 +24,11 @@ export function emitWire(ir: IR): string {
   const cmds = ir.commands.map((c) => ({ key: c.key, id: c.id }));
   const watches = ir.watches.map((w) => ({ key: w.key, targetConfigId: w.targetConfigId }));
 
-  const coreImports = ["registry", "bindConfigWatchers"];
+  const coreImports = ["registry", "adoptRegistrations", "bindConfigWatchers"];
   if (ir.treeViews.length > 0) coreImports.push("bindTreeView");
-  if (ir.webviews.length > 0) coreImports.push("bindWebview");
+  if (ir.webviews.some((w) => w.location === "panel")) coreImports.push("bindWebview");
+  if (ir.webviews.some((w) => w.location === "sidebar")) coreImports.push("bindWebviewView");
+  if (ir.statusBars.length > 0) coreImports.push("bindStatusBar");
 
   const byFile = new Map<string, Set<string>>();
   const addImport = (file: string, cls: string): void => {
@@ -44,14 +46,29 @@ export function emitWire(ir: IR): string {
   const treeSetup = ir.treeViews
     .map((t) => {
       const binding = { key: t.key, id: t.id, rootsKey: t.rootsKey, childrenKey: t.childrenKey, itemKey: t.itemKey };
-      return `  new ${t.key}();\n  ctx.subscriptions.push(bindTreeView(${JSON.stringify(binding)}));\n`;
+      return `  new ${t.key}();\n  adoptRegistrations(${JSON.stringify(t.key)}, ${t.key});\n  ctx.subscriptions.push(bindTreeView(${JSON.stringify(binding)}));\n`;
     })
     .join("");
 
   const webviewSetup = ir.webviews
     .map((w) => {
       const binding = { key: w.key, id: w.id, title: w.title, uiEntry: w.uiEntry, handlers: w.messageHandlers };
-      return `  ctx.subscriptions.push(bindWebview(new ${w.key}(), ${JSON.stringify(binding)}, ctx));\n`;
+      const bindFn = w.location === "sidebar" ? "bindWebviewView" : "bindWebview";
+      return `  const wv_${w.key} = new ${w.key}();\n  adoptRegistrations(${JSON.stringify(w.key)}, ${w.key});\n  ctx.subscriptions.push(${bindFn}(wv_${w.key}, ${JSON.stringify(binding)}, ctx));\n`;
+    })
+    .join("");
+
+  const statusBarSetup = ir.statusBars
+    .map((s) => {
+      const binding = {
+        key: s.key,
+        alignment: s.alignment,
+        priority: s.priority,
+        command: s.command,
+        tooltip: s.tooltip,
+        name: s.name,
+      };
+      return `  ctx.subscriptions.push(bindStatusBar(${JSON.stringify(binding)}));\n`;
     })
     .join("");
 
@@ -68,7 +85,8 @@ let instance: ${ir.extensionClass} | undefined;
 export function activate(ctx: vscode.ExtensionContext) {
   registry.prefix = ${JSON.stringify(ir.prefix)};
   instance = new ${ir.extensionClass}();
-${treeSetup}${webviewSetup}  for (const c of COMMANDS) {
+  adoptRegistrations(${JSON.stringify(ir.extensionClass)}, ${ir.extensionClass});
+${treeSetup}${webviewSetup}${statusBarSetup}  for (const c of COMMANDS) {
     const fn = registry.commands.get(c.key);
     if (!fn) throw new Error(\`sigil: handler ausente para \${c.key}. Rode 'sigil build'.\`);
     ctx.subscriptions.push(vscode.commands.registerCommand(c.id, fn));

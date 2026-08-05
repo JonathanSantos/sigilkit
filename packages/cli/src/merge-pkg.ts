@@ -1,4 +1,4 @@
-import { OWNED_CONTRIBUTES, type Contributes } from "@sigil/compiler";
+import { CONDITIONAL_CONTRIBUTES, OWNED_CONTRIBUTES, type Contributes } from "@sigil/compiler";
 
 function isEmpty(v: unknown): boolean {
   if (v === undefined || v === null) return true;
@@ -23,6 +23,11 @@ export function mergePackageJson(pkgText: string, emitted: Contributes): string 
     const value = emitted[key];
     if (isEmpty(value)) delete contributes[key];
     else contributes[key] = value;
+  }
+  // condicionais: substituídas quando emitidas, preservadas quando ausentes
+  for (const key of CONDITIONAL_CONTRIBUTES) {
+    const value = emitted[key];
+    if (!isEmpty(value)) contributes[key] = value;
   }
   return JSON.stringify(pkg, null, 2) + "\n";
 }

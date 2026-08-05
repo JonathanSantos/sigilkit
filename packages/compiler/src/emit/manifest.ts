@@ -12,7 +12,15 @@ import { compact } from "../util";
 export const OWNED_CONTRIBUTES = ["commands", "configuration", "menus", "keybindings", "views"] as const;
 export type OwnedContributeKey = (typeof OWNED_CONTRIBUTES)[number];
 
-export type Contributes = Partial<Record<OwnedContributeKey, unknown>>;
+/**
+ * Chaves de propriedade CONDICIONAL: substituídas integralmente quando o
+ * sigil as emite, mas NUNCA removidas quando ausentes — o usuário pode
+ * mantê-las à mão enquanto não usar a forma declarativa (container inline).
+ */
+export const CONDITIONAL_CONTRIBUTES = ["viewsContainers"] as const;
+export type ConditionalContributeKey = (typeof CONDITIONAL_CONTRIBUTES)[number];
+
+export type Contributes = Partial<Record<OwnedContributeKey | ConditionalContributeKey, unknown>>;
 
 /** IR → bloco contributes. Retorna APENAS as chaves gerenciadas não-vazias. */
 export function emitManifest(ir: IR): Contributes {
@@ -41,6 +49,7 @@ export function emitManifest(ir: IR): Contributes {
         enum: c.enum,
         minimum: c.minimum,
         maximum: c.maximum,
+        deprecationMessage: c.deprecationMessage,
         items: c.items,
       });
     }
@@ -65,20 +74,31 @@ export function emitManifest(ir: IR): Contributes {
         command: c.id,
         key: c.keybinding!.key,
         mac: c.keybinding!.mac,
+        linux: c.keybinding!.linux,
+        win: c.keybinding!.win,
         when: c.keybinding!.when ?? c.when,
       })
     );
   if (keybindings.length > 0) out.keybindings = keybindings;
 
-  if (ir.treeViews.length > 0) {
-    const views: Record<string, { id: string; name: string }[]> = {};
-    for (const t of ir.treeViews) {
-      (views[t.container] ??= []).push({ id: t.id, name: t.name });
-    }
-    out.views = views;
+  const views: Record<string, unknown[]> = {};
+  for (const t of ir.treeViews) {
+    (views[t.container] ??= []).push({ id: t.id, name: t.name });
   }
+  // webviews de sidebar são views com type "webview"; painéis não contribuem nada
+  for (const w of ir.webviews) {
+    if (w.location !== "sidebar") continue;
+    (views[w.container ?? "explorer"] ??= []).push({ id: w.id, name: w.name ?? w.title, type: "webview" });
+  }
+  if (Object.keys(views).length > 0) out.views = views;
 
-  // webviews não contribuem nada no manifesto: painéis são criados em runtime.
+  if (ir.viewContainers.length > 0) {
+    const grouped: Record<string, unknown[]> = {};
+    for (const c of ir.viewContainers) {
+      (grouped[c.location] ??= []).push({ id: c.id, title: c.title, icon: c.icon });
+    }
+    out.viewsContainers = grouped;
+  }
 
   return out;
 }

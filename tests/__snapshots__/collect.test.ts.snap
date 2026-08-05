@@ -11,7 +11,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 3,
         "file": "src/extension.ts",
-        "line": 23,
+        "line": 28,
       },
       "menus": [],
       "title": "Open settings",
@@ -39,7 +39,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 3,
         "file": "src/extension.ts",
-        "line": 18,
+        "line": 23,
       },
       "menus": [
         {
@@ -60,7 +60,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 3,
         "file": "src/extension.ts",
-        "line": 13,
+        "line": 17,
       },
       "menus": [],
       "title": "Say hello",
@@ -99,6 +99,21 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
   "extensionClass": "HelloExtension",
   "prefix": "hello",
   "sourceFile": "src/extension.ts",
+  "statusBars": [
+    {
+      "alignment": "left",
+      "command": "hello.sayHello",
+      "key": "HelloExtension.status",
+      "loc": {
+        "character": 12,
+        "file": "src/extension.ts",
+        "line": 14,
+      },
+      "priority": 100,
+      "text": "$(megaphone) Olá",
+      "tooltip": "Diga olá",
+    },
+  ],
   "treeViews": [
     {
       "childrenKey": "TasksView.children",
@@ -116,14 +131,15 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "sourceFile": "src/views/tasks.ts",
     },
   ],
-  "version": 2,
+  "version": 3,
+  "viewContainers": [],
   "watches": [
     {
       "key": "HelloExtension.onGreetingChanged",
       "loc": {
         "character": 3,
         "file": "src/extension.ts",
-        "line": 28,
+        "line": 33,
       },
       "targetConfigId": "hello.greeting",
     },
@@ -137,6 +153,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
         "file": "src/panels/settings.ts",
         "line": 12,
       },
+      "location": "panel",
       "messageHandlers": [
         {
           "key": "SettingsPanel.onReset",
@@ -229,7 +246,7 @@ exports[`coletor sobre examples/hello > snapshot do manifesto 1`] = `
 exports[`coletor sobre examples/hello > snapshot do wire 1`] = `
 "// GERADO POR sigil — NÃO EDITE
 import * as vscode from "vscode";
-import { registry, bindConfigWatchers, bindTreeView, bindWebview } from "@sigil/core";
+import { registry, adoptRegistrations, bindConfigWatchers, bindTreeView, bindWebview, bindStatusBar } from "@sigil/core";
 import { HelloExtension } from "../extension";
 import { TasksView } from "../views/tasks";
 import { SettingsPanel } from "../panels/settings";
@@ -264,9 +281,14 @@ let instance: HelloExtension | undefined;
 export function activate(ctx: vscode.ExtensionContext) {
   registry.prefix = "hello";
   instance = new HelloExtension();
+  adoptRegistrations("HelloExtension", HelloExtension);
   new TasksView();
+  adoptRegistrations("TasksView", TasksView);
   ctx.subscriptions.push(bindTreeView({"key":"TasksView","id":"hello.tasks","rootsKey":"TasksView.roots","childrenKey":"TasksView.children","itemKey":"TasksView.render"}));
-  ctx.subscriptions.push(bindWebview(new SettingsPanel(), {"key":"SettingsPanel","id":"hello.settings","title":"Hello Settings","uiEntry":"ui/settings.html","handlers":[{"type":"reset","key":"SettingsPanel.onReset"},{"type":"save","key":"SettingsPanel.onSave"}]}, ctx));
+  const wv_SettingsPanel = new SettingsPanel();
+  adoptRegistrations("SettingsPanel", SettingsPanel);
+  ctx.subscriptions.push(bindWebview(wv_SettingsPanel, {"key":"SettingsPanel","id":"hello.settings","title":"Hello Settings","uiEntry":"ui/settings.html","handlers":[{"type":"reset","key":"SettingsPanel.onReset"},{"type":"save","key":"SettingsPanel.onSave"}]}, ctx));
+  ctx.subscriptions.push(bindStatusBar({"key":"HelloExtension.status","alignment":"left","priority":100,"command":"hello.sayHello","tooltip":"Diga olá"}));
   for (const c of COMMANDS) {
     const fn = registry.commands.get(c.key);
     if (!fn) throw new Error(\`sigil: handler ausente para \${c.key}. Rode 'sigil build'.\`);

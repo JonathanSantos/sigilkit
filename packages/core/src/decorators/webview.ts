@@ -1,10 +1,17 @@
-import { registry } from "../registry";
+import { registerBoundMember } from "../metadata";
+import type { ViewContainerSpec } from "./tree-view";
 
 export interface WebviewOptions {
   id: string;
   title: string;
   /** Caminho do HTML da UI, relativo à raiz da extensão (ex.: "./ui/settings.html"). */
   ui: string;
+  /** "panel" (default): WebviewPanel sob demanda. "sidebar": view em contributes.views. */
+  location?: "panel" | "sidebar";
+  /** sidebar: nome exibido na view (default = title). */
+  name?: string;
+  /** sidebar: container builtin ou declarado inline. */
+  container?: "explorer" | "scm" | "debug" | (string & {}) | ViewContainerSpec;
 }
 
 /** Marca uma classe como painel Webview (§15.2). Metadados para a AST. */
@@ -20,13 +27,5 @@ export function Webview(_opts: WebviewOptions) {
  * `{ type, value }` para o método registrado para `type`, passando `value`.
  */
 export function OnMessage(_type: string) {
-  return function <This, Value extends (this: This, value: any) => any>(
-    value: Value,
-    ctx: ClassMethodDecoratorContext<This, Value>
-  ): void {
-    ctx.addInitializer(function (this: This) {
-      const key = `${(this as object).constructor.name}.${String(ctx.name)}`;
-      registry.webviewHandlers.set(key, (value as (v: unknown) => unknown).bind(this));
-    });
-  };
+  return registerBoundMember("webviewHandlers");
 }

@@ -1,5 +1,6 @@
+import * as vscode from "vscode";
 import { registry } from "../registry";
-import { readWorkspaceConfig, writeWorkspaceConfig } from "../config-access";
+import { bucketOf } from "../metadata";
 
 export interface ConfigOptions {
   description?: string;
@@ -17,8 +18,8 @@ export interface ConfigOptions {
  * workspace, não um valor congelado na construção.
  *
  * O tipo e o default NÃO vêm das opções: o compilador os lê da declaração da
- * propriedade na AST. O `init` abaixo captura o default em runtime apenas como
- * fallback — o manifesto usa a versão da AST.
+ * propriedade na AST. O default capturado no `init` vai para o bucket da
+ * classe (ctx.metadata) — nenhuma dependência de nome de classe em runtime.
  */
 export function Config(_opts: ConfigOptions = {}) {
   return function <T>(
@@ -26,15 +27,20 @@ export function Config(_opts: ConfigOptions = {}) {
     ctx: ClassAccessorDecoratorContext<any, T>
   ): ClassAccessorDecoratorResult<any, T> {
     const name = String(ctx.name);
+    const metadata = ctx.metadata;
     return {
       get() {
-        return readWorkspaceConfig<T>(this.constructor.name, name);
+        const value = vscode.workspace.getConfiguration(registry.prefix).get<T>(name);
+        if (value !== undefined) return value;
+        return bucketOf(metadata).configDefaults.get(name) as T;
       },
       set(value: T) {
-        void writeWorkspaceConfig(this.constructor.name, name, value);
+        void vscode.workspace
+          .getConfiguration(registry.prefix)
+          .update(name, value, vscode.ConfigurationTarget.Global);
       },
       init(initial: T) {
-        registry.configDefaults.set(`${this.constructor.name}.${name}`, initial);
+        bucketOf(metadata).configDefaults.set(name, initial);
         return initial;
       },
     };

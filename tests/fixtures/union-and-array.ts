@@ -10,4 +10,7 @@ export class Fx {
 
   @Config()
   accessor enabled = true;
+
+  @Config({ description: "antiga", deprecationMessage: "use mode" })
+  accessor legacy: string = "x";
 }

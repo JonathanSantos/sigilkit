@@ -1,8 +1,19 @@
 import ts from "typescript";
 import path from "node:path";
-import { IR, IRCommand, IRConfig, IRTreeView, IRWatch, IRWebview, IR_VERSION, SourceLoc } from "../ir";
+import {
+  IR,
+  IRCommand,
+  IRConfig,
+  IRStatusBar,
+  IRTreeView,
+  IRViewContainer,
+  IRWatch,
+  IRWebview,
+  IR_VERSION,
+  SourceLoc,
+} from "../ir";
 import { diagAt, diagGlobal, SIGIL } from "../diagnostics";
-import { evalStatic, StaticEvalError } from "./static-eval";
+import { evalStatic, StaticEvalError, IdentifierResolver } from "./static-eval";
 import { typeNodeToSchema, schemaFromValue } from "./type-to-schema";
 import { compact, toPosix } from "../util";
 
@@ -49,7 +60,7 @@ function resolveDecoratorName(d: ts.Decorator, checker: ts.TypeChecker): string 
 const EVAL_FAILED: unique symbol = Symbol("sigil.evalFailed");
 
 // Decorators de membro por espécie de classe (§8.5 + §15)
-const EXTENSION_MEMBERS = ["Command", "Config", "Watch", "Activate", "Deactivate"] as const;
+const EXTENSION_MEMBERS = ["Command", "Config", "Watch", "Activate", "Deactivate", "StatusBar"] as const;
 const TREE_MEMBERS = ["TreeRoot", "TreeChildren", "TreeItem", "Command"] as const;
 const WEBVIEW_MEMBERS = ["OnMessage"] as const;
 const ALL_MEMBERS = [...new Set([...EXTENSION_MEMBERS, ...TREE_MEMBERS, ...WEBVIEW_MEMBERS])];
@@ -58,9 +69,20 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
   const checker = program.getTypeChecker();
   const diagnostics: ts.Diagnostic[] = [];
 
+  /** Segue identificadores até `const` com initializer literal (item de DX; R3 intacta). */
+  const resolveConst: IdentifierResolver = (id) => {
+    let sym = checker.getSymbolAtLocation(id);
+    if (!sym) return undefined;
+    if (sym.flags & ts.SymbolFlags.Alias) sym = checker.getAliasedSymbol(sym);
+    const decl = sym.valueDeclaration ?? sym.declarations?.[0];
+    if (!decl || !ts.isVariableDeclaration(decl)) return undefined;
+    if (!(ts.getCombinedNodeFlags(decl) & ts.NodeFlags.Const)) return undefined;
+    return decl.initializer;
+  };
+
   function tryEval(node: ts.Expression, what = "argumento de decorator"): unknown {
     try {
-      return evalStatic(node);
+      return evalStatic(node, resolveConst);
     } catch (e) {
       if (e instanceof StaticEvalError) {
         diagnostics.push(
@@ -90,7 +112,6 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     return ts.isIdentifier(name) || ts.isStringLiteral(name) ? name.text : name.getText();
   }
 
-  /** Extrai o objeto de opções de um decorator com call (`@X({...})`). */
   function optionsNodeOf(dec: ts.Decorator): ts.Expression | undefined {
     return ts.isCallExpression(dec.expression) ? dec.expression.arguments[0] : undefined;
   }
@@ -174,10 +195,51 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
   const watches: IRWatch[] = [];
   const treeViews: IRTreeView[] = [];
   const webviews: IRWebview[] = [];
+  const viewContainers: IRViewContainer[] = [];
+  const statusBars: IRStatusBar[] = [];
   let activateKey: string | undefined;
   let deactivateKey: string | undefined;
 
-  /** @Command em classe @Extension ou @TreeView. viewId dá o `when` default de "view/title". */
+  /** Container inline `{ id, title, icon }` → registra e retorna o id. */
+  function collectContainer(raw: unknown, optsNode: ts.Expression, at: ts.Node): string | undefined {
+    if (typeof raw === "string" && raw.length > 0) return raw;
+    if (raw === undefined) return undefined;
+    if (raw === null || typeof raw !== "object") {
+      diagnostics.push(diagAt(optsNode, SIGIL.MissingRequiredOption, "container precisa ser string ou objeto { id, title, icon }"));
+      return undefined;
+    }
+    const c = raw as Record<string, unknown>;
+    for (const field of ["id", "title", "icon"] as const) {
+      if (typeof c[field] !== "string" || (c[field] as string).length === 0) {
+        diagnostics.push(diagAt(optsNode, SIGIL.MissingRequiredOption, `container inline exige '${field}' (string não vazia)`));
+        return undefined;
+      }
+    }
+    const container: IRViewContainer = {
+      id: c.id as string,
+      title: c.title as string,
+      icon: c.icon as string,
+      location: c.location === "panel" ? "panel" : "activitybar",
+      loc: locOf(at),
+    };
+    const existing = viewContainers.find((v) => v.id === container.id);
+    if (existing) {
+      if (
+        existing.title !== container.title ||
+        existing.icon !== container.icon ||
+        existing.location !== container.location
+      ) {
+        diagnostics.push(
+          diagAt(optsNode, SIGIL.DuplicateViewId, `container '${container.id}' declarado duas vezes com opções diferentes`)
+        );
+      }
+    } else {
+      viewContainers.push(container);
+    }
+    return container.id;
+  }
+
+  /** @Command em classe @Extension ou @TreeView. viewId dá o `when` default de menus "view/*". */
   function collectCommand(m: ts.MethodDeclaration, ownerClass: string, viewId?: string): void {
     const methodName = memberNameOf(m.name);
     const key = `${ownerClass}.${methodName}`;
@@ -199,18 +261,32 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     let keybinding: IRCommand["keybinding"];
     if (typeof o.keybinding === "string") keybinding = { key: o.keybinding };
     else if (o.keybinding && typeof o.keybinding === "object") {
-      keybinding = compact(o.keybinding as { key: string; mac?: string; when?: string });
+      keybinding = compact(
+        o.keybinding as { key: string; mac?: string; linux?: string; win?: string; when?: string }
+      );
     }
 
-    const menuNames =
-      typeof o.menu === "string" ? [o.menu] : Array.isArray(o.menu) ? (o.menu as string[]) : [];
-    const menus = menuNames.map((menu) => {
-      let when = o.when as string | undefined;
+    // menu: "id" | ["id", { id, group?, when? }, ...] — opções por entrada,
+    // com group/when do nível do comando como default
+    const rawMenus = o.menu === undefined ? [] : Array.isArray(o.menu) ? o.menu : [o.menu];
+    const menus: IRCommand["menus"] = [];
+    for (const entry of rawMenus) {
+      const isObject = entry !== null && typeof entry === "object";
+      const menuId = isObject ? (entry as { id?: unknown }).id : entry;
+      if (typeof menuId !== "string" || menuId.length === 0) {
+        diagnostics.push(diagAt(optsNode, SIGIL.MissingRequiredOption, "entrada de menu precisa de um id (string não vazia)"));
+        continue;
+      }
+      let when = (isObject ? ((entry as { when?: unknown }).when as string | undefined) : undefined) ??
+        (o.when as string | undefined);
       // comando de @TreeView em menu "view/*" sem `when` explícito: escopa à
       // própria view — sem isso o item apareceria em TODAS as views
-      if (when === undefined && viewId && menu.startsWith("view/")) when = `view == ${viewId}`;
-      return compact({ menu, group: o.group as string | undefined, when });
-    });
+      if (when === undefined && viewId && menuId.startsWith("view/")) when = `view == ${viewId}`;
+      const group =
+        (isObject ? ((entry as { group?: unknown }).group as string | undefined) : undefined) ??
+        (o.group as string | undefined);
+      menus.push(compact({ menu: menuId, group, when }));
+    }
 
     commands.push(
       compact({
@@ -276,18 +352,64 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     }
   }
 
-  function collectExtensionProperty(p: ts.PropertyDeclaration): void {
-    const cfgDec = getDecorator(p, checker, "Config");
-    if (!cfgDec) return;
-
-    const propName = memberNameOf(p.name);
+  function requireAccessor(p: ts.PropertyDeclaration, decoratorName: string, propName: string): boolean {
     const isAutoAccessor = !!p.modifiers?.some((mod) => mod.kind === ts.SyntaxKind.AccessorKeyword);
     if (!isAutoAccessor) {
       diagnostics.push(
-        diagAt(p.name, SIGIL.ConfigWithoutAccessor, `@Config exige a palavra-chave 'accessor': "accessor ${propName} = ..." (§6 do spec)`)
+        diagAt(p.name, SIGIL.ConfigWithoutAccessor, `@${decoratorName} exige a palavra-chave 'accessor': "accessor ${propName} = ..." (§6 do spec)`)
+      );
+    }
+    return isAutoAccessor;
+  }
+
+  function collectExtensionProperty(p: ts.PropertyDeclaration): void {
+    const propName = memberNameOf(p.name);
+
+    const sbDec = getDecorator(p, checker, "StatusBar");
+    const cfgDec = getDecorator(p, checker, "Config");
+    if (sbDec && cfgDec) {
+      diagnostics.push(diagAt(sbDec, SIGIL.WrongClassForMember, "uma propriedade não pode ser @Config e @StatusBar ao mesmo tempo"));
+      return;
+    }
+
+    if (sbDec) {
+      if (!requireAccessor(p, "StatusBar", propName)) return;
+      if (!p.initializer) {
+        diagnostics.push(diagAt(p.name, SIGIL.ConfigWithoutDefault, `o @StatusBar '${propName}' precisa de um texto default literal`));
+        return;
+      }
+      const text = tryEval(p.initializer, `o texto default de @StatusBar em '${propName}'`);
+      if (text === EVAL_FAILED) return;
+      if (typeof text !== "string") {
+        diagnostics.push(diagAt(p.initializer, SIGIL.UnsupportedConfigType, `@StatusBar '${propName}' precisa de um default string`));
+        return;
+      }
+      const optsNode = optionsNodeOf(sbDec);
+      const raw = optsNode ? tryEval(optsNode) : {};
+      if (raw === EVAL_FAILED) return;
+      const o = (raw ?? {}) as Record<string, unknown>;
+      const alignment = o.alignment;
+      if (alignment !== undefined && alignment !== "left" && alignment !== "right") {
+        diagnostics.push(diagAt(optsNode ?? p.name, SIGIL.MissingRequiredOption, `alignment de @StatusBar precisa ser "left" ou "right"`));
+        return;
+      }
+      statusBars.push(
+        compact({
+          key: `${className}.${propName}`,
+          text,
+          alignment: alignment as "left" | "right" | undefined,
+          priority: o.priority as number | undefined,
+          command: o.command as string | undefined,
+          tooltip: o.tooltip as string | undefined,
+          name: o.name as string | undefined,
+          loc: locOf(p.name),
+        }) as IRStatusBar
       );
       return;
     }
+
+    if (!cfgDec) return;
+    if (!requireAccessor(p, "Config", propName)) return;
 
     let schema = p.type ? typeNodeToSchema(p.type) : undefined;
     if (p.type && !schema) {
@@ -329,6 +451,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
         enum: (o.enum as unknown[] | undefined) ?? schema.enum,
         minimum: o.minimum as number | undefined,
         maximum: o.maximum as number | undefined,
+        deprecationMessage: o.deprecationMessage as string | undefined,
         items: schema.items,
         loc: locOf(p.name),
       }) as IRConfig
@@ -361,7 +484,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
       return;
     }
     const viewId = `${prefix}.${o.id}`;
-    const container = typeof o.container === "string" && o.container.length > 0 ? o.container : "explorer";
+    const container = collectContainer(o.container, optsNode, tree.name) ?? "explorer";
 
     let rootsKey: string | undefined;
     let childrenKey: string | undefined;
@@ -372,7 +495,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
 
     for (const member of tree.members) {
       if (ts.isPropertyDeclaration(member)) {
-        rejectMember(member, ["Config"], "@TreeView (pertence à classe @Extension)");
+        rejectMember(member, ["Config", "StatusBar"], "@TreeView (pertence à classe @Extension)");
         continue;
       }
       if (!ts.isMethodDeclaration(member)) continue;
@@ -424,7 +547,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     );
   }
 
-  // ── classes @Webview (§15.2) ───────────────────────────────────────────────
+  // ── classes @Webview (§15.2) — painel sob demanda ou view de sidebar ───────
   function collectWebviewClass(wv: ts.ClassDeclaration): void {
     if (!wv.name) {
       diagnostics.push(diagAt(wv, SIGIL.MissingRequiredOption, "a classe @Webview precisa de um nome"));
@@ -446,13 +569,25 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
         return;
       }
     }
+    const location = o.location ?? "panel";
+    if (location !== "panel" && location !== "sidebar") {
+      diagnostics.push(diagAt(optsNode, SIGIL.MissingRequiredOption, `location de @Webview precisa ser "panel" ou "sidebar"`));
+      return;
+    }
+    let container: string | undefined;
+    if (location === "sidebar") {
+      container = collectContainer(o.container, optsNode, wv.name) ?? "explorer";
+    } else if (o.container !== undefined) {
+      diagnostics.push(diagAt(optsNode, SIGIL.MissingRequiredOption, `'container' só vale para @Webview com location: "sidebar"`));
+      return;
+    }
 
     const handlers: { type: string; key: string }[] = [];
     const seen = new Set<string>();
 
     for (const member of wv.members) {
       if (ts.isPropertyDeclaration(member)) {
-        rejectMember(member, ["Config"], "@Webview (pertence à classe @Extension)");
+        rejectMember(member, ["Config", "StatusBar"], "@Webview (pertence à classe @Extension)");
         continue;
       }
       if (!ts.isMethodDeclaration(member)) continue;
@@ -485,15 +620,20 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
 
     handlers.sort((a, b) => (a.type < b.type ? -1 : a.type > b.type ? 1 : 0));
 
-    webviews.push({
-      key: wvClassName,
-      id: `${prefix}.${o.id}`,
-      title: o.title as string,
-      uiEntry: toPosix(o.ui as string).replace(/^\.\//, ""),
-      messageHandlers: handlers,
-      sourceFile: sourceFileOf(wv),
-      loc: locOf(wv.name),
-    });
+    webviews.push(
+      compact({
+        key: wvClassName,
+        id: `${prefix}.${o.id}`,
+        title: o.title as string,
+        uiEntry: toPosix(o.ui as string).replace(/^\.\//, ""),
+        location,
+        name: location === "sidebar" ? ((o.name as string | undefined) ?? (o.title as string)) : undefined,
+        container,
+        messageHandlers: handlers,
+        sourceFile: sourceFileOf(wv),
+        loc: locOf(wv.name),
+      }) as IRWebview
+    );
   }
 
   for (const tree of treeClasses) collectTreeClass(tree);
@@ -507,6 +647,8 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
   watches.sort(byKey);
   treeViews.sort(byId);
   webviews.sort(byId);
+  viewContainers.sort(byId);
+  statusBars.sort(byKey);
 
   const ir = compact({
     version: IR_VERSION,
@@ -520,6 +662,8 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     watches,
     treeViews,
     webviews,
+    viewContainers,
+    statusBars,
   }) as IR;
 
   return { ir, diagnostics };

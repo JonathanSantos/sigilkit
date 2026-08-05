@@ -25,3 +25,24 @@ export function getConfig<T = unknown>(id: string): T {
   const key = id.slice(dot + 1);
   return vscode.workspace.getConfiguration(section).get<T>(key) as T;
 }
+
+export type SigilConfigTarget = "global" | "workspace" | "workspaceFolder";
+
+function toConfigurationTarget(target: SigilConfigTarget): vscode.ConfigurationTarget {
+  switch (target) {
+    case "workspace":
+      return vscode.ConfigurationTarget.Workspace;
+    case "workspaceFolder":
+      return vscode.ConfigurationTarget.WorkspaceFolder;
+    default:
+      return vscode.ConfigurationTarget.Global;
+  }
+}
+
+/** Escreve uma config pelo id completo (ex.: "hello.greeting"). */
+export function setConfigById(id: string, value: unknown, target: SigilConfigTarget = "global"): Thenable<void> {
+  const dot = id.lastIndexOf(".");
+  const section = id.slice(0, dot);
+  const key = id.slice(dot + 1);
+  return vscode.workspace.getConfiguration(section).update(key, value, toConfigurationTarget(target));
+}

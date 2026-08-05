@@ -12,7 +12,7 @@ import {
   uriFile,
 } from "./vscode-mock";
 
-export { EventEmitterMock, TreeItemMock, WebviewPanelMock } from "./vscode-mock";
+export { EventEmitterMock, StatusBarItemMock, TreeItemMock, WebviewPanelMock, createState, createVscodeMock } from "./vscode-mock";
 export type { DisposableLike, TreeDataProviderLike, UriMock, VscodeMockState } from "./vscode-mock";
 
 export interface ActivateOptions {
@@ -20,6 +20,8 @@ export interface ActivateOptions {
   projectDir: string;
   /** Valores iniciais de config além dos defaults do manifesto (id completo → valor). */
   configuration?: Record<string, unknown>;
+  /** Override do bundle a ativar (default: o `main` do package.json). */
+  bundlePath?: string;
 }
 
 interface ExtensionModule {
@@ -46,7 +48,7 @@ export async function activateExtension(opts: ActivateOptions): Promise<SigilTes
     main?: string;
     contributes?: { configuration?: { properties?: Record<string, { default?: unknown }> } };
   };
-  const bundlePath = path.resolve(projectDir, pkg.main ?? "./out/extension.js");
+  const bundlePath = path.resolve(projectDir, opts.bundlePath ?? pkg.main ?? "./out/extension.js");
   if (!fs.existsSync(bundlePath)) {
     throw new Error(
       `sigil-test: bundle não encontrado em ${bundlePath} — rode o build da extensão antes (ex.: npm run build)`
@@ -180,6 +182,22 @@ export class SigilTestHost {
   /** Todos os painéis webview já criados (incluindo descartados). */
   get webviewPanels(): WebviewPanelMock[] {
     return [...this.state.panels];
+  }
+
+  /** Itens de status bar criados na ativação, na ordem de criação. */
+  get statusBarItems() {
+    return [...this.state.statusBarItems];
+  }
+
+  /**
+   * Resolve (se necessário) e retorna a webview de SIDEBAR com o viewId dado —
+   * o mesmo que o VSCode faz no primeiro show da view.
+   */
+  webviewView(viewId: string): Promise<WebviewPanelMock> {
+    const resolve = (this.vscode as { __resolveWebviewView?: (id: string) => Promise<WebviewPanelMock> })
+      .__resolveWebviewView;
+    if (!resolve) throw new Error("sigil-test: mock sem suporte a webview views");
+    return resolve(viewId);
   }
 
   /** O painel vivo com o viewType dado (ex.: "hello.settings"). */

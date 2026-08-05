@@ -38,6 +38,8 @@ export const SIGIL = {
   DuplicateMessageType: 1015,
   /** opção obrigatória ausente em decorator */
   MissingRequiredOption: 1016,
+  /** referência a comando inexistente (ex.: command de @StatusBar) */
+  UnknownCommandReference: 1017,
 } as const;
 
 export function diagAt(node: ts.Node, code: number, message: string): ts.Diagnostic {

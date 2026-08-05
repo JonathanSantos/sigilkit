@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { registry } from "../registry";
+import { registerBoundMember } from "../metadata";
 import { getConfig } from "../config-access";
 
 /**
@@ -8,15 +9,7 @@ import { getConfig } from "../config-access";
  * resolve para `${prefix}.${nome}` e valida a existência (SIGIL1004).
  */
 export function Watch(_configProperty: string) {
-  return function <This, Value extends (this: This, next: any, prev: any) => any>(
-    value: Value,
-    ctx: ClassMethodDecoratorContext<This, Value>
-  ): void {
-    ctx.addInitializer(function (this: This) {
-      const key = `${(this as object).constructor.name}.${String(ctx.name)}`;
-      registry.watches.set(key, (value as (next: unknown, prev: unknown) => unknown).bind(this));
-    });
-  };
+  return registerBoundMember("watches");
 }
 
 export interface WatchBinding {
