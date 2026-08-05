@@ -72,7 +72,7 @@ internas pinadas exatas). O fluxo inteiro:
 ```bash
 node scripts/version.mjs 0.2.0        # bump dos 4 + deps internas
 git commit -am "release: v0.2.0"
-git tag v0.2.0
+git tag -a v0.2.0 -m v0.2.0           # ANOTADA: --follow-tags ignora tags leves
 git push --follow-tags
 ```
 

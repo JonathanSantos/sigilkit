@@ -3,7 +3,8 @@
 // `version` e as dependências internas (pinadas exatas entre irmãos).
 //
 //   node scripts/version.mjs 0.2.0
-//   git commit -am "release: v0.2.0" && git tag v0.2.0 && git push --follow-tags
+//   git commit -am "release: v0.2.0" && git tag -a v0.2.0 -m v0.2.0 && git push --follow-tags
+// (tag ANOTADA: --follow-tags ignora tags leves — git tag sem -a não sobe)
 import { readFileSync, writeFileSync } from "node:fs";
 
 const v = process.argv[2];
@@ -28,4 +29,4 @@ for (const p of PKGS) {
   console.log(`${path} → ${v}`);
 }
 
-console.log(`\nagora: git commit -am "release: v${v}" && git tag v${v} && git push --follow-tags`);
+console.log(`\nagora: git commit -am "release: v${v}" && git tag -a v${v} -m v${v} && git push --follow-tags`);
