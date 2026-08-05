@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import path from "node:path";
-// o wire TS entra DIRETO no vitest: "vscode" e "@sigil/core" vêm dos aliases
+// o wire TS entra DIRETO no vitest: "vscode" e "@sigilkit/core" vêm dos aliases
 // do vitest.config (modo inline do item 12 — zero esbuild no ciclo de teste)
 import * as wire from "../examples/hello/src/.generated/wire";
 import { activateInline } from "../packages/test/src/inline";

@@ -1,5 +1,5 @@
 {
-  "name": "@sigil/test",
+  "name": "@sigilkit/test",
   "version": "0.1.0",
   "description": "Ambiente simulado do VSCode para testar extensões sigil sem extension host — rápido, determinístico e fiel ao subconjunto da API que o sigil toca.",
   "license": "MIT",

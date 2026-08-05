@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergePackageJson } from "@sigil/cli/dist/merge-pkg";
+import { mergePackageJson } from "@sigilkit/cli/dist/merge-pkg";
 
 const userPkg = JSON.stringify(
   {

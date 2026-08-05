@@ -53,7 +53,7 @@ describe("fronteiras de arquitetura", () => {
     for (const file of tsFilesIn(path.join(ROOT, "packages/core/src"))) {
       for (const spec of importsOf(file)) {
         expect(spec, `${file} importa '${spec}'`).not.toBe("typescript");
-        expect(spec, `${file} importa '${spec}'`).not.toMatch(/^@sigil\/compiler/);
+        expect(spec, `${file} importa '${spec}'`).not.toMatch(/^@sigilkit\/compiler/);
       }
     }
   });
@@ -72,12 +72,12 @@ describe("fronteiras de arquitetura", () => {
     for (const file of tsFilesIn(path.join(ROOT, "packages/compiler/src"))) {
       for (const spec of importsOf(file)) {
         expect(spec, `${file} importa '${spec}'`).not.toBe("vscode");
-        expect(spec, `${file} importa '${spec}'`).not.toMatch(/^@sigil\/core/);
+        expect(spec, `${file} importa '${spec}'`).not.toMatch(/^@sigilkit\/core/);
       }
     }
   });
 
-  it("@sigil/test não importa vscode (ele O SIMULA) nem typescript", () => {
+  it("@sigilkit/test não importa vscode (ele O SIMULA) nem typescript", () => {
     for (const file of tsFilesIn(path.join(ROOT, "packages/test/src"))) {
       for (const spec of importsOf(file)) {
         expect(spec, `${file} importa '${spec}'`).not.toBe("vscode");

@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { Command, TreeChildren, TreeItem, TreeRoot, TreeView, registry } from "@sigil/core";
+import { Command, TreeChildren, TreeItem, TreeRoot, TreeView, registry } from "@sigilkit/core";
 
 interface TaskNode {
   id: string;

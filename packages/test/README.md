@@ -1,4 +1,4 @@
-# @sigil/test
+# @sigilkit/test
 
 Ambiente **simulado do VSCode** para testar extensões sigil sem extension
 host — rápido, determinístico e fiel ao subconjunto da API que o sigil toca.
@@ -10,7 +10,7 @@ sondas: comandos, configuração, mensagens, trees, webviews (com `receive`/
 `Memento`/`SecretStorage`, progress, deep links, chat e LLM (`queueLlmResponse`).
 
 ```ts
-import { activateExtension } from "@sigil/test";
+import { activateExtension } from "@sigilkit/test";
 
 const host = await activateExtension({ projectDir: "caminho/da/extensao" });
 await host.executeCommand("hello.sayHello");

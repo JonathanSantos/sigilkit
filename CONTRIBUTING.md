@@ -18,14 +18,14 @@ O design do sigil se sustenta em fronteiras estritas — todas verificadas por
 
 - **R1** — `packages/core` nunca importa `typescript` (iria para o bundle da
   extensão). Também nunca importa `node:*` (runtime web-ready).
-- **R2** — `packages/compiler` nunca importa `vscode` nem `@sigil/core`.
+- **R2** — `packages/compiler` nunca importa `vscode` nem `@sigilkit/core`.
 - **R3** — o compilador nunca executa código do usuário; só leitura de AST.
 - **R4** — emitters (`compiler/src/emit/*`) são funções puras; todo IO fica
   no CLI.
 - **R5** — arquivos gerados (`src/.generated/*`, bloco `contributes`) nunca
   são editados à mão.
 - **R6** — falhar alto, nunca em silêncio: join sem handler lança na
-  ativação; API não simulada no `@sigil/test` lança erro descritivo.
+  ativação; API não simulada no `@sigilkit/test` lança erro descritivo.
 
 O spec completo — modelo de propriedade (§4), IR, diagnósticos, armadilhas —
 está em [docs/spec.md](docs/spec.md). Desvios conscientes do spec estão
@@ -50,7 +50,7 @@ documentados nas erratas ao final dele e no [CLAUDE.md](CLAUDE.md).
 - **Mudança no IR ou emitters** → atualize os snapshots conscientemente
   (`vitest -u` só depois de conferir o diff); a ordem do IR é determinística
   por contrato.
-- **Feature de runtime** → teste no simulador (`@sigil/test`); se o simulador
+- **Feature de runtime** → teste no simulador (`@sigilkit/test`); se o simulador
   não cobre a API, estenda o mock — API não simulada deve lançar, nunca
   devolver `undefined`.
 - **Mudança de DX visível** → confira se o [tutorial](docs/tutorial.md)

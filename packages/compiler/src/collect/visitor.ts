@@ -63,7 +63,7 @@ function resolveDecoratorName(d: ts.Decorator, checker: ts.TypeChecker): string 
   if (!sym) return undefined;
   if (sym.flags & ts.SymbolFlags.Alias) sym = checker.getAliasedSymbol(sym);
   const file = toPosix(sym.declarations?.[0]?.getSourceFile().fileName ?? "");
-  if (!file.includes("@sigil/core") && !file.includes("packages/core")) return undefined;
+  if (!file.includes("@sigilkit/core") && !file.includes("packages/core")) return undefined;
   return sym.name;
 }
 

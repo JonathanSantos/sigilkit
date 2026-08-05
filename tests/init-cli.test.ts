@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 // E2E do `sigil init`: cria o projeto num diretório dentro do repo (para
-// @sigil/core resolver via node_modules da raiz) e roda `sigil build` nele.
+// @sigilkit/core resolver via node_modules da raiz) e roda `sigil build` nele.
 
 const ROOT = process.cwd();
 const BIN = path.join(ROOT, "packages/cli/bin/sigil.js");

@@ -80,7 +80,7 @@ import { getConfig as getConfigById, setConfigById, type SigilConfigTarget } fro
  * Registro de tipos das configs da extensão. Vazio aqui; o `sigil build` emite
  * src/.generated/config.d.ts com uma augmentation deste módulo que o preenche:
  *
- *   declare module "@sigil/core" {
+ *   declare module "@sigilkit/core" {
  *     interface SigilConfigRegistry { "hello.retries": number }
  *   }
  *

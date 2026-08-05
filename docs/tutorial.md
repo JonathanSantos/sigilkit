@@ -47,7 +47,7 @@ Substitua o conteúdo de `playground/frases/src/extension.ts` por:
 
 ```ts
 import * as vscode from "vscode";
-import { Extension, Command, Config, StatusBar, Watch, log } from "@sigil/core";
+import { Extension, Command, Config, StatusBar, Watch, log } from "@sigilkit/core";
 
 // settings: true → o comando frases.configure abre uma aba de opções
 // gerada a partir do schema das @Config
@@ -133,7 +133,7 @@ output channel, try/catch de handler ou schema de configuração. Nenhum F5.
 - **TreeView e Webview**: veja [examples/todos](../examples/todos) (tree
   interativa com container próprio na activity bar) e
   [examples/notes](../examples/notes) (webview de sidebar com RPC tipado).
-- **Testes**: `@sigil/test` ativa o bundle real num simulador —
+- **Testes**: `@sigilkit/test` ativa o bundle real num simulador —
   [examples/counter/test](../examples/counter/test/extension.test.ts) é o
   padrão a copiar.
 - **Referência completa**: [README](../README.md) e [spec](spec.md).

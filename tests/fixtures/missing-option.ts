@@ -1,4 +1,4 @@
-import { Extension, TreeView, TreeRoot, TreeItem } from "@sigil/core";
+import { Extension, TreeView, TreeRoot, TreeItem } from "@sigilkit/core";
 
 @Extension({ prefix: "fx" })
 export class Fx {}

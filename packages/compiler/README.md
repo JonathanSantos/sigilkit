@@ -1,4 +1,4 @@
-# @sigil/compiler
+# @sigilkit/compiler
 
 O **build time** do sigil: coleta a AST do projeto do usuário (via TypeScript
 compiler API), produz um **IR determinístico** e o entrega aos emitters puros
@@ -11,7 +11,7 @@ na posição exata do arquivo do usuário, incluindo a validação de expressõe
 
 Regras invioláveis (testadas em `tests/boundaries.test.ts`):
 
-- **nunca** importa `vscode` nem `@sigil/core` (R2);
+- **nunca** importa `vscode` nem `@sigilkit/core` (R2);
 - **nunca** executa código do usuário — só leitura de AST (R3);
 - os emitters são funções puras `(ir) => string | object`, sem IO (R4);
 - a ordem do IR é determinística — é requisito do `sigil check`, não polimento.

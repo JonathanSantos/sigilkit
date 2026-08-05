@@ -3,7 +3,7 @@ import type { StatusBarItemLike } from "./registry";
 
 // Polyfill do Symbol.metadata (stage 3, ainda não em todo runtime). Symbol.for
 // para que múltiplas cópias do runtime concordem com a chave. Roda no load de
-// @sigil/core — que todo arquivo decorado importa antes de definir classes.
+// @sigilkit/core — que todo arquivo decorado importa antes de definir classes.
 (Symbol as { metadata?: symbol }).metadata ??= Symbol.for("Symbol.metadata");
 
 /**
@@ -30,7 +30,7 @@ const buckets = new WeakMap<object, Bucket>();
 export function bucketOf(metadata: object | undefined): Bucket {
   if (!metadata) {
     throw new Error(
-      "sigil: decorator sem ctx.metadata — o runtime não expôs Symbol.metadata. Garanta que @sigil/core é importado antes das classes decoradas."
+      "sigil: decorator sem ctx.metadata — o runtime não expôs Symbol.metadata. Garanta que @sigilkit/core é importado antes das classes decoradas."
     );
   }
   let bucket = buckets.get(metadata);

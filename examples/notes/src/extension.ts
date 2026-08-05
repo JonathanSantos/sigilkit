@@ -1,4 +1,4 @@
-import { Extension, Command, Config, OnMessage, OnRequest, Webview, registry, getConfig } from "@sigil/core";
+import { Extension, Command, Config, OnMessage, OnRequest, Webview, registry, getConfig } from "@sigilkit/core";
 
 export interface Note {
   id: number;

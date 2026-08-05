@@ -1,5 +1,5 @@
 > **Nota de rename:** o projeto foi batizado de **sigil** — leia `vscx` como
-> `sigil` ao longo deste documento (`@vscx/core` → `@sigil/core`, `vscx build`
+> `sigil` ao longo deste documento (`@vscx/core` → `@sigilkit/core`, `vscx build`
 > → `sigil build`, códigos `VSCX####` → `SIGIL####` etc.). O texto abaixo é o
 > spec original, preservado verbatim como fonte da verdade do design.
 > Desvios conscientes da implementação estão listados no CLAUDE.md.
@@ -843,7 +843,7 @@ esbuild src/.generated/wire.ts --bundle --platform=node --format=cjs \
 >
 > **Errata 3 (§10.3):** o `config.d.ts` do spec declarava um `getConfig` órfão,
 > sem ligação com runtime algum. A implementação emite, em vez disso, uma
-> module augmentation de `@sigil/core` (interface `SigilConfigRegistry`), que
+> module augmentation de `@sigilkit/core` (interface `SigilConfigRegistry`), que
 > tipa por chave o `getConfig` REAL do core — autocomplete e checagem de typo
 > sem nenhum import novo.
 >

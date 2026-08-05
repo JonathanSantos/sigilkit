@@ -3,7 +3,7 @@ import path from "node:path";
 import readline from "node:readline";
 import ts from "typescript";
 import { buildSync } from "esbuild";
-import { activateExtension, SigilTestHost } from "@sigil/test";
+import { activateExtension, SigilTestHost } from "@sigilkit/test";
 import { computeProject, reportFailure, writeChanged, writeStoredHash } from "./pipeline";
 import { startSimUi, SimUiHandle } from "./sim-ui";
 
@@ -15,7 +15,7 @@ export interface SimOptions {
 
 /**
  * Hot reload da extensão em modo dev SIMULADO: watch incremental do TS →
- * re-bundle → re-ativação no simulador @sigil/test, preservando as configs
+ * re-bundle → re-ativação no simulador @sigilkit/test, preservando as configs
  * entre reloads. O REPL deixa exercitar a extensão sem abrir o VSCode —
  * e com --ui, um workbench fake no browser renderiza o estado ao vivo
  * (palette, trees, configs, status bar, logs e webviews DE VERDADE).

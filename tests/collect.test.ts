@@ -6,11 +6,11 @@ import {
   emitManifest,
   emitWire,
   emitTypes,
-} from "@sigil/compiler";
+} from "@sigilkit/compiler";
 
 // §14 camada 1 (snapshot de IR) e camada 2 (snapshot de emitter) sobre a
 // fixture real examples/hello. Requer `npm run build` antes (o script de
-// teste já faz isso) — a resolução de @sigil/core precisa do dist.
+// teste já faz isso) — a resolução de @sigilkit/core precisa do dist.
 
 const example = path.resolve(process.cwd(), "examples/hello");
 

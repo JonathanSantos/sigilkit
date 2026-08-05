@@ -14,7 +14,7 @@
 
 ```ts
 import * as vscode from "vscode";
-import { Extension, Command, Config, Watch } from "@sigil/core";
+import { Extension, Command, Config, Watch } from "@sigilkit/core";
 
 @Extension({ prefix: "hello" })
 export class HelloExtension {
@@ -54,7 +54,7 @@ que falharia em silêncio para sempre, vira `SIGIL1018` com caret na linha.
   simulada no teste lança erro descritivo.
 - **Dev loop de segundos, não de F5** — quatro marchas: watch incremental,
   simulador com REPL, workbench visual no browser e VSCode real com hot swap.
-- **Testável por padrão** — `@sigil/test` ativa o bundle real da extensão sem
+- **Testável por padrão** — `@sigilkit/test` ativa o bundle real da extensão sem
   extension host; os exemplos e o próprio tutorial rodam no CI.
 - **Web-ready e minificação-safe** — runtime sem `node:*` (funciona no
   vscode.dev) e join por `Symbol.metadata` (sem `--keep-names`).
@@ -139,7 +139,7 @@ export class CapsEditor {
 ```
 
 Handlers recebem o contexto do documento como segundo argumento; a UI recebe o
-conteúdo no load e a cada mudança (`onDocument` em `@sigil/core/ui`).
+conteúdo no load e a cada mudança (`onDocument` em `@sigilkit/core/ui`).
 
 ## `when` validado no build
 
@@ -157,7 +157,7 @@ sync() { /* … */ }
 
 ## Plataforma de runtime
 
-Além dos decorators, o `@sigil/core` traz a base que toda extensão reescreve:
+Além dos decorators, o `@sigilkit/core` traz a base que toda extensão reescreve:
 
 - **Logs** — `log.info/warn/error/debug/trace` sobre `LogOutputChannel` (nível
   controlado pelo usuário); funciona antes da ativação (buffer).
@@ -182,7 +182,7 @@ Além dos decorators, o `@sigil/core` traz a base que toda extensão reescreve:
 | `sigil build` | AST → IR → manifesto + wire + tipos (cache por hash do IR) | build e CI |
 | `sigil check` | falha se o manifesto commitado está stale | guardião no CI |
 | `sigil dev` | watch incremental (`ts.createWatchProgram`, rebuilds de ~3ms) | terminal ao lado do editor |
-| `sigil sim` | hot reload no simulador `@sigil/test` + REPL | testar comportamento sem UI |
+| `sigil sim` | hot reload no simulador `@sigilkit/test` + REPL | testar comportamento sem UI |
 | `sigil sim --ui` | workbench visual no browser, estado ao vivo por SSE | ver palette, trees, configs e webviews reais |
 | `sigil sandbox` | VSCode **real e isolado** com hot swap sem F5 | fidelidade total |
 
@@ -203,17 +203,17 @@ zero poluição do seu) e conecta um companion por socket. O watch decide pelo
 janela — o companion recarrega o bundle e chama `__sigilHydrate()`); manifesto
 mudou → reload de janela automático. Estado de instância zera no swap (como
 Fast Refresh); configs e painéis abertos sobrevivem. Requer `node_modules` no
-projeto (o bundle deixa `@sigil/core` externo para o registry ser singleton
+projeto (o bundle deixa `@sigilkit/core` externo para o registry ser singleton
 entre swaps).
 
-## Testando sem o VSCode — `@sigil/test`
+## Testando sem o VSCode — `@sigilkit/test`
 
 Simulador do subconjunto da API `vscode` que o sigil toca. Ativa o **bundle
 real** interceptando `require("vscode")`, semeia os defaults do manifesto e
 expõe sondas:
 
 ```ts
-import { activateExtension } from "@sigil/test";
+import { activateExtension } from "@sigilkit/test";
 
 const host = await activateExtension({ projectDir: "examples/hello" });
 await host.executeCommand("hello.sayHello");
@@ -236,7 +236,7 @@ cobre, o E2E cobre no host real: `npm run test:e2e` roda `examples/hello` via
 npm run package      # dentro do projeto da extensão
 ```
 
-Roda `vsce package --no-dependencies` (o bundle já embute `@sigil/core`). O
+Roda `vsce package --no-dependencies` (o bundle já embute `@sigilkit/core`). O
 `.vscodeignore` gerado pelo `sigil init` exclui fonte/testes e deixa entrar
 `out/`, `ui/` e `media/`. O `.vsix` instala via "Install from VSIX…" ou
 `code --install-extension`; publicar no Marketplace é `vsce publish`.
@@ -260,10 +260,10 @@ O `sigil init` já gera tudo assim; para projetos existentes:
 
 | Pacote | Papel | Regra inviolável |
 |---|---|---|
-| [`@sigil/core`](packages/core) | runtime — vai para o bundle da extensão | nunca importa `typescript` (R1) nem `node:*` (web-ready) |
-| [`@sigil/compiler`](packages/compiler) | build time — AST → IR → emitters | nunca importa `vscode` (R2); nunca executa código do usuário (R3) |
-| [`@sigil/cli`](packages/cli) | orquestração e IO | emitters são puros; todo IO fica aqui (R4) |
-| [`@sigil/test`](packages/test) | simulador para testes | nunca importa `vscode` nem `typescript` |
+| [`@sigilkit/core`](packages/core) | runtime — vai para o bundle da extensão | nunca importa `typescript` (R1) nem `node:*` (web-ready) |
+| [`@sigilkit/compiler`](packages/compiler) | build time — AST → IR → emitters | nunca importa `vscode` (R2); nunca executa código do usuário (R3) |
+| [`@sigilkit/cli`](packages/cli) | orquestração e IO | emitters são puros; todo IO fica aqui (R4) |
+| [`@sigilkit/test`](packages/test) | simulador para testes | nunca importa `vscode` nem `typescript` |
 
 As regras são **testadas**: `tests/boundaries.test.ts` extrai imports por AST e
 falha o build se alguma for violada. O design completo — modelo de propriedade
@@ -273,7 +273,7 @@ final.
 
 ## Exemplos
 
-Cada um valida um perfil de DX, e todos têm testes com `@sigil/test` — o mesmo
+Cada um valida um perfil de DX, e todos têm testes com `@sigilkit/test` — o mesmo
 padrão que uma extensão real usaria:
 
 | Exemplo | Perfil | O que exercita |

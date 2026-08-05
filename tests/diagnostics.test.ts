@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import path from "node:path";
 import ts from "typescript";
-import { collect, validate, SIGIL, IR } from "@sigil/compiler";
+import { collect, validate, SIGIL, IR } from "@sigilkit/compiler";
 
 // Critério de aceite da Fase 2: cada código da §9 dispara no caso certo, com
 // caret (file + start) apontando para a linha certa.

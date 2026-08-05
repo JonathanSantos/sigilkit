@@ -7,7 +7,7 @@ Framework declarativo para extensões do VSCode (renomeado de `vscx` para
 Regras que quebram o build se violadas (há teste de fronteira em tests/):
 
 - `packages/core` NUNCA importa `typescript` (R1) — vai para o bundle da extensão.
-- `packages/compiler` NUNCA importa `vscode` nem `@sigil/core` (R2).
+- `packages/compiler` NUNCA importa `vscode` nem `@sigilkit/core` (R2).
 - O compilador nunca executa código do usuário — só leitura de AST (R3).
 - Emitters (`compiler/src/emit/*`) são funções puras, sem IO (R4). IO fica no CLI.
 - Ordem determinística do IR é requisito do `sigil check`, não polimento.
@@ -24,7 +24,7 @@ this.constructor.name. Minificação-safe (tests/minified.test.ts prova);
 Desvios conscientes do spec (documentados na implementação; erratas no fim de
 docs/spec.md):
 
-- emitTypes (§10.3) emite module augmentation de "@sigil/core"
+- emitTypes (§10.3) emite module augmentation de "@sigilkit/core"
   (SigilConfigRegistry) em vez do declare órfão do spec — getConfig fica
   tipado por chave. A interface é declarada DIRETO no index.ts do core:
   augmentation não faz merge com re-export (pitfall vue/@vue-runtime-core).
@@ -55,8 +55,8 @@ registry.context), RPC @OnRequest/callHost (correlação __sigilRpcId), settings
 app pronto (@Extension({settings:true}) → comando <prefix>.configure + form
 derivado do schema; comando registrado direto no wire, fora do join). `sigil
 sim` = hot reload simulado (watch incremental → esbuild → activateExtension
-no @sigil/test, configs preservadas entre reloads) com REPL; cli depende de
-@sigil/test e esbuild.
+no @sigilkit/test, configs preservadas entre reloads) com REPL; cli depende de
+@sigilkit/test e esbuild.
 
 DX sobre a API (IR v6): @On/@OnFile (bucket "events", bindEvents/
 bindFileWatchers, debounce trailing), @UriHandler (activationEvent "onUri"
@@ -77,7 +77,7 @@ chat acessada dinamicamente — sem exigir @types >= 1.90; host antigo → erro
 alto no bind); @CustomEditor reusa o shell de webview + @OnMessage/@OnRequest
 com SigilEditorContext como 2º argumento dos handlers (makeRouter aceita
 `extra`); applyEdit via WorkspaceEdit; doc→UI por mensagens __sigilDocument
-(helper onDocument em @sigil/core/ui). chatParticipants/customEditors são
+(helper onDocument em @sigilkit/core/ui). chatParticipants/customEditors são
 chaves CONDICIONAIS no merge. adoptRegistrations tolera classe só com
 marcador (bucket vazio) — o R6 real é o join por chave.
 
@@ -90,7 +90,7 @@ state.interactiveInput no mock (fila vazia → modal na página em vez de ESC).
 
 `sigil sandbox` = VSCode REAL isolado (download via @vscode/test-electron em
 .vscode-test/; user-data/extensions próprios) + companion gerado (socket TCP,
-JSON por linha) + hot swap: bundle com @sigil/core EXTERNO (registry singleton
+JSON por linha) + hot swap: bundle com @sigilkit/core EXTERNO (registry singleton
 entre swaps — exige node_modules), companion deleta require.cache e chama
 __sigilHydrate()/__sigilActivateLifecycle() do wire; hash do IR decide swap
 (igual) vs reload de janela (mudou). O wire tem dispatch DINÂMICO (comandos,
@@ -99,7 +99,7 @@ re-executável; adoptRegistrations migra statusBarItems vivos entre buckets;
 binds de webview não recebem mais instância — post vai em registry.webviewPosts
 e o wire injeta forwarders.
 
-Quarto pacote: @sigil/test (packages/test) — simulador do vscode para testar
+Quarto pacote: @sigilkit/test (packages/test) — simulador do vscode para testar
 extensões sem host: ativa o bundle real interceptando require("vscode"),
 semeia defaults do manifesto, expõe sondas (commands/config/tree/panel).
 Nunca importa vscode nem typescript (há teste de fronteira). API não simulada
@@ -108,4 +108,4 @@ Decisões da Fase 3: ids de view/webview ganham prefixo (`hello.tasks`);
 comando de @TreeView em menu "view/title" sem `when` explícito é escopado
 automaticamente com `view == <viewId>`; `ui:` do @Webview é relativo à RAIZ
 da extensão; o shell HTML é função pura (packages/core/src/webview-html.ts)
-para ser testável sem vscode; lado UI importa `@sigil/core/ui`.
+para ser testável sem vscode; lado UI importa `@sigilkit/core/ui`.

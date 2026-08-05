@@ -5,7 +5,7 @@ import path from "node:path";
 
 // E2E do CLI: critério de aceite da Fase 2 — `sigil check` falha em manifesto
 // stale e volta a passar depois de `sigil build`. Roda numa cópia isolada do
-// exemplo (dentro do repo, para @sigil/core continuar resolvível).
+// exemplo (dentro do repo, para @sigilkit/core continuar resolvível).
 
 const ROOT = process.cwd();
 const BIN = path.join(ROOT, "packages/cli/bin/sigil.js");

@@ -49,13 +49,13 @@ function templateFiles(name: string): TemplateFile[] {
       dev: "sigil dev",
       typecheck: "tsc --noEmit",
       // o vsce roda vscode:prepublish sozinho; --no-dependencies porque o
-      // esbuild já embute @sigil/core no bundle
+      // esbuild já embute @sigilkit/core no bundle
       package: "vsce package --no-dependencies",
       "vscode:prepublish": "npm run build",
     },
-    dependencies: { "@sigil/core": "^0.1.0" },
+    dependencies: { "@sigilkit/core": "^0.1.0" },
     devDependencies: {
-      "@sigil/cli": "^0.1.0",
+      "@sigilkit/cli": "^0.1.0",
       "@types/vscode": "^1.75.0",
       "@vscode/vsce": "^3.2.1",
       esbuild: "^0.24.2",
@@ -81,7 +81,7 @@ function templateFiles(name: string): TemplateFile[] {
 `;
 
   const extension = `import * as vscode from "vscode";
-import { Extension, Command, Config } from "@sigil/core";
+import { Extension, Command, Config } from "@sigilkit/core";
 
 // O manifesto é derivado desta classe: rode \`sigil build\` (ou \`npm run build\`)
 // e o package.json ganha o bloco contributes. Nada de dupla declaração.

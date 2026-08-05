@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createState, createVscodeMock } from "@sigil/test";
+import { createState, createVscodeMock } from "@sigilkit/test";
 
 // Item 12: documentos e editores fake — o suficiente para testar extensões
 // que leem/editam o activeTextEditor, sem extension host.

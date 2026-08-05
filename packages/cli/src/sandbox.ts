@@ -18,7 +18,7 @@ import { computeProject, reportFailure, writeChanged, writeStoredHash } from "./
  *                  vivos, sem reload de janela (~100ms)
  *   hash mudou   → manifesto mudou → reload de janela automático (~1-2s)
  *
- * O bundle do sandbox deixa @sigil/core EXTERNO (resolvido do node_modules do
+ * O bundle do sandbox deixa @sigilkit/core EXTERNO (resolvido do node_modules do
  * projeto): o registry é um singleton estável entre swaps — é o que permite
  * trocar o chunk sem perder os registros.
  */
@@ -38,7 +38,7 @@ export function runSandbox(projectDir: string): number {
         platform: "node",
         format: "cjs",
         target: "es2022",
-        external: ["vscode", "@sigil/core"],
+        external: ["vscode", "@sigilkit/core"],
         outfile: bundlePath,
         sourcemap: "inline",
         logLevel: "silent",

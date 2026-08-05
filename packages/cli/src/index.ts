@@ -13,7 +13,7 @@ Uso:
   sigil build   [dir]   decorators → package.json + src/.generated/
   sigil check   [dir]   falha (exit 1) se o manifesto estiver desatualizado; use no CI
   sigil dev     [dir]   watch mode — reconstrói a cada mudança
-  sigil sim     [dir]   hot reload SIMULADO: recarrega no @sigil/test + REPL interativo
+  sigil sim     [dir]   hot reload SIMULADO: recarrega no @sigilkit/test + REPL interativo
                         --ui abre um workbench visual no browser (--port=4400)
   sigil sandbox [dir]   VSCode REAL isolado com hot swap sem F5 (swap vs reload pelo IR)
 `;

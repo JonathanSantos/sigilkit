@@ -286,7 +286,7 @@ exports[`coletor sobre examples/hello > snapshot do manifesto 1`] = `
 exports[`coletor sobre examples/hello > snapshot do wire 1`] = `
 "// GERADO POR sigil — NÃO EDITE
 import * as vscode from "vscode";
-import { registry, adoptRegistrations, bindConfigWatchers, bindLog, guard, bindTreeView, bindWebview, bindStatusBar, bindSettingsApp, bindLanguage } from "@sigil/core";
+import { registry, adoptRegistrations, bindConfigWatchers, bindLog, guard, bindTreeView, bindWebview, bindStatusBar, bindSettingsApp, bindLanguage } from "@sigilkit/core";
 import { HelloExtension, MarkdownAssist } from "../extension";
 import { TasksView } from "../views/tasks";
 import { SettingsPanel } from "../panels/settings";
@@ -371,14 +371,14 @@ export function deactivate() {
 
 exports[`coletor sobre examples/hello > snapshot dos tipos 1`] = `
 "// GERADO POR sigil — NÃO EDITE
-import "@sigil/core";
+import "@sigilkit/core";
 
 export interface SigilConfig {
   "hello.greeting": string;
   "hello.retries": number;
 }
 
-declare module "@sigil/core" {
+declare module "@sigilkit/core" {
   interface SigilConfigRegistry extends SigilConfig {}
 }
 "

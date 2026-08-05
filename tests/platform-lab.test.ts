@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { activateExtension, SigilTestHost } from "@sigil/test";
+import { activateExtension, SigilTestHost } from "@sigilkit/test";
 
 // Lab dos itens 2 e 3 do roadmap de superfície: @ChatParticipant e
 // @CustomEditor num projeto criado do zero (init → código → build → runtime).
@@ -11,8 +11,8 @@ const ROOT = process.cwd();
 const BIN = path.join(ROOT, "packages/cli/bin/sigil.js");
 const TMP = path.join(ROOT, "tests/.tmp/lab");
 
-const LAB_EXTENSION = `import { Extension, ChatParticipant, ChatRequest, CustomEditor, OnMessage, OnRequest } from "@sigil/core";
-import type { SigilEditorContext } from "@sigil/core";
+const LAB_EXTENSION = `import { Extension, ChatParticipant, ChatRequest, CustomEditor, OnMessage, OnRequest } from "@sigilkit/core";
+import type { SigilEditorContext } from "@sigilkit/core";
 
 @Extension()
 export class LabExtension {}

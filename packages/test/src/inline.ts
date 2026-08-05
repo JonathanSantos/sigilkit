@@ -6,13 +6,13 @@ import { __mock, __sigilTestState } from "./vscode-singleton";
 
 /**
  * Modo INLINE (item 12): ativa o wire TS diretamente, sem bundle no meio —
- * o vitest transforma o TS e o alias "vscode" → @sigil/test/vscode-singleton
+ * o vitest transforma o TS e o alias "vscode" → @sigilkit/test/vscode-singleton
  * entrega o mock. Pré-requisitos no vitest.config:
  *
  *   esbuild: { target: "es2022" },       // decorators stage 3 rebaixados
  *   resolve.alias: {
  *     vscode: ".../packages/test/src/vscode-singleton.ts",
- *     "@sigil/core": ".../packages/core/src/index.ts",  // o dist faria require("vscode") fora do alias
+ *     "@sigilkit/core": ".../packages/core/src/index.ts",  // o dist faria require("vscode") fora do alias
  *   }
  *
  * Cada activateInline zera o estado compartilhado — um host por vez.

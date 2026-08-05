@@ -11,7 +11,7 @@ import {
   Diagnostics,
   log,
   registry,
-} from "@sigil/core";
+} from "@sigilkit/core";
 
 // settings: true → comando hello.configure abre a aba de configurações
 // pronta do sigil, com formulário derivado do schema das @Config

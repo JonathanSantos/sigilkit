@@ -1,4 +1,4 @@
-import { OnMessage, Webview } from "@sigil/core";
+import { OnMessage, Webview } from "@sigilkit/core";
 
 export interface Settings {
   greeting: string;

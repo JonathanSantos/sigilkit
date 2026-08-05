@@ -1,4 +1,4 @@
-import { Extension } from "@sigil/core";
+import { Extension } from "@sigilkit/core";
 
 @Extension({ prefix: "a" })
 export class A {}

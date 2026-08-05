@@ -21,10 +21,10 @@
     "package": "vsce package --no-dependencies"
   },
   "dependencies": {
-    "@sigil/core": "0.1.0"
+    "@sigilkit/core": "0.1.0"
   },
   "devDependencies": {
-    "@sigil/cli": "0.1.0",
+    "@sigilkit/cli": "0.1.0",
     "@types/vscode": "^1.75.0",
     "@vscode/test-electron": "^3.1.0",
     "esbuild": "^0.24.2",

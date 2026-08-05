@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { activateExtension, SigilTestHost } from "@sigil/test";
+import { activateExtension, SigilTestHost } from "@sigilkit/test";
 
 // Pina o docs/tutorial.md no CI: segue os passos de verdade (init → código do
 // minuto 4 → build → bundle → runtime no simulador). Se este teste quebrar,
@@ -13,7 +13,7 @@ const BIN = path.join(ROOT, "packages/cli/bin/sigil.js");
 const TMP = path.join(ROOT, "tests/.tmp/tutorial-frases");
 
 const TUTORIAL_EXTENSION = `import * as vscode from "vscode";
-import { Extension, Command, Config, StatusBar, Watch, log } from "@sigil/core";
+import { Extension, Command, Config, StatusBar, Watch, log } from "@sigilkit/core";
 
 @Extension({ settings: true })
 export class FrasesExtension {

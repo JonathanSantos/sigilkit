@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { activateExtension, SigilTestHost } from "@sigil/test";
+import { activateExtension, SigilTestHost } from "@sigilkit/test";
 
 // Lab das evoluções de DX da API: @On/@OnFile, @State/@Secret/@ContextKey,
 // progress, @UriHandler, prompt.steps e llm — num projeto criado do zero.
@@ -24,7 +24,7 @@ import {
   prompt,
   llm,
   log,
-} from "@sigil/core";
+} from "@sigilkit/core";
 
 @Extension()
 export class DxExtension {

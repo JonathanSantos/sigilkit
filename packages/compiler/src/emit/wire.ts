@@ -197,7 +197,7 @@ export function emitWire(ir: IR): string {
 
   return `// GERADO POR sigil — NÃO EDITE
 import * as vscode from "vscode";
-import { ${coreImports.join(", ")} } from "@sigil/core";
+import { ${coreImports.join(", ")} } from "@sigilkit/core";
 ${userImports}
 
 const COMMANDS = ${JSON.stringify(cmds, null, 2)} as const;

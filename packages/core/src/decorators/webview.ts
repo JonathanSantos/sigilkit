@@ -32,7 +32,7 @@ export function OnMessage(_type: string) {
 
 /**
  * Handler de REQUEST vindo da UI: o retorno (ou o erro) do método volta para
- * o `callHost(type, value)` de @sigil/core/ui, com correlação automática.
+ * o `callHost(type, value)` de @sigilkit/core/ui, com correlação automática.
  */
 export function OnRequest(_type: string) {
   return registerBoundMember("webviewHandlers");

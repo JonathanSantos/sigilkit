@@ -1,7 +1,7 @@
 import { beforeAll, afterAll, describe, expect, it, vi } from "vitest";
 import { buildSync } from "esbuild";
 import path from "node:path";
-import { activateExtension, SigilTestHost } from "@sigil/test";
+import { activateExtension, SigilTestHost } from "@sigilkit/test";
 
 // A prova do item 9 (Symbol.metadata): o bundle MINIFICADO, sem --keep-names,
 // ativa e funciona — a chave de registry não depende mais de nomes de função

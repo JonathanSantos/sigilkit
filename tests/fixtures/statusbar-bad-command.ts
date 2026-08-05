@@ -1,4 +1,4 @@
-import { Extension, StatusBar } from "@sigil/core";
+import { Extension, StatusBar } from "@sigilkit/core";
 
 @Extension({ prefix: "fx" })
 export class Fx {

@@ -9,7 +9,7 @@ import {
   TreeItem,
   registry,
   getConfig,
-} from "@sigil/core";
+} from "@sigilkit/core";
 
 export interface Todo {
   id: number;

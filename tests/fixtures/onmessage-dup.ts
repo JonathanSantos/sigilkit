@@ -1,4 +1,4 @@
-import { Extension, OnMessage, Webview } from "@sigil/core";
+import { Extension, OnMessage, Webview } from "@sigilkit/core";
 
 @Extension({ prefix: "fx" })
 export class Fx {}

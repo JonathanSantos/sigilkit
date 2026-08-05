@@ -1,6 +1,6 @@
 /**
  * Runtime do LADO UI do webview (§15.2 item 5) — roda no browser do webview,
- * nunca no extension host. Import: `@sigil/core/ui`. Não importa vscode nem
+ * nunca no extension host. Import: `@sigilkit/core/ui`. Não importa vscode nem
  * nada de node; os tipos de mensagem são compartilhados via `import type`.
  */
 

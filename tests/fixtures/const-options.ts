@@ -1,4 +1,4 @@
-import { Extension, Command, Config } from "@sigil/core";
+import { Extension, Command, Config } from "@sigilkit/core";
 
 const TITLE = "From Const";
 const OPTS = { title: "Object Const", category: "Fx" } as const;

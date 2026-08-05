@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
-import { SigilTestHost } from "@sigil/test";
+import { SigilTestHost } from "@sigilkit/test";
 import { SIM_UI_PAGE } from "./sim-ui-page";
 
 /**

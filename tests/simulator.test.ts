@@ -1,14 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import path from "node:path";
-import { activateExtension, SigilTestHost } from "@sigil/test";
+import { activateExtension, SigilTestHost } from "@sigilkit/test";
 
-// O ambiente simulado (@sigil/test) ativando o bundle REAL de examples/hello:
+// O ambiente simulado (@sigilkit/test) ativando o bundle REAL de examples/hello:
 // todo o ciclo comando/config/watch/tree/webview sem extension host.
 // Requer o bundle construído — o script `npm test` já faz isso.
 
 const projectDir = path.resolve(process.cwd(), "examples/hello");
 
-describe("@sigil/test — hello no simulador", () => {
+describe("@sigilkit/test — hello no simulador", () => {
   let host: SigilTestHost;
   let logSpy: ReturnType<typeof vi.spyOn>;
   let warnSpy: ReturnType<typeof vi.spyOn>;

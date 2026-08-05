@@ -1,4 +1,4 @@
-import { CONDITIONAL_CONTRIBUTES, OWNED_CONTRIBUTES, type Contributes } from "@sigil/compiler";
+import { CONDITIONAL_CONTRIBUTES, OWNED_CONTRIBUTES, type Contributes } from "@sigilkit/compiler";
 
 function isEmpty(v: unknown): boolean {
   if (v === undefined || v === null) return true;

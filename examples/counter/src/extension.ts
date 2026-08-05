@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { Extension, Command, Config, Watch, setConfig } from "@sigil/core";
+import { Extension, Command, Config, Watch, setConfig } from "@sigilkit/core";
 
 // O menor sigil possível: sem prefix explícito (deriva do `name` do
 // package.json → "counter"), uma classe, um arquivo.

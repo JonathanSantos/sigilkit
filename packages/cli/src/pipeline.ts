@@ -12,7 +12,7 @@ import {
   formatDiagnostics,
   hashIR,
   validate,
-} from "@sigil/compiler";
+} from "@sigilkit/compiler";
 import { mergePackageJson } from "./merge-pkg";
 
 export interface OutputFile {

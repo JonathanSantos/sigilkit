@@ -1,4 +1,4 @@
-import { Extension, Command, ContextKey } from "@sigil/core";
+import { Extension, Command, ContextKey } from "@sigilkit/core";
 
 @Extension({ prefix: "fx" })
 export class Fx {

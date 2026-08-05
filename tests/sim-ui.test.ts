@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import path from "node:path";
-import { activateExtension, SigilTestHost } from "@sigil/test";
-import { buildSnapshot } from "@sigil/cli/dist/sim-ui";
+import { activateExtension, SigilTestHost } from "@sigilkit/test";
+import { buildSnapshot } from "@sigilkit/cli/dist/sim-ui";
 
 // O snapshot é o contrato entre o simulador e o workbench visual (sim --ui):
 // tudo que a página renderiza sai daqui.

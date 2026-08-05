@@ -1,4 +1,4 @@
-import { Extension, Config, Watch } from "@sigil/core";
+import { Extension, Config, Watch } from "@sigilkit/core";
 
 @Extension({ prefix: "fx" })
 export class Fx {
