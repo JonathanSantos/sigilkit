@@ -3,6 +3,7 @@ import { runBuild } from "./build";
 import { runCheck } from "./check";
 import { runDev } from "./dev";
 import { runInit } from "./init";
+import { runSim } from "./sim";
 
 const USAGE = `sigil — framework declarativo para extensões do VSCode
 
@@ -11,6 +12,7 @@ Uso:
   sigil build [dir]   decorators → package.json + src/.generated/
   sigil check [dir]   falha (exit 1) se o manifesto estiver desatualizado; use no CI
   sigil dev   [dir]   watch mode — reconstrói a cada mudança
+  sigil sim   [dir]   hot reload SIMULADO: recarrega no @sigil/test + REPL interativo
 `;
 
 export function main(argv: string[] = process.argv.slice(2)): void {
@@ -30,6 +32,9 @@ export function main(argv: string[] = process.argv.slice(2)): void {
       break;
     case "dev":
       process.exitCode = runDev(projectDir);
+      break;
+    case "sim":
+      process.exitCode = runSim(projectDir);
       break;
     case undefined:
     case "--help":

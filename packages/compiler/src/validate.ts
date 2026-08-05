@@ -48,6 +48,13 @@ export function validate(ir: IR, program: ts.Program, projectDir: string): ts.Di
 
   // SIGIL1017: @StatusBar apontando para comando da própria extensão que não existe
   const knownCommandIds = new Set(ir.commands.map((c) => c.id));
+
+  // o comando derivado do settings não pode colidir com um comando do usuário
+  if (ir.settingsPanel && knownCommandIds.has(ir.settingsPanel.commandId)) {
+    diags.push(
+      diagAtLoc(program, projectDir, ir.settingsPanel.loc, SIGIL.DuplicateCommandId, `o comando do settings (${ir.settingsPanel.commandId}) colide com um comando da extensão`)
+    );
+  }
   for (const sb of ir.statusBars) {
     if (sb.command && sb.command.startsWith(`${ir.prefix}.`) && !knownCommandIds.has(sb.command)) {
       diags.push(

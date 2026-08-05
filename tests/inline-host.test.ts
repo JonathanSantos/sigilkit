@@ -13,6 +13,7 @@ describe("modo inline — wire TS direto, sem bundle", () => {
     const host = await activateInline(wire, { projectDir });
 
     expect(host.commands).toEqual([
+      "hello.configure",
       "hello.openSettings",
       "hello.refreshTasks",
       "hello.reset",

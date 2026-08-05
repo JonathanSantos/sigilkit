@@ -23,9 +23,17 @@ export function Webview(_opts: WebviewOptions) {
 }
 
 /**
- * Handler de mensagem vinda da UI: o roteador do webview-host despacha
+ * Handler de mensagem vinda da UI (fire-and-forget): o roteador despacha
  * `{ type, value }` para o método registrado para `type`, passando `value`.
  */
 export function OnMessage(_type: string) {
+  return registerBoundMember("webviewHandlers");
+}
+
+/**
+ * Handler de REQUEST vindo da UI: o retorno (ou o erro) do método volta para
+ * o `callHost(type, value)` de @sigil/core/ui, com correlação automática.
+ */
+export function OnRequest(_type: string) {
   return registerBoundMember("webviewHandlers");
 }

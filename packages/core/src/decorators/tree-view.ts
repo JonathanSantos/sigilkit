@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { registry } from "../registry";
 import { registerBoundMember } from "../metadata";
+import { guard } from "../guard";
 
 /** Container customizado declarado inline; o sigil emite contributes.viewsContainers. */
 export interface ViewContainerSpec {
@@ -67,11 +68,19 @@ export function bindTreeView(binding: TreeViewBinding): vscode.Disposable {
   }
 
   const emitter = new vscode.EventEmitter<void>();
+  // guard: um erro nos handlers loga e degrada (item de aviso / lista vazia)
+  // em vez de quebrar a view inteira em silêncio
+  const safeRoots = guard(`@TreeRoot de ${binding.key}`, roots);
+  const safeChildren = children ? guard(`@TreeChildren de ${binding.key}`, children) : undefined;
+  const safeItem = guard(`@TreeItem de ${binding.key}`, item);
   const provider: vscode.TreeDataProvider<unknown> = {
     onDidChangeTreeData: emitter.event,
-    getTreeItem: (el) => item(el) as vscode.TreeItem | Thenable<vscode.TreeItem>,
+    getTreeItem: (el) =>
+      (safeItem(el) ?? new vscode.TreeItem("⚠ erro — veja os logs")) as
+        | vscode.TreeItem
+        | Thenable<vscode.TreeItem>,
     getChildren: (el) =>
-      (el === undefined ? roots() : children ? children(el) : []) as
+      ((el === undefined ? safeRoots() : safeChildren ? safeChildren(el) : []) ?? []) as
         | unknown[]
         | Thenable<unknown[]>,
   };

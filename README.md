@@ -67,6 +67,48 @@ cd examples/hello && npm run bundle
 # abra examples/hello no VSCode e aperte F5
 ```
 
+## Plataforma de runtime
+
+Além dos decorators, o `@sigil/core` traz a base que toda extensão reescreve:
+
+- **Logs** — `log.info/warn/error/debug/trace` sobre `LogOutputChannel` (aba
+  Output, nível controlado pelo usuário). Funciona antes da ativação (buffer)
+  e o canal usa o `displayName` da extensão.
+- **Erros nunca somem** — todo comando/watch/webview/tree registrado pelo wire
+  passa por `guard()`: erro vira log com stack + notificação com botão
+  "Abrir logs" (comandos); trees degradam para item de aviso. R6 em runtime.
+- **HTTP** — `http.get/post/put/patch/delete` sobre o fetch global (web-ready):
+  JSON automático, timeout com AbortController, `HttpError` com status/corpo,
+  log de duração, e `http.fetchImpl` trocável em teste.
+- **Recursos** — `resources.readText/readJson/readBytes/uri` para arquivos
+  empacotados (via `workspace.fs`, funciona no vscode.dev).
+- **RPC tipado host↔UI** — além do `@OnMessage` (fire-and-forget), `@OnRequest`
+  responde a `callHost(type, value)` do `@sigil/core/ui` com correlação
+  automática; o retorno do handler resolve a Promise da UI, um throw a rejeita.
+- **Aba de configurações pronta** — `@Extension({ settings: true })` emite o
+  comando `<prefix>.configure` que abre um webview com formulário derivado do
+  schema das `@Config` (string/number/boolean/enum, min/max), two-way com o
+  workspace.
+
+## Hot reload simulado — `sigil sim`
+
+```bash
+sigil sim minha-extensao/
+```
+
+Watch incremental → re-bundle → **re-ativação no simulador `@sigil/test`** a
+cada mudança de código, preservando as configs entre reloads — desenvolva e
+teste o comportamento sem abrir o VSCode. O REPL exercita a extensão ao vivo:
+
+```
+sigil> run hello.sayHello        # executa comando (mostra messages/logs novos)
+sigil> set hello.greeting "Oi"   # simula editar Settings → dispara @Watch
+sigil> tree hello.tasks          # imprime os nós da view
+sigil> msg hello.settings {"type":"save","value":{...}}
+sigil> input Comprar café        # resposta para o próximo showInputBox
+sigil> logs | panels | reload | help | exit
+```
+
 ## Empacotando (.vsix)
 
 ```bash

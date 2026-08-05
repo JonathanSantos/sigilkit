@@ -173,6 +173,41 @@ export class TextEditorMock {
   }
 }
 
+export class OutputChannelMock {
+  readonly entries: { level: string; message: string }[] = [];
+  shownCount = 0;
+
+  constructor(readonly name: string) {}
+
+  private push(level: string, message: string, args: unknown[]): void {
+    const suffix = args.length > 0 ? ` ${args.map((a) => JSON.stringify(a)).join(" ")}` : "";
+    this.entries.push({ level, message: `${message}${suffix}` });
+  }
+
+  trace(message: string, ...args: unknown[]): void {
+    this.push("trace", message, args);
+  }
+  debug(message: string, ...args: unknown[]): void {
+    this.push("debug", message, args);
+  }
+  info(message: string, ...args: unknown[]): void {
+    this.push("info", message, args);
+  }
+  warn(message: string, ...args: unknown[]): void {
+    this.push("warn", message, args);
+  }
+  error(message: string, ...args: unknown[]): void {
+    this.push("error", message, args);
+  }
+  appendLine(message: string): void {
+    this.push("info", message, []);
+  }
+  show(): void {
+    this.shownCount++;
+  }
+  dispose(): void {}
+}
+
 export class StatusBarItemMock {
   text = "";
   tooltip?: string;
@@ -299,6 +334,7 @@ export interface VscodeMockState {
   webviewViewProviders: Map<string, { resolveWebviewView(view: unknown): unknown }>;
   webviewViews: Map<string, WebviewPanelMock>;
   statusBarItems: StatusBarItemMock[];
+  outputChannels: OutputChannelMock[];
   configListeners: ((e: { affectsConfiguration(section: string): boolean }) => void)[];
   fireConfigChange(changedId: string): void;
 }
@@ -322,6 +358,7 @@ export function createState(): VscodeMockState {
     webviewViewProviders: new Map(),
     webviewViews: new Map(),
     statusBarItems: [],
+    outputChannels: [],
     configListeners: [],
     fireConfigChange(changedId: string) {
       const event = {
@@ -355,6 +392,7 @@ export function resetState(state: VscodeMockState): void {
   state.webviewViewProviders.clear();
   state.webviewViews.clear();
   state.statusBarItems.length = 0;
+  state.outputChannels.length = 0;
   state.configListeners = [];
 }
 
@@ -450,6 +488,11 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
         const item = new StatusBarItemMock(alignment ?? 1, priority);
         state.statusBarItems.push(item);
         return item;
+      },
+      createOutputChannel: (name: string, _opts?: unknown) => {
+        const channel = new OutputChannelMock(name);
+        state.outputChannels.push(channel);
+        return channel;
       },
     },
     commands: {

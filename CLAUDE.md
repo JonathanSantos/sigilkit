@@ -48,6 +48,16 @@ init/check, simulador). `npm run test:e2e` = extension host real via
 @vscode/test-electron (exige >=3.x — o binário do mac chama "Code" agora).
 O pipeline compartilhado de build/check/dev vive em packages/cli/src/pipeline.ts.
 
+Plataforma de runtime no core: log (LogOutputChannel + buffer pré-ativação),
+guard (R6 em runtime — wire envolve comandos/watches/webviews/trees), http
+(fetch global + HttpError + fetchImpl trocável), resources (workspace.fs via
+registry.context), RPC @OnRequest/callHost (correlação __sigilRpcId), settings
+app pronto (@Extension({settings:true}) → comando <prefix>.configure + form
+derivado do schema; comando registrado direto no wire, fora do join). `sigil
+sim` = hot reload simulado (watch incremental → esbuild → activateExtension
+no @sigil/test, configs preservadas entre reloads) com REPL; cli depende de
+@sigil/test e esbuild.
+
 Quarto pacote: @sigil/test (packages/test) — simulador do vscode para testar
 extensões sem host: ativa o bundle real interceptando require("vscode"),
 semeia defaults do manifesto, expõe sondas (commands/config/tree/panel).

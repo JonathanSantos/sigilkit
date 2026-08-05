@@ -50,6 +50,20 @@ describe("notes — webview de SIDEBAR com assets e config", () => {
     expect(view.posted.at(-1)).toEqual({ type: "error", value: "limite de 1 notas atingido" });
   });
 
+  it("@OnRequest: callHost recebe o retorno do handler com correlação", async () => {
+    const view = await host.webviewView("notes.panel");
+    view.receive({ type: "count", __sigilRpcId: 42 });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(view.posted.at(-1)).toEqual({ type: "__sigilRpcResult", id: 42, ok: true, value: 1 });
+  });
+
+  it("@OnRequest de tipo desconhecido responde erro em vez de silêncio (R6)", async () => {
+    const view = await host.webviewView("notes.panel");
+    view.receive({ type: "inexistente", __sigilRpcId: 43 });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(view.posted.at(-1)).toMatchObject({ type: "__sigilRpcResult", id: 43, ok: false });
+  });
+
   it("estado sobrevive a fechar e reabrir a view", async () => {
     (await host.webviewView("notes.panel")).dispose();
     await host.executeCommand("notes.open");

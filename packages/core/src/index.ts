@@ -23,7 +23,7 @@ export type { WatchBinding } from "./decorators/watch";
 export { TreeView, TreeRoot, TreeChildren, TreeItem, bindTreeView } from "./decorators/tree-view";
 export type { TreeViewOptions, TreeViewBinding, ViewContainerSpec } from "./decorators/tree-view";
 
-export { Webview, OnMessage } from "./decorators/webview";
+export { Webview, OnMessage, OnRequest } from "./decorators/webview";
 export type { WebviewOptions } from "./decorators/webview";
 
 export { StatusBar, bindStatusBar } from "./decorators/status-bar";
@@ -31,6 +31,15 @@ export type { StatusBarOptions, StatusBarBinding } from "./decorators/status-bar
 
 export { adoptRegistrations, bucketOf } from "./metadata";
 export type { Bucket } from "./metadata";
+
+export { log, bindLog } from "./log";
+export { guard } from "./guard";
+export type { GuardOptions } from "./guard";
+export { http, HttpError } from "./http";
+export type { HttpOptions } from "./http";
+export { resources } from "./resources";
+export { bindSettingsApp } from "./settings-app";
+export type { SettingsAppBinding, SettingsAppHandle, SettingsField } from "./settings-app";
 
 export { bindWebview, bindWebviewView } from "./webview-host";
 export type { WebviewBinding } from "./webview-host";

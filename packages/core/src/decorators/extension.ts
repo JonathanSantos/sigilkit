@@ -3,6 +3,12 @@ import { registerBoundMember } from "../metadata";
 
 export interface ExtensionOptions {
   prefix?: string;
+  /**
+   * Habilita a aba de configurações pronta do sigil: emite o comando
+   * `<prefix>.configure` e abre um webview com formulário derivado do schema
+   * das @Config, two-way com o workspace.
+   */
+  settings?: boolean | { title?: string; commandTitle?: string };
 }
 
 /**

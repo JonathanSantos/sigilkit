@@ -1,4 +1,4 @@
-import { Extension, Command, Config, OnMessage, Webview, registry, getConfig } from "@sigil/core";
+import { Extension, Command, Config, OnMessage, OnRequest, Webview, registry, getConfig } from "@sigil/core";
 
 export interface Note {
   id: number;
@@ -42,6 +42,12 @@ export class NotesPanel {
   onRemove(id: number) {
     this.notes = this.notes.filter((n) => n.id !== id);
     this.post({ type: "state", value: this.notes });
+  }
+
+  // @OnRequest: o retorno volta para o callHost("count") do lado UI
+  @OnRequest("count")
+  onCount(): number {
+    return this.notes.length;
   }
 
   post!: (msg: HostToUi) => void; // injetado pelo wire

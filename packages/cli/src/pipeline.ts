@@ -39,8 +39,11 @@ export function computeProject(projectDir: string, existingProgram?: ts.Program)
   }
   const pkgText = fs.readFileSync(pkgPath, "utf8");
   let defaultPrefix: string;
+  let displayName: string | undefined;
   try {
-    defaultPrefix = (JSON.parse(pkgText) as { name?: string }).name ?? "extension";
+    const pkg = JSON.parse(pkgText) as { name?: string; displayName?: string };
+    defaultPrefix = pkg.name ?? "extension";
+    displayName = pkg.displayName ?? pkg.name;
   } catch {
     return { ok: false, message: `sigil: package.json inválido em ${pkgPath}` };
   }
@@ -56,7 +59,7 @@ export function computeProject(projectDir: string, existingProgram?: ts.Program)
     }
   }
 
-  const { ir, diagnostics } = collect(program, { defaultPrefix, projectDir });
+  const { ir, diagnostics } = collect(program, { defaultPrefix, displayName, projectDir });
   const all = [...diagnostics, ...(ir ? validate(ir, program, projectDir) : [])];
   if (all.length > 0 || !ir) {
     return { ok: false, diagnostics: all };

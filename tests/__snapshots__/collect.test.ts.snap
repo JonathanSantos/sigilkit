@@ -11,7 +11,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 3,
         "file": "src/extension.ts",
-        "line": 28,
+        "line": 31,
       },
       "menus": [],
       "title": "Open settings",
@@ -39,7 +39,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 3,
         "file": "src/extension.ts",
-        "line": 23,
+        "line": 26,
       },
       "menus": [
         {
@@ -60,7 +60,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 3,
         "file": "src/extension.ts",
-        "line": 17,
+        "line": 19,
       },
       "menus": [],
       "title": "Say hello",
@@ -76,7 +76,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 12,
         "file": "src/extension.ts",
-        "line": 7,
+        "line": 9,
       },
       "tsType": "string",
     },
@@ -89,15 +89,27 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 12,
         "file": "src/extension.ts",
-        "line": 10,
+        "line": 12,
       },
       "maximum": 10,
       "minimum": 1,
       "tsType": "number",
     },
   ],
+  "displayName": "hello",
   "extensionClass": "HelloExtension",
   "prefix": "hello",
+  "settingsPanel": {
+    "commandId": "hello.configure",
+    "commandTitle": "Configure",
+    "loc": {
+      "character": 14,
+      "file": "src/extension.ts",
+      "line": 7,
+    },
+    "title": "hello — Configurações",
+    "viewType": "hello.sigilSettings",
+  },
   "sourceFile": "src/extension.ts",
   "statusBars": [
     {
@@ -107,7 +119,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 12,
         "file": "src/extension.ts",
-        "line": 14,
+        "line": 16,
       },
       "priority": 100,
       "text": "$(megaphone) Olá",
@@ -131,7 +143,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "sourceFile": "src/views/tasks.ts",
     },
   ],
-  "version": 3,
+  "version": 4,
   "viewContainers": [],
   "watches": [
     {
@@ -139,7 +151,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 3,
         "file": "src/extension.ts",
-        "line": 33,
+        "line": 36,
       },
       "targetConfigId": "hello.greeting",
     },
@@ -164,6 +176,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
           "type": "save",
         },
       ],
+      "requestHandlers": [],
       "sourceFile": "src/panels/settings.ts",
       "title": "Hello Settings",
       "uiEntry": "ui/settings.html",
@@ -175,6 +188,10 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
 exports[`coletor sobre examples/hello > snapshot do manifesto 1`] = `
 {
   "commands": [
+    {
+      "command": "hello.configure",
+      "title": "Configure",
+    },
     {
       "category": "Hello",
       "command": "hello.openSettings",
@@ -246,7 +263,7 @@ exports[`coletor sobre examples/hello > snapshot do manifesto 1`] = `
 exports[`coletor sobre examples/hello > snapshot do wire 1`] = `
 "// GERADO POR sigil — NÃO EDITE
 import * as vscode from "vscode";
-import { registry, adoptRegistrations, bindConfigWatchers, bindTreeView, bindWebview, bindStatusBar } from "@sigil/core";
+import { registry, adoptRegistrations, bindConfigWatchers, bindLog, guard, bindTreeView, bindWebview, bindStatusBar, bindSettingsApp } from "@sigil/core";
 import { HelloExtension } from "../extension";
 import { TasksView } from "../views/tasks";
 import { SettingsPanel } from "../panels/settings";
@@ -279,7 +296,9 @@ const WATCHES = [
 let instance: HelloExtension | undefined;
 
 export function activate(ctx: vscode.ExtensionContext) {
+  registry.context = ctx;
   registry.prefix = "hello";
+  ctx.subscriptions.push(bindLog("hello"));
   instance = new HelloExtension();
   adoptRegistrations("HelloExtension", HelloExtension);
   new TasksView();
@@ -287,12 +306,15 @@ export function activate(ctx: vscode.ExtensionContext) {
   ctx.subscriptions.push(bindTreeView({"key":"TasksView","id":"hello.tasks","rootsKey":"TasksView.roots","childrenKey":"TasksView.children","itemKey":"TasksView.render"}));
   const wv_SettingsPanel = new SettingsPanel();
   adoptRegistrations("SettingsPanel", SettingsPanel);
-  ctx.subscriptions.push(bindWebview(wv_SettingsPanel, {"key":"SettingsPanel","id":"hello.settings","title":"Hello Settings","uiEntry":"ui/settings.html","handlers":[{"type":"reset","key":"SettingsPanel.onReset"},{"type":"save","key":"SettingsPanel.onSave"}]}, ctx));
+  ctx.subscriptions.push(bindWebview(wv_SettingsPanel, {"key":"SettingsPanel","id":"hello.settings","title":"Hello Settings","uiEntry":"ui/settings.html","handlers":[{"type":"reset","key":"SettingsPanel.onReset"},{"type":"save","key":"SettingsPanel.onSave"}],"requests":[]}, ctx));
   ctx.subscriptions.push(bindStatusBar({"key":"HelloExtension.status","alignment":"left","priority":100,"command":"hello.sayHello","tooltip":"Diga olá"}));
+  const settingsApp = bindSettingsApp({"viewType":"hello.sigilSettings","title":"hello — Configurações","prefix":"hello","fields":[{"id":"hello.greeting","label":"greeting","type":"string","description":"Texto exibido na saudação","default":"Olá"},{"id":"hello.retries","label":"retries","type":"number","description":"Número de tentativas","minimum":1,"maximum":10,"default":3}]}, ctx);
+  ctx.subscriptions.push(settingsApp);
+  ctx.subscriptions.push(vscode.commands.registerCommand("hello.configure", guard("comando hello.configure", () => settingsApp.open(), { notify: true })));
   for (const c of COMMANDS) {
     const fn = registry.commands.get(c.key);
     if (!fn) throw new Error(\`sigil: handler ausente para \${c.key}. Rode 'sigil build'.\`);
-    ctx.subscriptions.push(vscode.commands.registerCommand(c.id, fn));
+    ctx.subscriptions.push(vscode.commands.registerCommand(c.id, guard(\`comando \${c.id}\`, fn, { notify: true })));
   }
   ctx.subscriptions.push(bindConfigWatchers(WATCHES));
   registry.lifecycle.get("HelloExtension.onActivate")?.(ctx);

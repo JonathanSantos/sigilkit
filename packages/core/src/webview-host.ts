@@ -1,6 +1,8 @@
 import * as vscode from "vscode";
 import { registry } from "./registry";
 import { renderWebviewHtml } from "./webview-html";
+import { guard } from "./guard";
+import { log } from "./log";
 
 /**
  * Web-ready de propósito: nada de node:fs/node:crypto — o HTML é lido via
@@ -14,17 +16,50 @@ export interface WebviewBinding {
   readonly title: string;
   /** relativo à raiz da extensão, já normalizado (sem "./") */
   readonly uiEntry: string;
+  /** fire-and-forget: @OnMessage */
   readonly handlers: readonly { type: string; key: string }[];
+  /** request/response: @OnRequest (a UI usa callHost e recebe o retorno) */
+  readonly requests?: readonly { type: string; key: string }[];
 }
 
-function makeNonce(): string {
+export function makeNonce(): string {
   const bytes = new Uint8Array(16);
   globalThis.crypto.getRandomValues(bytes);
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function makeRouter(binding: WebviewBinding): (msg: { type?: string; value?: unknown } | undefined) => void {
+type IncomingMessage = { type?: string; value?: unknown; __sigilRpcId?: number } | undefined;
+
+function makeRouter(
+  binding: WebviewBinding,
+  post: (msg: unknown) => void
+): (msg: IncomingMessage) => void {
   return (msg) => {
+    const rpcId = msg?.__sigilRpcId;
+
+    // @OnRequest: request/response com correlação — o retorno (ou erro) do
+    // handler volta para o callHost() do lado UI
+    if (typeof rpcId === "number") {
+      const req = (binding.requests ?? []).find((h) => h.type === msg?.type);
+      if (!req) {
+        log.warn(`sigil: request de tipo desconhecido em '${binding.key}': ${String(msg?.type)}`);
+        post({ type: "__sigilRpcResult", id: rpcId, ok: false, error: `tipo de request desconhecido: ${String(msg?.type)}` });
+        return;
+      }
+      const fn = registry.webviewHandlers.get(req.key);
+      if (!fn) throw new Error(`sigil: handler ausente para ${req.key}. Rode 'sigil build'.`);
+      Promise.resolve()
+        .then(() => fn(msg?.value))
+        .then(
+          (value) => post({ type: "__sigilRpcResult", id: rpcId, ok: true, value }),
+          (err: unknown) => {
+            log.error(`@OnRequest '${String(msg?.type)}' em ${binding.key} falhou: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
+            post({ type: "__sigilRpcResult", id: rpcId, ok: false, error: err instanceof Error ? err.message : String(err) });
+          }
+        );
+      return;
+    }
+
     const handler = binding.handlers.find((h) => h.type === msg?.type);
     if (!handler) {
       // R6: tipo desconhecido vira warning, nunca silêncio
@@ -33,7 +68,7 @@ function makeRouter(binding: WebviewBinding): (msg: { type?: string; value?: unk
     }
     const fn = registry.webviewHandlers.get(handler.key);
     if (!fn) throw new Error(`sigil: handler ausente para ${handler.key}. Rode 'sigil build'.`);
-    fn(msg?.value);
+    guard(`@OnMessage '${String(msg?.type)}' em ${binding.key}`, fn)(msg?.value);
   };
 }
 
@@ -71,7 +106,7 @@ export function bindWebview(
     void panel.webview.postMessage(msg);
   };
   (instance as { post?: (msg: unknown) => void }).post = post;
-  const router = makeRouter(binding);
+  const router = makeRouter(binding, (msg) => void panel?.webview.postMessage(msg));
 
   const open = async (): Promise<void> => {
     if (panel) {
@@ -119,7 +154,7 @@ export function bindWebviewView(
     void current.webview.postMessage(msg);
   };
   (instance as { post?: (msg: unknown) => void }).post = post;
-  const router = makeRouter(binding);
+  const router = makeRouter(binding, (msg) => void current?.webview.postMessage(msg));
 
   const provider: vscode.WebviewViewProvider = {
     resolveWebviewView: async (view) => {

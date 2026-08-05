@@ -26,17 +26,20 @@ export type Contributes = Partial<Record<OwnedContributeKey | ConditionalContrib
 export function emitManifest(ir: IR): Contributes {
   const out: Contributes = {};
 
-  if (ir.commands.length > 0) {
-    out.commands = ir.commands.map((c) =>
-      compact({
-        command: c.id,
-        title: c.title,
-        category: c.category,
-        icon: c.icon,
-        enablement: c.enablement,
-      })
-    );
+  const commandEntries: Record<string, unknown>[] = ir.commands.map((c) =>
+    compact({
+      command: c.id,
+      title: c.title,
+      category: c.category,
+      icon: c.icon,
+      enablement: c.enablement,
+    })
+  );
+  if (ir.settingsPanel) {
+    commandEntries.push({ command: ir.settingsPanel.commandId, title: ir.settingsPanel.commandTitle });
+    commandEntries.sort((a, b) => ((a.command as string) < (b.command as string) ? -1 : 1));
   }
+  if (commandEntries.length > 0) out.commands = commandEntries;
 
   if (ir.configs.length > 0) {
     const properties: Record<string, unknown> = {};

@@ -1,4 +1,4 @@
-export const IR_VERSION = 3;
+export const IR_VERSION = 4;
 
 export interface SourceLoc {
   file: string;
@@ -88,18 +88,32 @@ export interface IRWebview {
   /** sidebar: container da view (builtin ou id de container inline). */
   container?: string;
   messageHandlers: { type: string; key: string }[];
+  /** @OnRequest: request/response (o retorno volta para o callHost da UI). */
+  requestHandlers: { type: string; key: string }[];
   /** A classe @Webview pode morar em arquivo próprio; o wire precisa importá-la. */
   sourceFile: string;
+  loc: SourceLoc;
+}
+
+/** Aba de configurações pronta, habilitada por @Extension({ settings }). */
+export interface IRSettingsPanel {
+  commandId: string; // "hello.configure"
+  commandTitle: string;
+  viewType: string; // "hello.sigilSettings"
+  title: string;
   loc: SourceLoc;
 }
 
 export interface IR {
   version: number;
   prefix: string;
+  /** displayName do package.json (?? name) — nome do canal de log, título default do settings. */
+  displayName: string;
   extensionClass: string;
   sourceFile: string;
   activateKey?: string;
   deactivateKey?: string;
+  settingsPanel?: IRSettingsPanel;
   commands: IRCommand[];
   configs: IRConfig[];
   watches: IRWatch[];

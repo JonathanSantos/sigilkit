@@ -24,11 +24,12 @@ export function emitWire(ir: IR): string {
   const cmds = ir.commands.map((c) => ({ key: c.key, id: c.id }));
   const watches = ir.watches.map((w) => ({ key: w.key, targetConfigId: w.targetConfigId }));
 
-  const coreImports = ["registry", "adoptRegistrations", "bindConfigWatchers"];
+  const coreImports = ["registry", "adoptRegistrations", "bindConfigWatchers", "bindLog", "guard"];
   if (ir.treeViews.length > 0) coreImports.push("bindTreeView");
   if (ir.webviews.some((w) => w.location === "panel")) coreImports.push("bindWebview");
   if (ir.webviews.some((w) => w.location === "sidebar")) coreImports.push("bindWebviewView");
   if (ir.statusBars.length > 0) coreImports.push("bindStatusBar");
+  if (ir.settingsPanel) coreImports.push("bindSettingsApp");
 
   const byFile = new Map<string, Set<string>>();
   const addImport = (file: string, cls: string): void => {
@@ -52,11 +53,36 @@ export function emitWire(ir: IR): string {
 
   const webviewSetup = ir.webviews
     .map((w) => {
-      const binding = { key: w.key, id: w.id, title: w.title, uiEntry: w.uiEntry, handlers: w.messageHandlers };
+      const binding = {
+        key: w.key,
+        id: w.id,
+        title: w.title,
+        uiEntry: w.uiEntry,
+        handlers: w.messageHandlers,
+        requests: w.requestHandlers,
+      };
       const bindFn = w.location === "sidebar" ? "bindWebviewView" : "bindWebview";
       return `  const wv_${w.key} = new ${w.key}();\n  adoptRegistrations(${JSON.stringify(w.key)}, ${w.key});\n  ctx.subscriptions.push(${bindFn}(wv_${w.key}, ${JSON.stringify(binding)}, ctx));\n`;
     })
     .join("");
+
+  const settingsSetup = ir.settingsPanel
+    ? `  const settingsApp = bindSettingsApp(${JSON.stringify({
+        viewType: ir.settingsPanel.viewType,
+        title: ir.settingsPanel.title,
+        prefix: ir.prefix,
+        fields: ir.configs.map((c) => ({
+          id: c.id,
+          label: c.key.slice(c.key.indexOf(".") + 1),
+          type: c.jsonType,
+          description: c.description,
+          enum: c.enum,
+          minimum: c.minimum,
+          maximum: c.maximum,
+          default: c.default,
+        })),
+      })}, ctx);\n  ctx.subscriptions.push(settingsApp);\n  ctx.subscriptions.push(vscode.commands.registerCommand(${JSON.stringify(ir.settingsPanel.commandId)}, guard(${JSON.stringify(`comando ${ir.settingsPanel.commandId}`)}, () => settingsApp.open(), { notify: true })));\n`
+    : "";
 
   const statusBarSetup = ir.statusBars
     .map((s) => {
@@ -83,13 +109,15 @@ const WATCHES = ${JSON.stringify(watches, null, 2)} as const;
 let instance: ${ir.extensionClass} | undefined;
 
 export function activate(ctx: vscode.ExtensionContext) {
+  registry.context = ctx;
   registry.prefix = ${JSON.stringify(ir.prefix)};
+  ctx.subscriptions.push(bindLog(${JSON.stringify(ir.displayName)}));
   instance = new ${ir.extensionClass}();
   adoptRegistrations(${JSON.stringify(ir.extensionClass)}, ${ir.extensionClass});
-${treeSetup}${webviewSetup}${statusBarSetup}  for (const c of COMMANDS) {
+${treeSetup}${webviewSetup}${statusBarSetup}${settingsSetup}  for (const c of COMMANDS) {
     const fn = registry.commands.get(c.key);
     if (!fn) throw new Error(\`sigil: handler ausente para \${c.key}. Rode 'sigil build'.\`);
-    ctx.subscriptions.push(vscode.commands.registerCommand(c.id, fn));
+    ctx.subscriptions.push(vscode.commands.registerCommand(c.id, guard(\`comando \${c.id}\`, fn, { notify: true })));
   }
   ctx.subscriptions.push(bindConfigWatchers(WATCHES));
 ${ir.activateKey ? `  registry.lifecycle.get(${JSON.stringify(ir.activateKey)})?.(ctx);\n` : ""}}

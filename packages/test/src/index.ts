@@ -14,6 +14,7 @@ import {
 
 export {
   EventEmitterMock,
+  OutputChannelMock,
   PositionMock,
   RangeMock,
   SelectionMock,
@@ -159,7 +160,21 @@ export class SigilTestHost {
       else this.state.values.set(id, value);
       this.state.fireConfigChange(id);
     },
+    /** Valores ESCRITOS (não defaults) — útil para carregar entre reloads do sim. */
+    snapshot: (): Record<string, unknown> => {
+      return Object.fromEntries(this.state.values);
+    },
   };
+
+  /** Entradas de log de todos os canais criados (via bindLog do core). */
+  get logs(): { level: string; message: string }[] {
+    return this.state.outputChannels.flatMap((c) => c.entries);
+  }
+
+  /** Canais de output criados pela extensão. */
+  get outputChannels() {
+    return [...this.state.outputChannels];
+  }
 
   /** Enfileira respostas para os próximos showInputBox (fila vazia = ESC/cancelar). */
   queueInputBox(...values: (string | undefined)[]): void {

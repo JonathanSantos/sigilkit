@@ -33,6 +33,10 @@
   "contributes": {
     "commands": [
       {
+        "command": "hello.configure",
+        "title": "Configure"
+      },
+      {
         "command": "hello.openSettings",
         "title": "Open settings",
         "category": "Hello"

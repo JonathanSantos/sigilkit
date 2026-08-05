@@ -4,6 +4,7 @@ import {
   IR,
   IRCommand,
   IRConfig,
+  IRSettingsPanel,
   IRStatusBar,
   IRTreeView,
   IRViewContainer,
@@ -23,6 +24,8 @@ export interface CollectOptions {
    * podem ler disco (R4/§13), então o valor entra no IR aqui, na coleta.
    */
   defaultPrefix: string;
+  /** displayName do package.json (?? name) — canal de log, título do settings. */
+  displayName?: string;
   projectDir: string;
 }
 
@@ -62,7 +65,7 @@ const EVAL_FAILED: unique symbol = Symbol("sigil.evalFailed");
 // Decorators de membro por espécie de classe (§8.5 + §15)
 const EXTENSION_MEMBERS = ["Command", "Config", "Watch", "Activate", "Deactivate", "StatusBar"] as const;
 const TREE_MEMBERS = ["TreeRoot", "TreeChildren", "TreeItem", "Command"] as const;
-const WEBVIEW_MEMBERS = ["OnMessage"] as const;
+const WEBVIEW_MEMBERS = ["OnMessage", "OnRequest"] as const;
 const ALL_MEMBERS = [...new Set([...EXTENSION_MEMBERS, ...TREE_MEMBERS, ...WEBVIEW_MEMBERS])];
 
 export function collect(program: ts.Program, opts: CollectOptions): CollectResult {
@@ -183,11 +186,34 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
   let prefix = opts.defaultPrefix;
   const extDec = getDecorator(cls, checker, "Extension")!;
   const extOptsNode = optionsNodeOf(extDec);
+  let extRaw: Record<string, unknown> | null = null;
   if (extOptsNode) {
     const raw = tryEval(extOptsNode);
     if (raw === EVAL_FAILED) return { diagnostics };
-    const p = (raw as { prefix?: unknown } | null)?.prefix;
+    extRaw = raw as Record<string, unknown> | null;
+    const p = extRaw?.prefix;
     if (typeof p === "string" && p.length > 0) prefix = p;
+  }
+  const displayName = opts.displayName ?? prefix;
+
+  // ── @Extension({ settings }): a aba de configurações pronta ────────────────
+  let settingsPanel: IRSettingsPanel | undefined;
+  if (extRaw?.settings) {
+    const s = extRaw.settings === true ? {} : extRaw.settings;
+    if (s === null || typeof s !== "object") {
+      diagnostics.push(
+        diagAt(extOptsNode ?? cls.name, SIGIL.MissingRequiredOption, "settings de @Extension precisa ser true ou { title?, commandTitle? }")
+      );
+      return { diagnostics };
+    }
+    const so = s as { title?: unknown; commandTitle?: unknown };
+    settingsPanel = {
+      commandId: `${prefix}.configure`,
+      commandTitle: typeof so.commandTitle === "string" ? so.commandTitle : "Configure",
+      viewType: `${prefix}.sigilSettings`,
+      title: typeof so.title === "string" ? so.title : `${displayName} — Configurações`,
+      loc: locOf(cls.name),
+    };
   }
 
   const commands: IRCommand[] = [];
@@ -583,6 +609,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     }
 
     const handlers: { type: string; key: string }[] = [];
+    const requests: { type: string; key: string }[] = [];
     const seen = new Set<string>();
 
     for (const member of wv.members) {
@@ -598,27 +625,39 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
       }
 
       const msgDec = getDecorator(member, checker, "OnMessage");
-      if (!msgDec) continue;
-      const arg = optionsNodeOf(msgDec);
+      const reqDec = getDecorator(member, checker, "OnRequest");
+      if (msgDec && reqDec) {
+        diagnostics.push(
+          diagAt(reqDec, SIGIL.WrongClassForMember, "um método não pode ser @OnMessage e @OnRequest ao mesmo tempo")
+        );
+        continue;
+      }
+      const dec = msgDec ?? reqDec;
+      if (!dec) continue;
+      const decoratorName = msgDec ? "OnMessage" : "OnRequest";
+      const arg = optionsNodeOf(dec);
       const type = arg ? tryEval(arg) : undefined;
       if (type === EVAL_FAILED) continue;
       if (typeof type !== "string" || type.length === 0) {
         diagnostics.push(
-          diagAt(arg ?? member.name, SIGIL.NotStaticLiteral, "@OnMessage precisa de um tipo de mensagem literal (string)")
+          diagAt(arg ?? member.name, SIGIL.NotStaticLiteral, `@${decoratorName} precisa de um tipo de mensagem literal (string)`)
         );
         continue;
       }
       if (seen.has(type)) {
         diagnostics.push(
-          diagAt(arg ?? member.name, SIGIL.DuplicateMessageType, `tipo de mensagem duplicado em @OnMessage: '${type}'`)
+          diagAt(arg ?? member.name, SIGIL.DuplicateMessageType, `tipo de mensagem duplicado em @${decoratorName}: '${type}'`)
         );
         continue;
       }
       seen.add(type);
-      handlers.push({ type, key: `${wvClassName}.${memberNameOf(member.name)}` });
+      (msgDec ? handlers : requests).push({ type, key: `${wvClassName}.${memberNameOf(member.name)}` });
     }
 
-    handlers.sort((a, b) => (a.type < b.type ? -1 : a.type > b.type ? 1 : 0));
+    const byType = (a: { type: string }, b: { type: string }) =>
+      a.type < b.type ? -1 : a.type > b.type ? 1 : 0;
+    handlers.sort(byType);
+    requests.sort(byType);
 
     webviews.push(
       compact({
@@ -630,6 +669,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
         name: location === "sidebar" ? ((o.name as string | undefined) ?? (o.title as string)) : undefined,
         container,
         messageHandlers: handlers,
+        requestHandlers: requests,
         sourceFile: sourceFileOf(wv),
         loc: locOf(wv.name),
       }) as IRWebview
@@ -653,10 +693,12 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
   const ir = compact({
     version: IR_VERSION,
     prefix,
+    displayName,
     extensionClass: className,
     sourceFile: sourceFileOf(cls),
     activateKey,
     deactivateKey,
+    settingsPanel,
     commands,
     configs,
     watches,

@@ -18,6 +18,17 @@ export interface StatusBarItemLike {
   dispose(): void;
 }
 
+/** Subconjunto de vscode.LogOutputChannel que o sigil usa. */
+export interface LogChannelLike {
+  trace(message: string, ...args: unknown[]): void;
+  debug(message: string, ...args: unknown[]): void;
+  info(message: string, ...args: unknown[]): void;
+  warn(message: string, ...args: unknown[]): void;
+  error(message: string, ...args: unknown[]): void;
+  show(): void;
+  dispose(): void;
+}
+
 /**
  * Metade "comportamento" do modelo de propriedade (§4 do spec): os decorators
  * preenchem estes Maps na construção da instância; o wire gerado faz o join
@@ -29,6 +40,10 @@ export interface StatusBarItemLike {
 export class Registry {
   /** Prefixo resolvido da extensão. O wire gerado preenche antes de instanciar a classe. */
   prefix = "";
+  /** ExtensionContext corrente; o wire define no início do activate. */
+  context?: import("vscode").ExtensionContext;
+  /** Canal de log da extensão; bindLog define no activate. */
+  logChannel?: LogChannelLike;
   readonly commands = new Map<string, CommandHandler>();
   readonly lifecycle = new Map<string, LifecycleHandler>();
   readonly watches = new Map<string, WatchHandler>();

@@ -36,6 +36,7 @@ describe("bundle minificado sem --keep-names", () => {
 
   it("o join wire ↔ registry sobrevive à minificação", () => {
     expect(host.commands).toEqual([
+      "hello.configure",
       "hello.openSettings",
       "hello.refreshTasks",
       "hello.reset",

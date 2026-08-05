@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { registry } from "../registry";
 import { registerBoundMember } from "../metadata";
 import { getConfig } from "../config-access";
+import { guard } from "../guard";
 
 /**
  * Observa mudanças de uma config declarada com @Config na mesma classe.
@@ -35,7 +36,7 @@ export function bindConfigWatchers(watches: readonly WatchBinding[]): vscode.Dis
       if (!handler) {
         throw new Error(`sigil: watcher ausente para ${w.key}. Rode 'sigil build'.`);
       }
-      handler(next, prev);
+      guard(`@Watch ${w.key}`, handler)(next, prev);
     }
   });
 }

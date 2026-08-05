@@ -1,7 +1,9 @@
 import * as vscode from "vscode";
-import { Extension, Command, Config, Watch, Activate, StatusBar, registry } from "@sigil/core";
+import { Extension, Command, Config, Watch, Activate, StatusBar, log, registry } from "@sigil/core";
 
-@Extension({ prefix: "hello" })
+// settings: true → comando hello.configure abre a aba de configurações
+// pronta do sigil, com formulário derivado do schema das @Config
+@Extension({ prefix: "hello", settings: true })
 export class HelloExtension {
   @Config({ description: "Texto exibido na saudação" })
   accessor greeting: string = "Olá";
@@ -15,6 +17,7 @@ export class HelloExtension {
 
   @Command({ title: "Say hello", category: "Hello", keybinding: "ctrl+alt+h" })
   sayHello() {
+    log.info(`saudação exibida: ${this.greeting}`);
     vscode.window.showInformationMessage(`${this.greeting}!`);
     this.status = `$(megaphone) ${this.greeting}!`;
   }
