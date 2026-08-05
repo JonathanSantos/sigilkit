@@ -4,6 +4,17 @@ Os quatro pacotes `@sigilkit/*` versionam em lockstep — cada entrada aqui vale
 para `core`, `compiler`, `cli` e `test` na mesma versão. Pré-1.0, mudanças de
 API podem acontecer entre versões minor; sempre listadas aqui.
 
+## Não publicado
+
+- **Inferência de schema segue aliases** — `accessor petType: PetType` (alias,
+  `keyof typeof`, indexed access) resolve via checker para união de literais →
+  enum no manifesto; antes só uniões inline funcionavam (SIGIL1007).
+- **`sim --ui` serve assets estáticos do projeto** — URLs que a UI constrói em
+  runtime (sprites, imagens) resolvem no workbench do browser, com a mesma
+  guarda de path do `/webview-resource`.
+- **examples/pets** — case de rewrite do host do vscode-pets (a UI fica
+  intacta): 1.347 linhas → ~260, manifesto derivado, mesmos ids públicos.
+
 ## 0.4.0 — 2026-08-05
 
 - **`editor.openText(conteudo, { language, beside })`** no core — renderização

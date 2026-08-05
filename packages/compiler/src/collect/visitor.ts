@@ -571,7 +571,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     if (!cfgDec) return;
     if (!requireAccessor(p, "Config", propName)) return;
 
-    let schema = p.type ? typeNodeToSchema(p.type) : undefined;
+    let schema = p.type ? typeNodeToSchema(p.type, checker) : undefined;
     if (p.type && !schema) {
       diagnostics.push(
         diagAt(p.type, SIGIL.UnsupportedConfigType, `tipo de config não suportado em '${propName}' (use string, number, boolean, array de primitivos, união de literais string ou object literal type)`)

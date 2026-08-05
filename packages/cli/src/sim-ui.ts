@@ -256,6 +256,16 @@ export function startSimUi(options: SimUiOptions): SimUiHandle {
         }
         return;
       }
+      // fallback estático: URLs que a UI CONSTRÓI em runtime a partir da base
+      // do webview (ex.: gifs de sprite `${base}/dog/brown_walk.gif`) chegam
+      // aqui como caminho puro — serve do projeto, com a mesma guarda de path
+      if (req.method === "GET") {
+        const requested = path.resolve(options.projectDir, decodeURIComponent(url.pathname).replace(/^\/+/, ""));
+        if (requested.startsWith(path.resolve(options.projectDir)) && fs.existsSync(requested) && fs.statSync(requested).isFile()) {
+          res.writeHead(200, { "content-type": contentTypeOf(requested) }).end(fs.readFileSync(requested));
+          return;
+        }
+      }
 
       if (req.method === "POST") {
         const host = options.getHost();

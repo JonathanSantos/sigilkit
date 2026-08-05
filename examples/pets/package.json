@@ -1,0 +1,125 @@
+{
+  "name": "pets",
+  "displayName": "VS Code Pets (case sigil)",
+  "description": "O host do vscode-pets reescrito em sigil — a UI dos bichinhos fica intacta.",
+  "version": "0.0.1",
+  "publisher": "sigil-example",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "build": "npm run build:ui && sigil build && npm run bundle",
+    "build:ui": "esbuild ui-src/panel/main.ts --bundle --format=iife --global-name=petApp --target=es2022 --outfile=ui/dist/main-bundle.js",
+    "bundle": "esbuild src/.generated/wire.ts --bundle --platform=node --format=cjs --target=es2022 --external:vscode --sourcemap --outfile=out/extension.js",
+    "typecheck": "tsc --noEmit",
+    "vscode:prepublish": "npm run build",
+    "package": "vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "@sigilkit/core": "0.4.0"
+  },
+  "devDependencies": {
+    "@sigilkit/cli": "0.4.0",
+    "@sigilkit/test": "0.4.0",
+    "@types/vscode": "^1.75.0",
+    "esbuild": "^0.24.2",
+    "@vscode/vsce": "^3.2.1"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "vscode-pets.delete-pet",
+        "title": "Remove pet",
+        "category": "Pets"
+      },
+      {
+        "command": "vscode-pets.export-pet-list",
+        "title": "Export pet list",
+        "category": "Pets"
+      },
+      {
+        "command": "vscode-pets.remove-all-pets",
+        "title": "Remove all pets",
+        "category": "Pets"
+      },
+      {
+        "command": "vscode-pets.roll-call",
+        "title": "Roll-call",
+        "category": "Pets"
+      },
+      {
+        "command": "vscode-pets.spawn-pet",
+        "title": "Spawn additional pet",
+        "category": "Pets"
+      },
+      {
+        "command": "vscode-pets.start",
+        "title": "Start pet coding session",
+        "category": "Pets"
+      },
+      {
+        "command": "vscode-pets.throw-ball",
+        "title": "Throw ball",
+        "category": "Pets"
+      },
+      {
+        "command": "vscode-pets.throw-with-mouse",
+        "title": "Toggle: throw ball with mouse",
+        "category": "Pets"
+      }
+    ],
+    "configuration": {
+      "title": "Vscode-pets",
+      "properties": {
+        "vscode-pets.disableEffects": {
+          "type": "boolean",
+          "default": false,
+          "description": "Desligar efeitos visuais"
+        },
+        "vscode-pets.petColor": {
+          "type": "string",
+          "default": "brown",
+          "description": "Cor do bicho novo",
+          "enum": [
+            "black",
+            "brown",
+            "white",
+            "red",
+            "akita"
+          ]
+        },
+        "vscode-pets.petSize": {
+          "type": "string",
+          "default": "nano",
+          "description": "Tamanho dos bichos",
+          "enum": [
+            "nano",
+            "small",
+            "medium",
+            "large"
+          ]
+        },
+        "vscode-pets.petType": {
+          "type": "string",
+          "default": "dog",
+          "description": "Tipo do bicho novo (subconjunto incluído no exemplo)",
+          "enum": [
+            "dog",
+            "fox",
+            "crab"
+          ]
+        },
+        "vscode-pets.throwBallWithMouse": {
+          "type": "boolean",
+          "default": true,
+          "description": "Lançar a bolinha com o mouse (botão direito)"
+        }
+      }
+    }
+  }
+}

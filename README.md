@@ -358,6 +358,7 @@ padrão que uma extensão real usaria:
 | [examples/notes](examples/notes) | Webview de sidebar | assets via `asWebviewUri`, RPC tipado com `@OnRequest`, estado que sobrevive a fechar/reabrir |
 | [examples/hello](examples/hello) | kitchen sink | tudo junto — inclusive `@Language` — + E2E no extension host real |
 | [examples/restbench](examples/restbench) | **React na UI** — cliente REST completo | protocolo tipado consumido por React, RPC `@OnRequest`, plataforma `http` com fetch stubado no teste, `@State`/`@Secret`/`@ContextKey` + `enablement`, zero `import vscode` |
+| [examples/pets](examples/pets) | **case de rewrite** — o host do [vscode-pets](https://github.com/tonybaloney/vscode-pets) | 1.347 linhas de host viram ~260; 293 linhas de `contributes` viram 0; a UI dos bichinhos fica byte-idêntica (35 linhas de glue) |
 
 ## Testes
 

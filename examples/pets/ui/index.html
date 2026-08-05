@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VS Code Pets</title>
+  <link href="../media/reset.css" rel="stylesheet">
+  <link href="../media/pets.css" rel="stylesheet">
+  <link href="boot.css" rel="stylesheet">
+</head>
+<body>
+  <div id="petCanvasContainer">
+    <canvas id="ballCanvas"></canvas>
+    <canvas id="foregroundEffectCanvas"></canvas>
+    <canvas id="backgroundEffectCanvas"></canvas>
+  </div>
+  <div id="petsContainer"></div>
+  <div id="foreground"></div>
+  <div id="background"></div>
+  <script data-pets-bundle src="dist/main-bundle.js"></script>
+  <script src="boot.js"></script>
+</body>
+</html>

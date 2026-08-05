@@ -10,8 +10,14 @@ export interface SchemaInfo {
 /**
  * Inferência de schema a partir do TypeNode da propriedade (§8.3).
  * Retorna undefined para tipo não suportado (vira SIGIL1007 no coletor).
+ *
+ * Com o `checker`, aliases e tipos derivados também funcionam
+ * (`accessor petType: PetType` onde `type PetType = "dog" | "fox"`, ou
+ * uniões vindas de keyof/indexed access): o tipo RESOLVIDO é que decide.
+ * O tsType emitido usa a união expandida — o nome do alias não existiria
+ * no config.d.ts gerado.
  */
-export function typeNodeToSchema(typeNode: ts.TypeNode): SchemaInfo | undefined {
+export function typeNodeToSchema(typeNode: ts.TypeNode, checker?: ts.TypeChecker): SchemaInfo | undefined {
   switch (typeNode.kind) {
     case ts.SyntaxKind.StringKeyword:
       return { jsonType: "string", tsType: "string" };
@@ -46,6 +52,29 @@ export function typeNodeToSchema(typeNode: ts.TypeNode): SchemaInfo | undefined 
     return { jsonType: "object", tsType: typeNode.getText() };
   }
 
+  // último recurso: resolver o tipo de verdade (aliases, keyof, indexed access)
+  if (checker) {
+    return resolvedTypeToSchema(checker.getTypeFromTypeNode(typeNode));
+  }
+  return undefined;
+}
+
+function resolvedTypeToSchema(type: ts.Type): SchemaInfo | undefined {
+  if (type.flags & ts.TypeFlags.Boolean) return { jsonType: "boolean", tsType: "boolean" };
+  if (type.flags & ts.TypeFlags.String) return { jsonType: "string", tsType: "string" };
+  if (type.flags & ts.TypeFlags.Number) return { jsonType: "number", tsType: "number" };
+  if (type.isUnion()) {
+    const values: string[] = [];
+    for (const member of type.types) {
+      if (member.isStringLiteral()) values.push(member.value);
+      else return undefined;
+    }
+    return {
+      jsonType: "string",
+      tsType: values.map((v) => JSON.stringify(v)).join(" | "),
+      enum: values,
+    };
+  }
   return undefined;
 }
 

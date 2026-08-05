@@ -126,6 +126,17 @@ test; sigil init --template=react-webview (registry.instance + protocolo
 tipado no template). Princípio nomeado no CONTRIBUTING: resolução tardia
 de dependências externas (fetch/vscode.* lidos na chamada, nunca no load).
 
+Case de rewrite: examples/pets = host do vscode-pets (MIT, upstream em
+ui-src/ INTACTO + subconjunto de media) reescrito em sigil (~260 linhas vs
+1347). ui/boot.js (~35 linhas) adapta {command}→{type,value}, faz handshake
+ready→init (config por mensagem, não interpolada no HTML) e re-dispara
+window 'load' (o app gateia a animação nele; com init por mensagem o load
+já passou). Animação é dirigida por tick de 100ms do HOST (como upstream).
+Melhorias nascidas do case: type-to-schema resolve aliases/keyof/indexed
+via checker (resolvedTypeToSchema; tsType = união EXPANDIDA — o nome do
+alias não existe no config.d.ts); sim-ui ganhou fallback estático (GET de
+arquivo do projeto com guarda de path — sprites construídos em runtime).
+
 Quarto pacote: @sigilkit/test (packages/test) — simulador do vscode para testar
 extensões sem host: ativa o bundle real interceptando require("vscode"),
 semeia defaults do manifesto, expõe sondas (commands/config/tree/panel).

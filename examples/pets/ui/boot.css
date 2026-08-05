@@ -1,0 +1,6 @@
+/* a fonte era um @font-face com URI interpolada no HTML do upstream; num
+   stylesheet, url() relativa resolve contra a URI do PRÓPRIO css — nativo. */
+@font-face {
+  font-family: 'silkscreen';
+  src: url('../media/Silkscreen-Regular.ttf') format('truetype');
+}
