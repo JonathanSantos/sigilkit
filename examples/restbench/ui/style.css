@@ -51,3 +51,12 @@ button.secundario {
 h1 { font-size: 16px; margin: 0 0 12px; }
 h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; margin: 18px 0 6px; }
 .dica { opacity: 0.55; font-size: 12px; }
+
+/* highlight de JSON com as cores do tema (fallbacks para o sim --ui) */
+.tk-key { color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe); }
+.tk-str { color: var(--vscode-debugTokenExpression-string, #ce9178); }
+.tk-num { color: var(--vscode-debugTokenExpression-number, #b5cea8); }
+.tk-kw  { color: var(--vscode-debugTokenExpression-boolean, #569cd6); }
+.espaco { flex: 1; }
+details summary { cursor: pointer; opacity: 0.7; font-size: 12px; margin-top: 6px; }
+details pre { opacity: 0.85; }

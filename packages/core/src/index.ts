@@ -60,8 +60,9 @@ export { log, bindLog } from "./log";
 export { guard } from "./guard";
 export type { GuardOptions } from "./guard";
 export { http, HttpError } from "./http";
-export type { HttpOptions } from "./http";
+export type { HttpOptions, HttpResponse } from "./http";
 export { resources } from "./resources";
+export { editor } from "./editor";
 export { bindSettingsApp } from "./settings-app";
 export type { SettingsAppBinding, SettingsAppHandle, SettingsField } from "./settings-app";
 

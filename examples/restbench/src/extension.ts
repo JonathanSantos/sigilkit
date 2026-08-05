@@ -11,6 +11,7 @@ import {
   StatusBar,
   Watch,
   Webview,
+  editor,
   http,
   log,
   registry,
@@ -33,6 +34,12 @@ export interface RequestResult {
   ms: number;
   /** corpo da resposta, pretty-printed quando JSON */
   body: string;
+  /** headers da resposta (para a seção expansível da UI) */
+  headers: Record<string, string>;
+  /** tamanho do corpo cru, em bytes */
+  size: number;
+  /** language id do VSCode para renderizar o corpo ("json", "html", …) */
+  language: string;
   error?: string;
 }
 
@@ -132,6 +139,13 @@ export class RestBenchPanel {
     registry.instance(RestBench).limparHistorico();
   }
 
+  /** Renderização vscode-native: o corpo abre num editor REAL, ao lado —
+   *  syntax highlight, folding e busca do próprio VSCode, no tema do usuário. */
+  @OnMessage("openInEditor")
+  abrirNoEditor(value: { body: string; language: string }) {
+    void editor.openText(value.body, { language: value.language, beside: true });
+  }
+
   post!: (msg: HostToUi) => void; // injetado pelo wire
 }
 
@@ -145,7 +159,7 @@ async function executar(spec: RequestSpec): Promise<RequestResult> {
     try {
       body = JSON.parse(spec.body);
     } catch {
-      return { ok: false, status: 0, ms: 0, body: "", error: "o corpo precisa ser JSON válido" };
+      return { ok: false, status: 0, ms: 0, body: "", headers: {}, size: 0, language: "plaintext", error: "o corpo precisa ser JSON válido" };
     }
   }
 
@@ -161,6 +175,9 @@ async function executar(spec: RequestSpec): Promise<RequestResult> {
       status: res.status,
       ms: Date.now() - started,
       body: pretty(res.json()),
+      headers: res.headers,
+      size: res.text.length,
+      language: languageOf(res.headers["content-type"] ?? ""),
       error: res.ok ? undefined : `HTTP ${res.status} ${res.statusText}`.trim(),
     };
   } catch (err) {
@@ -169,6 +186,9 @@ async function executar(spec: RequestSpec): Promise<RequestResult> {
       status: 0,
       ms: Date.now() - started,
       body: "",
+      headers: {},
+      size: 0,
+      language: "plaintext",
       error: err instanceof Error ? err.message : String(err),
     };
   }
@@ -176,4 +196,12 @@ async function executar(spec: RequestSpec): Promise<RequestResult> {
 
 function pretty(value: unknown): string {
   return typeof value === "string" ? value : JSON.stringify(value, null, 2);
+}
+
+/** content-type → language id do VSCode (alimenta o highlight e o editor). */
+function languageOf(contentType: string): string {
+  if (contentType.includes("json")) return "json";
+  if (contentType.includes("html")) return "html";
+  if (contentType.includes("xml")) return "xml";
+  return "plaintext";
 }

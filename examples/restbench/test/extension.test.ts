@@ -68,6 +68,27 @@ describe("restbench — React na UI, http/estado/secret no host", () => {
     expect(push.value).toHaveLength(1);
   });
 
+  it("resposta traz headers, tamanho e language derivada do content-type", async () => {
+    nextResponse = () => okJson({ a: 1 });
+    const result = (await rpc(panel, "send", { method: "GET", url: "https://ex.dev/meta" })) as {
+      headers: Record<string, string>;
+      size: number;
+      language: string;
+    };
+    expect(result.language).toBe("json");
+    expect(result.headers["content-type"]).toContain("json");
+    expect(result.size).toBeGreaterThan(0);
+  });
+
+  it("openInEditor abre o corpo num editor REAL com a language certa (vscode-native)", async () => {
+    panel.receive({ type: "openInEditor", value: { body: '{\n  "a": 1\n}', language: "json" } });
+    await new Promise((r) => setTimeout(r, 10));
+    const ed = host.activeTextEditor!;
+    expect(ed).toBeDefined();
+    expect(ed.document.languageId).toBe("json");
+    expect(ed.document.getText()).toContain('"a": 1');
+  });
+
   it("erro HTTP vira resultado estruturado, não exceção na UI", async () => {
     nextResponse = () => okJson({ motivo: "sem acesso" }, 403);
     const result = (await rpc(panel, "send", { method: "GET", url: "https://ex.dev/privado" })) as {

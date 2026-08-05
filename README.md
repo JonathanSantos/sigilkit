@@ -232,6 +232,9 @@ Além dos decorators, o `@sigilkit/core` traz a base que toda extensão reescrev
   extensão, por exemplo); classe não gerenciada lança na hora.
 - **Recursos** — `resources.readText/readJson/readBytes` para arquivos
   empacotados (via `workspace.fs`, funciona no vscode.dev).
+- **Editor como renderer** — `editor.openText(conteudo, { language, beside })`
+  abre um documento virtual num editor real: a forma vscode-native de mostrar
+  um payload, com highlight e folding do próprio tema.
 - **RPC host↔UI** — `@OnMessage` (fire-and-forget) e `@OnRequest` respondendo
   a `callHost(type, value)` com correlação automática.
 - **Wizards e LLM** — `prompt.text/pick/confirm/steps` (ESC volta um passo) e

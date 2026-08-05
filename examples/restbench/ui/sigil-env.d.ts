@@ -23,7 +23,8 @@ declare global {
 
   /** Mensagens aceitas pelos @OnMessage de RestBenchPanel. */
   type RestBenchPanelMessage =
-    | __SigilMsg<"clear", __SigilValueOf<__Sigil_RestBenchPanel["limpar"]>>;
+    | __SigilMsg<"clear", __SigilValueOf<__Sigil_RestBenchPanel["limpar"]>>
+    | __SigilMsg<"openInEditor", __SigilValueOf<__Sigil_RestBenchPanel["abrirNoEditor"]>>;
 
   /** Requests (@OnRequest): envie com __sigilRpcId e receba { type: "__sigilRpcResult", id, ok, value }. */
   type RestBenchPanelRequest =
@@ -51,6 +52,7 @@ declare global {
 declare module "@sigilkit/core/ui" {
   interface SigilUiMessages {
     "clear": __SigilValueOf<__Sigil_RestBenchPanel["limpar"]>;
+    "openInEditor": __SigilValueOf<__Sigil_RestBenchPanel["abrirNoEditor"]>;
   }
   interface SigilUiRequests {
     "history": { value: __SigilValueOf<__Sigil_RestBenchPanel["historico"]>; result: Awaited<ReturnType<__Sigil_RestBenchPanel["historico"]>> };

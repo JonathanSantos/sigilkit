@@ -7,6 +7,7 @@ import {
   DisposableLike,
   TextDocumentMock,
   TreeDataProviderLike,
+  TextEditorMock,
   TreeItemMock,
   VscodeMockState,
   WebviewPanelMock,
@@ -356,6 +357,11 @@ export class SigilTestHost {
     const window = this.vscode.window as { showTextDocument(doc: unknown): Promise<unknown> };
     const doc = await workspace.openTextDocument({ content, language: languageId });
     return window.showTextDocument(doc);
+  }
+
+  /** O editor ativo (o último showTextDocument) — sonda para editor.openText do core. */
+  get activeTextEditor(): TextEditorMock | undefined {
+    return this.state.activeTextEditor;
   }
 
   get infoMessages(): string[] {

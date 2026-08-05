@@ -24,6 +24,11 @@ O que ele demonstra, por camada:
   `restbench.temHistorico` — uma `@ContextKey` que o build verifica
   (SIGIL1018 se você errar o nome).
 - **Status bar viva** e **aba de opções gerada** (`settings: true`).
+- **Payload renderizado em duas camadas**: highlight de JSON dentro do painel
+  (tokenizer de ~30 linhas usando as cores do TEMA via `--vscode-*`) e o botão
+  **"Abrir no editor"** — `editor.openText` do core abre o corpo num editor
+  REAL do VSCode (documento virtual, ao lado): highlight completo, folding e
+  busca de graça. Headers e tamanho da resposta vêm do `http.send`.
 
 Rodar:
 

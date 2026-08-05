@@ -4,6 +4,16 @@ Os quatro pacotes `@sigilkit/*` versionam em lockstep — cada entrada aqui vale
 para `core`, `compiler`, `cli` e `test` na mesma versão. Pré-1.0, mudanças de
 API podem acontecer entre versões minor; sempre listadas aqui.
 
+## Não publicado
+
+- **`editor.openText(conteudo, { language, beside })`** no core — renderização
+  vscode-native: abre um documento virtual num editor real (highlight, folding
+  e busca do tema do usuário). Sonda `host.activeTextEditor` no
+  `@sigilkit/test`.
+- **restbench polido**: highlight de JSON no painel com as cores do tema,
+  botão "Abrir no editor", headers da resposta expansíveis, tamanho e botão
+  copiar — headers/size/language agora fazem parte do `RequestResult`.
+
 ## 0.3.0 — 2026-08-05
 
 O release do dogfood: cada item nasceu do feedback de construir uma extensão
