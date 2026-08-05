@@ -7,7 +7,8 @@
 
 <p align="center">
   <strong>Framework declarativo para extensões do VSCode.</strong><br>
-  O TypeScript é a fonte única de verdade; o <code>package.json</code> é derivado dele.
+  O TypeScript é a fonte única de verdade; o <code>package.json</code> é derivado dele.<br>
+  <em>O único build que pega um typo numa expressão <code>when</code>.</em>
 </p>
 
 <p align="center">
@@ -74,6 +75,19 @@ editado, e o comportamento novo já vale — **sem F5, sem abrir o VSCode**:
   extension host; os exemplos e o próprio tutorial rodam no CI.
 - **Web-ready e minificação-safe** — runtime sem `node:*` (funciona no
   vscode.dev) e join por `Symbol.metadata` (sem `--keep-names`).
+
+## Como se compara
+
+O vizinho mais próximo é o [reactive-vscode](https://github.com/KermanX/reactive-vscode),
+que ataca o **runtime**: reatividade estilo Vue por cima da API de eventos e
+disposables. O sigil ataca a **identidade**: manifesto, `activationEvents`,
+tipos de config e expressões `when` derivados do código e verificados no
+build. As teses são complementares — a pergunta que decide é qual é a sua dor:
+ergonomia de runtime, ou manter `package.json`, schema e `when` sincronizados
+na mão. E a parte que nenhuma outra ferramenta (nem o próprio VSCode) oferece
+é estrutural: **validar `when`/`enablement` em build time exige ver as context
+keys declaradas E as expressões ao mesmo tempo** — só quem deriva o manifesto
+do código tem os dois lados.
 
 ## Começando
 
