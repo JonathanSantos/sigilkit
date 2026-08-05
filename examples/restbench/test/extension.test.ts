@@ -1,0 +1,137 @@
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { activateExtension, SigilTestHost, WebviewPanelMock } from "@sigilkit/test";
+
+const projectDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+// O fetch é global e o http do core o lê na hora da chamada — dá para stubar
+// sem tocar no bundle. Cada teste programa a próxima resposta.
+const calls: { url: string; init?: RequestInit }[] = [];
+let nextResponse: () => Response = () => okJson({});
+const okJson = (value: unknown, status = 200) =>
+  new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
+
+const originalFetch = globalThis.fetch;
+
+/** RPC como a UI faz: envia com __sigilRpcId e espera o __sigilRpcResult. */
+async function rpc(panel: WebviewPanelMock, type: string, value?: unknown): Promise<unknown> {
+  const id = Math.floor(Math.random() * 1e9);
+  panel.receive({ type, value, __sigilRpcId: id });
+  for (let i = 0; i < 50; i++) {
+    await new Promise((r) => setTimeout(r, 5));
+    const hit = panel.posted.find(
+      (m) => (m as { type?: string; id?: number }).type === "__sigilRpcResult" && (m as { id?: number }).id === id
+    ) as { ok: boolean; value?: unknown; error?: string } | undefined;
+    if (hit) {
+      if (!hit.ok) throw new Error(hit.error);
+      return hit.value;
+    }
+  }
+  throw new Error(`rpc '${type}' sem resposta`);
+}
+
+describe("restbench — React na UI, http/estado/secret no host", () => {
+  let host: SigilTestHost;
+  let panel: WebviewPanelMock;
+
+  beforeAll(async () => {
+    globalThis.fetch = (async (url: URL | RequestInfo, init?: RequestInit) => {
+      calls.push({ url: String(url), init });
+      return nextResponse();
+    }) as typeof globalThis.fetch;
+    host = await activateExtension({ projectDir });
+    await host.executeCommand("restbench.abrir");
+    panel = host.panel("restbench.panel");
+  });
+
+  afterAll(async () => {
+    globalThis.fetch = originalFetch;
+    await host.dispose();
+  });
+
+  it("ativação: comandos, settings app e status bar inicial", () => {
+    expect(host.commands).toContain("restbench.abrir");
+    expect(host.commands).toContain("restbench.limparHistorico");
+    expect(host.commands).toContain("restbench.configure"); // settings: true
+    expect(host.statusBarItems[0]?.text).toBe("$(radio-tower) REST Bench");
+  });
+
+  it("shell: React entra como script externo reescrito, com CSP e nonce", () => {
+    expect(panel.html).toMatch(/Content-Security-Policy/);
+    expect(panel.html).toContain('src="sigil-webview://');
+    expect(panel.html).not.toContain('src="dist/main.js"');
+  });
+
+  it("send: executa via http, responde à UI e registra história/status/contextKey", async () => {
+    nextResponse = () => okJson({ hello: "sigil" });
+    const result = (await rpc(panel, "send", { method: "GET", url: "https://ex.dev/x" })) as {
+      ok: boolean;
+      status: number;
+      body: string;
+    };
+    expect(result.ok).toBe(true);
+    expect(result.status).toBe(200);
+    expect(result.body).toContain('"hello": "sigil"');
+    expect(host.contextKey("restbench.temHistorico")).toBe(true);
+    expect(host.statusBarItems[0]?.text).toMatch(/200 · \d+ms/);
+    // o host também faz o push do histórico para a UI
+    const push = panel.posted.findLast((m) => (m as { type?: string }).type === "history") as {
+      value: unknown[];
+    };
+    expect(push.value).toHaveLength(1);
+  });
+
+  it("erro HTTP vira resultado estruturado, não exceção na UI", async () => {
+    nextResponse = () => okJson({ motivo: "sem acesso" }, 403);
+    const result = (await rpc(panel, "send", { method: "GET", url: "https://ex.dev/privado" })) as {
+      ok: boolean;
+      status: number;
+      error?: string;
+    };
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe(403);
+    expect(result.error).toContain("403");
+    expect(host.statusBarItems[0]?.text).toContain("$(error)");
+  });
+
+  it("corpo que não é JSON é rejeitado antes de qualquer request", async () => {
+    const antes = calls.length;
+    const result = (await rpc(panel, "send", { method: "POST", url: "https://ex.dev/x", body: "{oops" })) as {
+      ok: boolean;
+      error?: string;
+    };
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("JSON");
+    expect(calls.length).toBe(antes);
+  });
+
+  it("@Secret: token guardado entra como Authorization nos requests seguintes", async () => {
+    expect(await rpc(panel, "setToken", "abc123")).toBe(true);
+    nextResponse = () => okJson({});
+    await rpc(panel, "send", { method: "GET", url: "https://ex.dev/auth" });
+    const last = calls.at(-1)!;
+    expect((last.init?.headers as Record<string, string>).authorization).toBe("Bearer abc123");
+    // string vazia remove o token
+    expect(await rpc(panel, "setToken", "  ")).toBe(false);
+    await rpc(panel, "send", { method: "GET", url: "https://ex.dev/anon" });
+    expect((calls.at(-1)!.init?.headers as Record<string, string>).authorization).toBeUndefined();
+  });
+
+  it("baseUrl prefixa urls relativas e @Watch loga a mudança", async () => {
+    host.configuration.set("restbench.baseUrl", "https://api.base.dev");
+    await rpc(panel, "send", { method: "GET", url: "/status" });
+    expect(calls.at(-1)!.url).toBe("https://api.base.dev/status");
+    expect(host.logs.map((l) => l.message).join("\n")).toContain("baseUrl agora é https://api.base.dev");
+  });
+
+  it("histórico: @State persiste, history responde e clear zera tudo", async () => {
+    const antes = (await rpc(panel, "history")) as unknown[];
+    expect(antes.length).toBeGreaterThan(0);
+    panel.receive({ type: "clear" });
+    await new Promise((r) => setTimeout(r, 10));
+    expect((await rpc(panel, "history")) as unknown[]).toHaveLength(0);
+    expect(host.contextKey("restbench.temHistorico")).toBe(false);
+    expect(host.statusBarItems[0]?.text).toBe("$(radio-tower) REST Bench");
+  });
+});

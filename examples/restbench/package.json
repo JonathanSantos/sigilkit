@@ -1,0 +1,80 @@
+{
+  "name": "restbench",
+  "displayName": "REST Bench (exemplo sigil)",
+  "description": "Cliente REST dentro do VSCode — UI em React sobre o protocolo tipado do sigil.",
+  "version": "0.0.1",
+  "publisher": "sigil-example",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "build": "npm run build:ui && sigil build && npm run bundle",
+    "build:ui": "esbuild ui/src/main.tsx --bundle --format=iife --target=es2022 --jsx=automatic --outfile=ui/dist/main.js",
+    "bundle": "esbuild src/.generated/wire.ts --bundle --platform=node --format=cjs --target=es2022 --external:vscode --sourcemap --outfile=out/extension.js",
+    "typecheck": "tsc --noEmit && tsc -p ui --noEmit",
+    "vscode:prepublish": "npm run build",
+    "package": "vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "@sigilkit/core": "0.2.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@sigilkit/cli": "0.2.0",
+    "@sigilkit/test": "0.2.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/vscode": "^1.75.0",
+    "esbuild": "^0.24.2",
+    "@vscode/vsce": "^3.2.1"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "restbench.abrir",
+        "title": "Open",
+        "category": "REST Bench"
+      },
+      {
+        "command": "restbench.configure",
+        "title": "Configure"
+      },
+      {
+        "command": "restbench.limparHistorico",
+        "title": "Clear History",
+        "category": "REST Bench",
+        "enablement": "restbench.temHistorico"
+      }
+    ],
+    "configuration": {
+      "title": "Restbench",
+      "properties": {
+        "restbench.baseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Prefixo para URLs relativas (ex: https://api.exemplo.com)"
+        },
+        "restbench.historyLimit": {
+          "type": "number",
+          "default": 20,
+          "description": "Máximo de entradas no histórico",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "restbench.timeoutMs": {
+          "type": "number",
+          "default": 10000,
+          "description": "Timeout de cada requisição (ms)",
+          "minimum": 100,
+          "maximum": 120000
+        }
+      }
+    }
+  }
+}

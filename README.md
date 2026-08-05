@@ -340,6 +340,7 @@ padrão que uma extensão real usaria:
 | [examples/todos](examples/todos) | TreeView interativa | container próprio na activity bar, estado + refresh via `@Watch`, menu `view/item/context`, `when` auto-escopado |
 | [examples/notes](examples/notes) | Webview de sidebar | assets via `asWebviewUri`, RPC tipado com `@OnRequest`, estado que sobrevive a fechar/reabrir |
 | [examples/hello](examples/hello) | kitchen sink | tudo junto — inclusive `@Language` — + E2E no extension host real |
+| [examples/restbench](examples/restbench) | **React na UI** — cliente REST completo | protocolo tipado consumido por React, RPC `@OnRequest`, plataforma `http` com fetch stubado no teste, `@State`/`@Secret`/`@ContextKey` + `enablement`, zero `import vscode` |
 
 ## Testes
 
