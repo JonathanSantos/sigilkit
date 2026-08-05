@@ -1,0 +1,71 @@
+{
+  "name": "counter",
+  "displayName": "Counter (exemplo sigil)",
+  "description": "Exemplo mínimo do sigil: uma classe, dois comandos, config com enum de união e keybinding com variante mac.",
+  "version": "0.0.1",
+  "publisher": "sigil-example",
+  "private": true,
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "build": "sigil build && npm run bundle",
+    "bundle": "esbuild src/.generated/wire.ts --bundle --platform=node --format=cjs --target=es2022 --external:vscode --keep-names --sourcemap --outfile=out/extension.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sigil/core": "0.1.0"
+  },
+  "devDependencies": {
+    "@sigil/cli": "0.1.0",
+    "@sigil/test": "0.1.0",
+    "@types/vscode": "^1.75.0",
+    "esbuild": "^0.24.2"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "counter.increment",
+        "title": "Increment",
+        "category": "Counter"
+      },
+      {
+        "command": "counter.reset",
+        "title": "Reset",
+        "category": "Counter"
+      }
+    ],
+    "configuration": {
+      "title": "Counter",
+      "properties": {
+        "counter.mode": {
+          "type": "string",
+          "default": "verbose",
+          "description": "Verbosidade das notificações",
+          "enum": [
+            "silent",
+            "verbose"
+          ]
+        },
+        "counter.step": {
+          "type": "number",
+          "default": 1,
+          "description": "Quanto somar a cada incremento",
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "counter.increment",
+        "key": "ctrl+alt+i",
+        "mac": "cmd+alt+i"
+      }
+    ]
+  }
+}

@@ -206,9 +206,9 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
       typeof o.menu === "string" ? [o.menu] : Array.isArray(o.menu) ? (o.menu as string[]) : [];
     const menus = menuNames.map((menu) => {
       let when = o.when as string | undefined;
-      // comando de @TreeView em "view/title" sem `when` explícito: escopa à
-      // própria view — sem isso o botão apareceria em TODAS as views
-      if (when === undefined && viewId && menu === "view/title") when = `view == ${viewId}`;
+      // comando de @TreeView em menu "view/*" sem `when` explícito: escopa à
+      // própria view — sem isso o item apareceria em TODAS as views
+      if (when === undefined && viewId && menu.startsWith("view/")) when = `view == ${viewId}`;
       return compact({ menu, group: o.group as string | undefined, when });
     });
 

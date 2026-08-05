@@ -146,6 +146,16 @@ export class SigilTestHost {
     },
   };
 
+  /** Enfileira respostas para os próximos showInputBox (fila vazia = ESC/cancelar). */
+  queueInputBox(...values: (string | undefined)[]): void {
+    this.state.inputBoxQueue.push(...values);
+  }
+
+  /** Enfileira respostas para os próximos showQuickPick (fila vazia = ESC/cancelar). */
+  queueQuickPick(...values: unknown[]): void {
+    this.state.quickPickQueue.push(...values);
+  }
+
   get infoMessages(): string[] {
     return [...this.state.infoMessages];
   }

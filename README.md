@@ -122,10 +122,22 @@ Requisitos do projeto do usuário (ver §6 e §16 do spec):
   singleton via `registry.webviews.get(...)!.open()`; runtime do lado UI em
   `@sigil/core/ui` (`postToHost`/`onHostMessage`). Diagnósticos SIGIL1012–1016.
 
+## Exemplos
+
+Cada um valida um perfil de DX diferente, e todos têm testes com `@sigil/test`
+em `test/extension.test.ts` — o mesmo padrão que uma extensão real usaria:
+
+| Exemplo | Perfil | O que exercita |
+|---|---|---|
+| [examples/counter](examples/counter) | mínimo — 1 classe, 1 arquivo | prefix default do `name`, união → enum, min/max, keybinding com `mac` |
+| [examples/todos](examples/todos) | TreeView interativa | tree rasa (sem `@TreeChildren`), estado mutável + refresh via `@Watch`, `showInputBox`, menu `view/item/context` recebendo o elemento como argumento, `when` auto-escopado |
+| [examples/notes](examples/notes) | Webview | assets externos reescritos via `asWebviewUri`, protocolo tipado com resposta de erro, config lida no handler, estado que sobrevive a fechar/reabrir o painel |
+| [examples/hello](examples/hello) | kitchen sink | tudo junto + E2E no extension host real |
+
 ## Testes
 
 ```bash
-npm test             # unidade + simulador + E2E do CLI
+npm test             # unidade + simulador + E2E do CLI (inclui os testes dos exemplos)
 npm run test:e2e     # extension host real (baixa o VSCode na primeira vez)
 ```
 

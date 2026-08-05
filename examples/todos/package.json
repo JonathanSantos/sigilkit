@@ -1,0 +1,79 @@
+{
+  "name": "todos",
+  "displayName": "Todos (exemplo sigil)",
+  "description": "Exemplo de TreeView interativa do sigil: estado mutável, showInputBox, menu de contexto por item e refresh dirigido por @Watch.",
+  "version": "0.0.1",
+  "publisher": "sigil-example",
+  "private": true,
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "build": "sigil build && npm run bundle",
+    "bundle": "esbuild src/.generated/wire.ts --bundle --platform=node --format=cjs --target=es2022 --external:vscode --keep-names --sourcemap --outfile=out/extension.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sigil/core": "0.1.0"
+  },
+  "devDependencies": {
+    "@sigil/cli": "0.1.0",
+    "@sigil/test": "0.1.0",
+    "@types/vscode": "^1.75.0",
+    "esbuild": "^0.24.2"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "todos.addTodo",
+        "title": "Add Todo",
+        "icon": "$(add)"
+      },
+      {
+        "command": "todos.clearCompleted",
+        "title": "Clear Completed",
+        "category": "Todos"
+      },
+      {
+        "command": "todos.toggleDone",
+        "title": "Toggle Done"
+      }
+    ],
+    "configuration": {
+      "title": "Todos",
+      "properties": {
+        "todos.showCompleted": {
+          "type": "boolean",
+          "default": true,
+          "description": "Exibir também os todos concluídos"
+        }
+      }
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "todos.addTodo",
+          "when": "view == todos.list"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "todos.toggleDone",
+          "when": "view == todos.list"
+        }
+      ]
+    },
+    "views": {
+      "explorer": [
+        {
+          "id": "todos.list",
+          "name": "Todos"
+        }
+      ]
+    }
+  }
+}

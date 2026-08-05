@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Notes</title>
+  <link rel="stylesheet" href="notes.css">
+</head>
+<body>
+  <h1>Notes</h1>
+  <ul id="list"></ul>
+  <input id="text" type="text" placeholder="Nova nota">
+  <button id="add">Adicionar</button>
+  <p class="hint">Clique numa nota para removê-la.</p>
+  <script>
+    const vscode = acquireVsCodeApi();
+    document.getElementById("add").addEventListener("click", () => {
+      const input = document.getElementById("text");
+      if (!input.value) return;
+      vscode.postMessage({ type: "add", value: input.value });
+      input.value = "";
+    });
+    window.addEventListener("message", (event) => {
+      const msg = event.data;
+      if (msg.type === "error") {
+        alert(msg.value);
+        return;
+      }
+      if (msg.type === "state") {
+        const list = document.getElementById("list");
+        list.innerHTML = "";
+        for (const note of msg.value) {
+          const li = document.createElement("li");
+          li.textContent = note.text;
+          li.addEventListener("click", () => vscode.postMessage({ type: "remove", value: note.id }));
+          list.appendChild(li);
+        }
+      }
+    });
+  </script>
+</body>
+</html>

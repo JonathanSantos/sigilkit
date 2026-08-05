@@ -8,8 +8,10 @@
   ],
   "scripts": {
     "build": "tsc -b packages/core packages/compiler packages/cli packages/test",
-    "test": "npm run build && node packages/cli/bin/sigil.js build examples/hello && npm run bundle -w hello && vitest run",
-    "test:e2e": "npm run build && node packages/cli/bin/sigil.js build examples/hello && npm run bundle -w hello && node examples/hello/e2e/run.js",
+    "build:examples": "npm run build -w hello -w counter -w todos -w notes",
+    "typecheck:examples": "npm run typecheck -w hello -w counter -w todos -w notes",
+    "test": "npm run build && npm run build:examples && vitest run",
+    "test:e2e": "npm run build && npm run build -w hello && node examples/hello/e2e/run.js",
     "example:build": "npm run build && node packages/cli/bin/sigil.js build examples/hello"
   },
   "devDependencies": {

@@ -1,0 +1,50 @@
+{
+  "name": "notes",
+  "displayName": "Notes (exemplo sigil)",
+  "description": "Exemplo de Webview do sigil: assets externos reescritos via asWebviewUri, protocolo de mensagens tipado e estado que sobrevive ao painel.",
+  "version": "0.0.1",
+  "publisher": "sigil-example",
+  "private": true,
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "build": "sigil build && npm run bundle",
+    "bundle": "esbuild src/.generated/wire.ts --bundle --platform=node --format=cjs --target=es2022 --external:vscode --keep-names --sourcemap --outfile=out/extension.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@sigil/core": "0.1.0"
+  },
+  "devDependencies": {
+    "@sigil/cli": "0.1.0",
+    "@sigil/test": "0.1.0",
+    "@types/vscode": "^1.75.0",
+    "esbuild": "^0.24.2"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "notes.open",
+        "title": "Open Notes",
+        "category": "Notes"
+      }
+    ],
+    "configuration": {
+      "title": "Notes",
+      "properties": {
+        "notes.maxNotes": {
+          "type": "number",
+          "default": 10,
+          "description": "Máximo de notas guardadas",
+          "minimum": 1,
+          "maximum": 50
+        }
+      }
+    }
+  }
+}

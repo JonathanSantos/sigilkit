@@ -14,12 +14,16 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # build dos pacotes + sigil build no exemplo + bundle + vitest
+      # build dos pacotes + sigil build/bundle nos exemplos + vitest
       # (inclui teste de fronteira R1/R2, snapshots de IR/emitters,
       #  diagnósticos com caret, simulador @sigil/test e E2E do CLI)
       - run: npm test
+      - run: npm run typecheck:examples
       # o guardião do manifesto: falha se alguém commitou manifesto stale
-      - run: node packages/cli/bin/sigil.js check examples/hello
+      - run: |
+          for dir in examples/*/; do
+            node packages/cli/bin/sigil.js check "$dir"
+          done
 
   e2e-electron:
     runs-on: ubuntu-latest

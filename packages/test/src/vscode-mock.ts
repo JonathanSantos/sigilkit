@@ -149,6 +149,10 @@ export interface VscodeMockState {
   infoMessages: string[];
   warnMessages: string[];
   errorMessages: string[];
+  /** respostas enfileiradas para showInputBox; fila vazia = usuário cancelou (undefined) */
+  inputBoxQueue: (string | undefined)[];
+  /** respostas enfileiradas para showQuickPick; fila vazia = usuário cancelou */
+  quickPickQueue: unknown[];
   treeProviders: Map<string, TreeDataProviderLike>;
   panels: WebviewPanelMock[];
   configListeners: ((e: { affectsConfiguration(section: string): boolean }) => void)[];
@@ -163,6 +167,8 @@ export function createState(): VscodeMockState {
     infoMessages: [],
     warnMessages: [],
     errorMessages: [],
+    inputBoxQueue: [],
+    quickPickQueue: [],
     treeProviders: new Map(),
     panels: [],
     configListeners: [],
@@ -209,6 +215,10 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
         state.errorMessages.push(String(msg));
         return Promise.resolve(undefined);
       },
+      // fila vazia → undefined, o mesmo que o usuário apertar ESC no VSCode
+      showInputBox: (_opts?: unknown) => Promise.resolve(state.inputBoxQueue.shift()),
+      showQuickPick: (_items?: unknown, _opts?: unknown) =>
+        Promise.resolve(state.quickPickQueue.shift()),
       registerTreeDataProvider: (id: string, provider: TreeDataProviderLike) => {
         state.treeProviders.set(id, provider);
         return { dispose: () => state.treeProviders.delete(id) };
