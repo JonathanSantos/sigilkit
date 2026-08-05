@@ -846,3 +846,10 @@ esbuild src/.generated/wire.ts --bundle --platform=node --format=cjs \
 > module augmentation de `@sigil/core` (interface `SigilConfigRegistry`), que
 > tipa por chave o `getConfig` REAL do core — autocomplete e checagem de typo
 > sem nenhum import novo.
+>
+> **Errata 4 (§13/§16):** `--keep-names` deixou de ser obrigatório. A
+> implementação adotou a alternativa que a própria §13 sugeria: registro por
+> bucket em `ctx.metadata` (`Symbol.metadata`, com polyfill via `Symbol.for`),
+> adotado pelo wire sob o nome DECLARADO da classe. `this.constructor.name`
+> não é mais usado em lugar nenhum do runtime; há teste que ativa o bundle
+> minificado para garantir.

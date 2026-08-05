@@ -30,8 +30,9 @@ export type PipelineResult =
  * O pipeline completo em memória: package.json → programa → coleta → validação
  * → emissão → merge. Nenhuma escrita acontece aqui — build/check/dev decidem o
  * que fazer com os arquivos computados (check só compara, por exemplo).
+ * O dev passa um Program incremental próprio; sem ele, cria um do zero.
  */
-export function computeProject(projectDir: string): PipelineResult {
+export function computeProject(projectDir: string, existingProgram?: ts.Program): PipelineResult {
   const pkgPath = path.join(projectDir, "package.json");
   if (!fs.existsSync(pkgPath)) {
     return { ok: false, message: `sigil: package.json não encontrado em ${projectDir}` };
@@ -45,10 +46,14 @@ export function computeProject(projectDir: string): PipelineResult {
   }
 
   let program: ts.Program;
-  try {
-    program = createProgramFromTsconfig(projectDir);
-  } catch (e) {
-    return { ok: false, message: (e as Error).message };
+  if (existingProgram) {
+    program = existingProgram;
+  } else {
+    try {
+      program = createProgramFromTsconfig(projectDir);
+    } catch (e) {
+      return { ok: false, message: (e as Error).message };
+    }
   }
 
   const { ir, diagnostics } = collect(program, { defaultPrefix, projectDir });

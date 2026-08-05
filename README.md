@@ -101,12 +101,14 @@ npm run test:e2e     # @vscode/test-electron sobre examples/hello (caminho feliz
 Requisitos do projeto do usuário (ver §6 e §16 do spec):
 
 - `target: ES2022`, `experimentalDecorators: false`, `useDefineForClassFields: true`
-  (decorators **stage 3**; `@Config` exige a palavra-chave `accessor`);
-- bundle com esbuild usando `--keep-names` (a chave de registry depende do nome
-  da classe) **e `--target=es2022`** (sem target o esbuild deixa a sintaxe de
-  decorator crua no bundle e o extension host não a executa);
+  (decorators **stage 3**; `@Config`/`@StatusBar` exigem a palavra-chave `accessor`);
+- bundle com esbuild usando `--target=es2022` (sem target o esbuild deixa a
+  sintaxe de decorator crua no bundle e o extension host não a executa).
+  `--keep-names` **não** é necessário: o join usa `Symbol.metadata`, não nomes
+  de função em runtime — há teste que ativa o bundle minificado para provar;
 - `engines.vscode >= 1.75` — `activationEvents` de comandos são automáticos, o
-  sigil não os emite.
+  sigil não os emite. O runtime é web-ready (`workspace.fs` + WebCrypto): o
+  mesmo código serve `--platform=browser` para vscode.dev.
 
 ## Status
 
@@ -119,12 +121,22 @@ Requisitos do projeto do usuário (ver §6 e §16 do spec):
   altera o IR não reemite nada).
 - **Fase 3 — UI: completa.** `@TreeView`/`@TreeRoot`/`@TreeChildren`/`@TreeItem`
   com adaptador de `TreeDataProvider` e refresh via `registry.trees`; comandos
-  dentro da classe da view (menu `view/title` ganha `when: view == <id>`
+  dentro da classe da view (menus `view/*` ganham `when: view == <id>`
   automático); `@Webview`/`@OnMessage` com shell HTML (CSP + nonce +
   `asWebviewUri`), `retainContextWhenHidden`, roteador de mensagens tipado por
   `type` (tipo desconhecido vira warning — R6), `post` injetado e painel
   singleton via `registry.webviews.get(...)!.open()`; runtime do lado UI em
-  `@sigil/core/ui` (`postToHost`/`onHostMessage`). Diagnósticos SIGIL1012–1016.
+  `@sigil/core/ui` (`postToHost`/`onHostMessage`). Diagnósticos SIGIL1012–1017.
+- **Pós-spec (roadmap H2+H3): completo.** `@Webview` em **sidebar**
+  (`WebviewViewProvider`, `location: "sidebar"`); `@StatusBar` (accessor cujo
+  set atualiza o item); menus com opções **por entrada** (`{ id, group, when }`),
+  keybindings `linux`/`win`, `viewsContainers` inline (chave condicional no
+  merge); `setConfig` tipado; avaliador estático seguindo **consts locais**
+  (`as const`/`satisfies` transparentes); join por **`Symbol.metadata`**
+  (minificação-safe, sem `--keep-names`); runtime web-ready; `sigil dev`
+  incremental via `ts.createWatchProgram` (rebuilds de ~3ms); `@sigil/test`
+  com editores/documentos fake, gravação de input/quickPick e **modo inline**
+  (wire TS direto no vitest, sem bundle).
 
 ## Exemplos
 

@@ -58,6 +58,16 @@ describe("fronteiras de arquitetura", () => {
     }
   });
 
+  it("core é web-ready: nenhum import de node:* (vscode.dev / --platform=browser)", () => {
+    const NODE_BUILTINS = new Set(["fs", "path", "crypto", "os", "child_process", "util", "module"]);
+    for (const file of tsFilesIn(path.join(ROOT, "packages/core/src"))) {
+      for (const spec of importsOf(file)) {
+        expect(spec, `${file} importa '${spec}'`).not.toMatch(/^node:/);
+        expect(NODE_BUILTINS.has(spec), `${file} importa '${spec}'`).toBe(false);
+      }
+    }
+  });
+
   it("R2 — compiler nunca importa vscode (nem o core, que importa vscode)", () => {
     for (const file of tsFilesIn(path.join(ROOT, "packages/compiler/src"))) {
       for (const spec of importsOf(file)) {

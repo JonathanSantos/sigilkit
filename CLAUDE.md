@@ -12,6 +12,15 @@ Regras que quebram o build se violadas (há teste de fronteira em tests/):
 - Emitters (`compiler/src/emit/*`) são funções puras, sem IO (R4). IO fica no CLI.
 - Ordem determinística do IR é requisito do `sigil check`, não polimento.
 
+Arquitetura de runtime (pós-item 9): decorators registram em BUCKETS por
+classe via ctx.metadata (Symbol.metadata + polyfill Symbol.for em
+core/src/metadata.ts); o wire chama adoptRegistrations("Nome", Classe) após
+cada `new` — o nome declarado vem do compilador, nunca de
+this.constructor.name. Minificação-safe (tests/minified.test.ts prova);
+--keep-names removido de todo bundle. O webview-host é web-ready
+(workspace.fs + WebCrypto, zero node:*); core não pode importar node:*
+(teste de fronteira). WebviewHandle.open() é async.
+
 Desvios conscientes do spec (documentados na implementação; erratas no fim de
 docs/spec.md):
 

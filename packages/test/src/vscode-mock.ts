@@ -70,6 +70,109 @@ export interface TreeDataProviderLike {
   getChildren(element?: unknown): unknown;
 }
 
+export class PositionMock {
+  constructor(
+    readonly line: number,
+    readonly character: number
+  ) {}
+}
+
+export class RangeMock {
+  constructor(
+    readonly start: PositionMock,
+    readonly end: PositionMock
+  ) {}
+}
+
+export class SelectionMock extends RangeMock {
+  constructor(
+    readonly anchor: PositionMock,
+    readonly active: PositionMock
+  ) {
+    super(anchor, active);
+  }
+}
+
+export class TextDocumentMock {
+  constructor(
+    public text: string,
+    readonly languageId: string,
+    readonly uri: UriMock
+  ) {}
+
+  getText(): string {
+    return this.text;
+  }
+
+  get lineCount(): number {
+    return this.text.split("\n").length;
+  }
+
+  lineAt(line: number): { lineNumber: number; text: string; range: RangeMock } {
+    const textLine = this.text.split("\n")[line] ?? "";
+    return {
+      lineNumber: line,
+      text: textLine,
+      range: new RangeMock(new PositionMock(line, 0), new PositionMock(line, textLine.length)),
+    };
+  }
+
+  offsetAt(pos: { line: number; character: number }): number {
+    const lines = this.text.split("\n");
+    let offset = 0;
+    for (let i = 0; i < pos.line && i < lines.length; i++) offset += lines[i]!.length + 1;
+    return Math.min(offset + pos.character, this.text.length);
+  }
+
+  positionAt(offset: number): PositionMock {
+    const clamped = Math.max(0, Math.min(offset, this.text.length));
+    const before = this.text.slice(0, clamped);
+    const line = (before.match(/\n/g) ?? []).length;
+    return new PositionMock(line, clamped - before.lastIndexOf("\n") - 1);
+  }
+}
+
+class TextEditorEditMock {
+  private readonly ops: { start: number; end: number; text: string }[] = [];
+
+  constructor(private readonly doc: TextDocumentMock) {}
+
+  insert(pos: { line: number; character: number }, text: string): void {
+    const offset = this.doc.offsetAt(pos);
+    this.ops.push({ start: offset, end: offset, text });
+  }
+
+  replace(range: RangeMock, text: string): void {
+    this.ops.push({ start: this.doc.offsetAt(range.start), end: this.doc.offsetAt(range.end), text });
+  }
+
+  delete(range: RangeMock): void {
+    this.replace(range, "");
+  }
+
+  apply(): void {
+    // de trás para frente, para os offsets anteriores não se moverem
+    for (const op of [...this.ops].sort((a, b) => b.start - a.start)) {
+      this.doc.text = this.doc.text.slice(0, op.start) + op.text + this.doc.text.slice(op.end);
+    }
+  }
+}
+
+export class TextEditorMock {
+  selection: SelectionMock;
+
+  constructor(readonly document: TextDocumentMock) {
+    this.selection = new SelectionMock(new PositionMock(0, 0), new PositionMock(0, 0));
+  }
+
+  edit(callback: (builder: TextEditorEditMock) => void): Promise<boolean> {
+    const builder = new TextEditorEditMock(this.document);
+    callback(builder);
+    builder.apply();
+    return Promise.resolve(true);
+  }
+}
+
 export class StatusBarItemMock {
   text = "";
   tooltip?: string;
@@ -185,6 +288,12 @@ export interface VscodeMockState {
   inputBoxQueue: (string | undefined)[];
   /** respostas enfileiradas para showQuickPick; fila vazia = usuário cancelou */
   quickPickQueue: unknown[];
+  /** as opções de cada showInputBox chamado, na ordem */
+  inputBoxCalls: unknown[];
+  /** os itens (e opções) de cada showQuickPick chamado, na ordem */
+  quickPickCalls: { items: unknown; options?: unknown }[];
+  documents: TextDocumentMock[];
+  activeTextEditor?: TextEditorMock;
   treeProviders: Map<string, TreeDataProviderLike>;
   panels: WebviewPanelMock[];
   webviewViewProviders: Map<string, { resolveWebviewView(view: unknown): unknown }>;
@@ -204,6 +313,10 @@ export function createState(): VscodeMockState {
     errorMessages: [],
     inputBoxQueue: [],
     quickPickQueue: [],
+    inputBoxCalls: [],
+    quickPickCalls: [],
+    documents: [],
+    activeTextEditor: undefined,
     treeProviders: new Map(),
     panels: [],
     webviewViewProviders: new Map(),
@@ -221,6 +334,28 @@ export function createState(): VscodeMockState {
     },
   };
   return state;
+}
+
+/** Zera o estado IN-PLACE (os closures do mock capturam o objeto). */
+export function resetState(state: VscodeMockState): void {
+  state.values.clear();
+  state.defaults.clear();
+  state.commands.clear();
+  state.infoMessages.length = 0;
+  state.warnMessages.length = 0;
+  state.errorMessages.length = 0;
+  state.inputBoxQueue.length = 0;
+  state.quickPickQueue.length = 0;
+  state.inputBoxCalls.length = 0;
+  state.quickPickCalls.length = 0;
+  state.documents.length = 0;
+  state.activeTextEditor = undefined;
+  state.treeProviders.clear();
+  state.panels.length = 0;
+  state.webviewViewProviders.clear();
+  state.webviewViews.clear();
+  state.statusBarItems.length = 0;
+  state.configListeners = [];
 }
 
 function unsupported(what: string): never {
@@ -256,6 +391,9 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
     ViewColumn: { Active: -1, Beside: -2, One: 1, Two: 2, Three: 3 },
     ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
     StatusBarAlignment: { Left: 1, Right: 2 },
+    Position: PositionMock,
+    Range: RangeMock,
+    Selection: SelectionMock,
     __resolveWebviewView: resolveWebviewView,
     Uri: {
       file: uriFile,
@@ -275,9 +413,22 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
         return Promise.resolve(undefined);
       },
       // fila vazia → undefined, o mesmo que o usuário apertar ESC no VSCode
-      showInputBox: (_opts?: unknown) => Promise.resolve(state.inputBoxQueue.shift()),
-      showQuickPick: (_items?: unknown, _opts?: unknown) =>
-        Promise.resolve(state.quickPickQueue.shift()),
+      showInputBox: (opts?: unknown) => {
+        state.inputBoxCalls.push(opts ?? {});
+        return Promise.resolve(state.inputBoxQueue.shift());
+      },
+      showQuickPick: (items?: unknown, options?: unknown) => {
+        state.quickPickCalls.push({ items, options });
+        return Promise.resolve(state.quickPickQueue.shift());
+      },
+      get activeTextEditor() {
+        return state.activeTextEditor;
+      },
+      showTextDocument: (doc: TextDocumentMock) => {
+        const editor = new TextEditorMock(doc);
+        state.activeTextEditor = editor;
+        return Promise.resolve(editor);
+      },
       registerTreeDataProvider: (id: string, provider: TreeDataProviderLike) => {
         state.treeProviders.set(id, provider);
         return { dispose: () => state.treeProviders.delete(id) };
@@ -357,6 +508,25 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
       fs: {
         readFile: (uri: UriMock): Promise<Uint8Array> =>
           Promise.resolve(new Uint8Array(fs.readFileSync(uri.fsPath))),
+      },
+      get textDocuments() {
+        return [...state.documents];
+      },
+      openTextDocument: (options?: { content?: string; language?: string } | UriMock) => {
+        if (options && "fsPath" in (options as UriMock)) {
+          const uri = options as UriMock;
+          const doc = new TextDocumentMock(fs.readFileSync(uri.fsPath, "utf8"), "plaintext", uri);
+          state.documents.push(doc);
+          return Promise.resolve(doc);
+        }
+        const o = (options ?? {}) as { content?: string; language?: string };
+        const doc = new TextDocumentMock(
+          o.content ?? "",
+          o.language ?? "plaintext",
+          uriFile(`/untitled-${state.documents.length + 1}`)
+        );
+        state.documents.push(doc);
+        return Promise.resolve(doc);
       },
       get workspaceFolders() {
         return unsupported("workspace.workspaceFolders");

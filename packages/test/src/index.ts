@@ -12,7 +12,20 @@ import {
   uriFile,
 } from "./vscode-mock";
 
-export { EventEmitterMock, StatusBarItemMock, TreeItemMock, WebviewPanelMock, createState, createVscodeMock } from "./vscode-mock";
+export {
+  EventEmitterMock,
+  PositionMock,
+  RangeMock,
+  SelectionMock,
+  StatusBarItemMock,
+  TextDocumentMock,
+  TextEditorMock,
+  TreeItemMock,
+  WebviewPanelMock,
+  createState,
+  createVscodeMock,
+  resetState,
+} from "./vscode-mock";
 export type { DisposableLike, TreeDataProviderLike, UriMock, VscodeMockState } from "./vscode-mock";
 
 export interface ActivateOptions {
@@ -156,6 +169,26 @@ export class SigilTestHost {
   /** Enfileira respostas para os próximos showQuickPick (fila vazia = ESC/cancelar). */
   queueQuickPick(...values: unknown[]): void {
     this.state.quickPickQueue.push(...values);
+  }
+
+  /** As opções de cada showInputBox que a extensão chamou, na ordem. */
+  get inputBoxCalls(): unknown[] {
+    return [...this.state.inputBoxCalls];
+  }
+
+  /** Os itens/opções de cada showQuickPick que a extensão chamou, na ordem. */
+  get quickPickCalls(): { items: unknown; options?: unknown }[] {
+    return [...this.state.quickPickCalls];
+  }
+
+  /** Abre um documento fake e o torna o activeTextEditor. */
+  async openTextDocument(content: string, languageId = "plaintext") {
+    const workspace = this.vscode.workspace as {
+      openTextDocument(o: { content: string; language: string }): Promise<unknown>;
+    };
+    const window = this.vscode.window as { showTextDocument(doc: unknown): Promise<unknown> };
+    const doc = await workspace.openTextDocument({ content, language: languageId });
+    return window.showTextDocument(doc);
   }
 
   get infoMessages(): string[] {
