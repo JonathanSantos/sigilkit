@@ -4,7 +4,7 @@ Os quatro pacotes `@sigilkit/*` versionam em lockstep — cada entrada aqui vale
 para `core`, `compiler`, `cli` e `test` na mesma versão. Pré-1.0, mudanças de
 API podem acontecer entre versões minor; sempre listadas aqui.
 
-## Não publicado
+## 0.2.0 — 2026-08-05
 
 - **Protocolo do webview tipado** — `sigil build` gera `sigil-env.d.ts` na
   pasta do `ui:` de cada `@Webview`/`@CustomEditor`: `acquireVsCodeApi()`
