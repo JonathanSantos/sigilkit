@@ -121,6 +121,25 @@ describe("@sigil/test — hello no simulador", () => {
     expect(host.statusBarItems[0]!.text).toBe("$(megaphone) Olá!");
   });
 
+  it("hot swap: __sigilHydrate re-executa e os registros vivos apontam para os handlers novos", async () => {
+    // simula o que o companion do sandbox faz: re-hidratar sem re-registrar
+    (host.module.__sigilHydrate as () => void)();
+    (host.module.__sigilActivateLifecycle as () => void)();
+
+    // dispatch dinâmico: o comando registrado antes continua funcionando
+    await host.executeCommand("hello.sayHello");
+    expect(host.infoMessages.at(-1)).toBe("Olá!");
+
+    // o item de status bar VIVO migrou para o bucket novo (texto = default novo)
+    expect(host.statusBarItems).toHaveLength(1);
+    expect(host.statusBarItems[0]!.text).toBe("$(megaphone) Olá!");
+
+    // webview aberta continua roteando para os handlers re-hidratados
+    const panel = host.panel("hello.settings");
+    panel.receive({ type: "reset" });
+    expect(panel.posted.at(-1)).toEqual({ type: "state", value: { greeting: "Olá" } });
+  });
+
   it("log: canal criado com displayName e entradas registradas", () => {
     expect(host.outputChannels.map((c) => c.name)).toEqual(["Hello (exemplo sigil)"]);
     expect(host.logs.some((l) => l.level === "info" && l.message.includes("saudação exibida"))).toBe(true);

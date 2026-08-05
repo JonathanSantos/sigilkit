@@ -91,11 +91,7 @@ async function fillWebview(
  * @Webview com location "panel" (§15.2): painel lazy e singleton —
  * `registry.webviews.get(key)!.open()` cria ou revela.
  */
-export function bindWebview(
-  instance: object,
-  binding: WebviewBinding,
-  ctx: vscode.ExtensionContext
-): vscode.Disposable {
+export function bindWebview(binding: WebviewBinding, ctx: vscode.ExtensionContext): vscode.Disposable {
   let panel: vscode.WebviewPanel | undefined;
 
   const post = (msg: unknown): void => {
@@ -105,7 +101,8 @@ export function bindWebview(
     }
     void panel.webview.postMessage(msg);
   };
-  (instance as { post?: (msg: unknown) => void }).post = post;
+  // o wire injeta um forwarder nas instâncias (inclusive re-hidratadas no hot swap)
+  registry.webviewPosts.set(binding.key, post);
   const router = makeRouter(binding, (msg) => void panel?.webview.postMessage(msg));
 
   const open = async (): Promise<void> => {
@@ -129,6 +126,7 @@ export function bindWebview(
   return {
     dispose() {
       registry.webviews.delete(binding.key);
+      registry.webviewPosts.delete(binding.key);
       panel?.dispose();
     },
   };
@@ -139,11 +137,7 @@ export function bindWebview(
  * type "webview") e o host registra um WebviewViewProvider. `open()` foca a
  * view via o comando "<viewId>.focus" que o VSCode gera para toda view.
  */
-export function bindWebviewView(
-  instance: object,
-  binding: WebviewBinding,
-  ctx: vscode.ExtensionContext
-): vscode.Disposable {
+export function bindWebviewView(binding: WebviewBinding, ctx: vscode.ExtensionContext): vscode.Disposable {
   let current: vscode.WebviewView | undefined;
 
   const post = (msg: unknown): void => {
@@ -153,7 +147,7 @@ export function bindWebviewView(
     }
     void current.webview.postMessage(msg);
   };
-  (instance as { post?: (msg: unknown) => void }).post = post;
+  registry.webviewPosts.set(binding.key, post);
   const router = makeRouter(binding, (msg) => void current?.webview.postMessage(msg));
 
   const provider: vscode.WebviewViewProvider = {
@@ -178,6 +172,7 @@ export function bindWebviewView(
   return {
     dispose() {
       registry.webviews.delete(binding.key);
+      registry.webviewPosts.delete(binding.key);
       registration.dispose();
     },
   };

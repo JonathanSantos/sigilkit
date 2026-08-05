@@ -60,29 +60,37 @@ export interface TreeViewBinding {
  * usa). Handler ausente lança na ativação (R6).
  */
 export function bindTreeView(binding: TreeViewBinding): vscode.Disposable {
-  const roots = registry.treeHandlers.get(binding.rootsKey);
-  const item = registry.treeHandlers.get(binding.itemKey);
-  const children = binding.childrenKey ? registry.treeHandlers.get(binding.childrenKey) : undefined;
-  if (!roots || !item || (binding.childrenKey && !children)) {
+  // R6 na ativação: as chaves precisam existir agora…
+  if (
+    !registry.treeHandlers.has(binding.rootsKey) ||
+    !registry.treeHandlers.has(binding.itemKey) ||
+    (binding.childrenKey && !registry.treeHandlers.has(binding.childrenKey))
+  ) {
     throw new Error(`sigil: handlers de tree ausentes para ${binding.key}. Rode 'sigil build'.`);
   }
 
+  // …mas o dispatch resolve do registry A CADA chamada: o hot swap troca os
+  // handlers por baixo sem re-registrar a view. guard: erro loga e degrada
+  // (item de aviso / lista vazia) em vez de quebrar a view em silêncio.
+  const safeCall = (what: string, key: string, args: unknown[]): unknown =>
+    guard(what, () => {
+      const fn = registry.treeHandlers.get(key);
+      if (!fn) throw new Error(`sigil: handler ausente para ${key}. Rode 'sigil build'.`);
+      return fn(...args);
+    })();
+
   const emitter = new vscode.EventEmitter<void>();
-  // guard: um erro nos handlers loga e degrada (item de aviso / lista vazia)
-  // em vez de quebrar a view inteira em silêncio
-  const safeRoots = guard(`@TreeRoot de ${binding.key}`, roots);
-  const safeChildren = children ? guard(`@TreeChildren de ${binding.key}`, children) : undefined;
-  const safeItem = guard(`@TreeItem de ${binding.key}`, item);
   const provider: vscode.TreeDataProvider<unknown> = {
     onDidChangeTreeData: emitter.event,
     getTreeItem: (el) =>
-      (safeItem(el) ?? new vscode.TreeItem("⚠ erro — veja os logs")) as
-        | vscode.TreeItem
-        | Thenable<vscode.TreeItem>,
+      (safeCall(`@TreeItem de ${binding.key}`, binding.itemKey, [el]) ??
+        new vscode.TreeItem("⚠ erro — veja os logs")) as vscode.TreeItem | Thenable<vscode.TreeItem>,
     getChildren: (el) =>
-      ((el === undefined ? safeRoots() : safeChildren ? safeChildren(el) : []) ?? []) as
-        | unknown[]
-        | Thenable<unknown[]>,
+      ((el === undefined
+        ? safeCall(`@TreeRoot de ${binding.key}`, binding.rootsKey, [])
+        : binding.childrenKey
+          ? safeCall(`@TreeChildren de ${binding.key}`, binding.childrenKey, [el])
+          : []) ?? []) as unknown[] | Thenable<unknown[]>,
   };
 
   registry.trees.set(binding.key, { fire: () => emitter.fire() });

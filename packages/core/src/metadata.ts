@@ -82,6 +82,16 @@ export function adoptRegistrations(
       `sigil: nenhuma registração encontrada para ${className} — a classe tem decorators do sigil? Rode 'sigil build'.`
     );
   }
+  // hot swap: itens de status bar VIVOS migram do bucket anterior para o novo
+  // (o item foi criado uma vez pelo bind; a classe nova precisa alcançá-lo)
+  const previous = registry.buckets.get(className);
+  if (previous && previous !== bucket) {
+    for (const [member, item] of previous.statusBarItems) {
+      if (!bucket.statusBarItems.has(member)) bucket.statusBarItems.set(member, item);
+      const text = bucket.statusBarText.get(member);
+      if (text !== undefined) item.text = text;
+    }
+  }
   registry.buckets.set(className, bucket);
   for (const [member, fn] of bucket.commands) registry.commands.set(`${className}.${member}`, fn);
   for (const [member, fn] of bucket.lifecycle) registry.lifecycle.set(`${className}.${member}`, fn);

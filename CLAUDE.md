@@ -58,6 +58,17 @@ sim` = hot reload simulado (watch incremental → esbuild → activateExtension
 no @sigil/test, configs preservadas entre reloads) com REPL; cli depende de
 @sigil/test e esbuild.
 
+`sigil sandbox` = VSCode REAL isolado (download via @vscode/test-electron em
+.vscode-test/; user-data/extensions próprios) + companion gerado (socket TCP,
+JSON por linha) + hot swap: bundle com @sigil/core EXTERNO (registry singleton
+entre swaps — exige node_modules), companion deleta require.cache e chama
+__sigilHydrate()/__sigilActivateLifecycle() do wire; hash do IR decide swap
+(igual) vs reload de janela (mudou). O wire tem dispatch DINÂMICO (comandos,
+trees, webviews resolvem do registry a cada chamada) e __sigilHydrate
+re-executável; adoptRegistrations migra statusBarItems vivos entre buckets;
+binds de webview não recebem mais instância — post vai em registry.webviewPosts
+e o wire injeta forwarders.
+
 Quarto pacote: @sigil/test (packages/test) — simulador do vscode para testar
 extensões sem host: ativa o bundle real interceptando require("vscode"),
 semeia defaults do manifesto, expõe sondas (commands/config/tree/panel).

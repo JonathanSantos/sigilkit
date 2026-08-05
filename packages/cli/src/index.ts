@@ -4,15 +4,17 @@ import { runCheck } from "./check";
 import { runDev } from "./dev";
 import { runInit } from "./init";
 import { runSim } from "./sim";
+import { runSandbox } from "./sandbox";
 
 const USAGE = `sigil — framework declarativo para extensões do VSCode
 
 Uso:
-  sigil init  [dir]   cria um projeto de extensão novo (template do §16)
-  sigil build [dir]   decorators → package.json + src/.generated/
-  sigil check [dir]   falha (exit 1) se o manifesto estiver desatualizado; use no CI
-  sigil dev   [dir]   watch mode — reconstrói a cada mudança
-  sigil sim   [dir]   hot reload SIMULADO: recarrega no @sigil/test + REPL interativo
+  sigil init    [dir]   cria um projeto de extensão novo (template do §16)
+  sigil build   [dir]   decorators → package.json + src/.generated/
+  sigil check   [dir]   falha (exit 1) se o manifesto estiver desatualizado; use no CI
+  sigil dev     [dir]   watch mode — reconstrói a cada mudança
+  sigil sim     [dir]   hot reload SIMULADO: recarrega no @sigil/test + REPL interativo
+  sigil sandbox [dir]   VSCode REAL isolado com hot swap sem F5 (swap vs reload pelo IR)
 `;
 
 export function main(argv: string[] = process.argv.slice(2)): void {
@@ -35,6 +37,9 @@ export function main(argv: string[] = process.argv.slice(2)): void {
       break;
     case "sim":
       process.exitCode = runSim(projectDir);
+      break;
+    case "sandbox":
+      process.exitCode = runSandbox(projectDir);
       break;
     case undefined:
     case "--help":

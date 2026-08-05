@@ -136,6 +136,11 @@ export class SigilTestHost {
     private readonly ctx: { subscriptions: DisposableLike[] }
   ) {}
 
+  /** O módulo da extensão (o wire) — expõe __sigilHydrate para testar hot swap. */
+  get module(): ExtensionModule & Record<string, unknown> {
+    return this.ext as ExtensionModule & Record<string, unknown>;
+  }
+
   /** ids de comando registrados, ordenados */
   get commands(): string[] {
     return [...this.state.commands.keys()].sort();

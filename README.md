@@ -109,6 +109,29 @@ sigil> input Comprar café        # resposta para o próximo showInputBox
 sigil> logs | panels | reload | help | exit
 ```
 
+## VSCode standalone com hot swap — `sigil sandbox`
+
+```bash
+sigil sandbox minha-extensao/
+```
+
+Abre um **VSCode real e isolado** do projeto (user-data e extensões próprios —
+zero poluição do seu VSCode) com a extensão carregada e um companion conectado
+por socket. O watch decide pelo **hash do IR**:
+
+- corpo de método mudou (IR igual) → **🔥 hot swap**: o companion recarrega o
+  bundle e chama `__sigilHydrate()` — handlers novos por baixo dos registros
+  vivos, **sem reload de janela (~3ms)**;
+- manifesto mudou (IR diferente) → reload de janela automático (~1–2s).
+
+Sem F5, sem `Reload Window` manual. O REPL dirige a janela real: `run <id>`
+executa comandos nela, `swap`/`reload` forçam os dois caminhos. Possível
+porque o modelo de propriedade (§4) separa identidade (manifesto, estável) de
+comportamento (registry, trocável) — e o dispatch é dinâmico. Estado de
+instância zera no swap (como Fast Refresh); configs e painéis abertos
+sobrevivem. Requer `node_modules` no projeto (o bundle do sandbox deixa
+`@sigil/core` externo para o registry ser singleton entre swaps).
+
 ## Empacotando (.vsix)
 
 ```bash

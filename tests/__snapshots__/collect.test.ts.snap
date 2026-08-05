@@ -295,29 +295,44 @@ const WATCHES = [
 
 let instance: HelloExtension | undefined;
 
-export function activate(ctx: vscode.ExtensionContext) {
-  registry.context = ctx;
-  registry.prefix = "hello";
-  ctx.subscriptions.push(bindLog("hello"));
+/**
+ * (Re)instancia as classes e adota as registrações no registry. O hot swap
+ * (sigil sandbox) re-executa isto num bundle recém-carregado: os registros do
+ * VSCode ficam intactos e o dispatch dinâmico passa a apontar para os
+ * handlers novos.
+ */
+export function __sigilHydrate() {
   instance = new HelloExtension();
   adoptRegistrations("HelloExtension", HelloExtension);
   new TasksView();
   adoptRegistrations("TasksView", TasksView);
-  ctx.subscriptions.push(bindTreeView({"key":"TasksView","id":"hello.tasks","rootsKey":"TasksView.roots","childrenKey":"TasksView.children","itemKey":"TasksView.render"}));
   const wv_SettingsPanel = new SettingsPanel();
   adoptRegistrations("SettingsPanel", SettingsPanel);
-  ctx.subscriptions.push(bindWebview(wv_SettingsPanel, {"key":"SettingsPanel","id":"hello.settings","title":"Hello Settings","uiEntry":"ui/settings.html","handlers":[{"type":"reset","key":"SettingsPanel.onReset"},{"type":"save","key":"SettingsPanel.onSave"}],"requests":[]}, ctx));
+  (wv_SettingsPanel as { post?: (msg: unknown) => void }).post = (msg) => registry.webviewPosts.get("SettingsPanel")!(msg);
+}
+
+/** Roda o @Activate — na ativação e depois de cada hot swap. */
+export function __sigilActivateLifecycle() {
+  registry.lifecycle.get("HelloExtension.onActivate")?.(registry.context);
+}
+
+export function activate(ctx: vscode.ExtensionContext) {
+  registry.context = ctx;
+  registry.prefix = "hello";
+  ctx.subscriptions.push(bindLog("hello"));
+  __sigilHydrate();
+  ctx.subscriptions.push(bindTreeView({"key":"TasksView","id":"hello.tasks","rootsKey":"TasksView.roots","childrenKey":"TasksView.children","itemKey":"TasksView.render"}));
+  ctx.subscriptions.push(bindWebview({"key":"SettingsPanel","id":"hello.settings","title":"Hello Settings","uiEntry":"ui/settings.html","handlers":[{"type":"reset","key":"SettingsPanel.onReset"},{"type":"save","key":"SettingsPanel.onSave"}],"requests":[]}, ctx));
   ctx.subscriptions.push(bindStatusBar({"key":"HelloExtension.status","alignment":"left","priority":100,"command":"hello.sayHello","tooltip":"Diga olá"}));
   const settingsApp = bindSettingsApp({"viewType":"hello.sigilSettings","title":"hello — Configurações","prefix":"hello","fields":[{"id":"hello.greeting","label":"greeting","type":"string","description":"Texto exibido na saudação","default":"Olá"},{"id":"hello.retries","label":"retries","type":"number","description":"Número de tentativas","minimum":1,"maximum":10,"default":3}]}, ctx);
   ctx.subscriptions.push(settingsApp);
   ctx.subscriptions.push(vscode.commands.registerCommand("hello.configure", guard("comando hello.configure", () => settingsApp.open(), { notify: true })));
   for (const c of COMMANDS) {
-    const fn = registry.commands.get(c.key);
-    if (!fn) throw new Error(\`sigil: handler ausente para \${c.key}. Rode 'sigil build'.\`);
-    ctx.subscriptions.push(vscode.commands.registerCommand(c.id, guard(\`comando \${c.id}\`, fn, { notify: true })));
+    if (!registry.commands.has(c.key)) throw new Error(\`sigil: handler ausente para \${c.key}. Rode 'sigil build'.\`);
+    ctx.subscriptions.push(vscode.commands.registerCommand(c.id, guard(\`comando \${c.id}\`, (...args: unknown[]) => registry.commands.get(c.key)!(...args), { notify: true })));
   }
   ctx.subscriptions.push(bindConfigWatchers(WATCHES));
-  registry.lifecycle.get("HelloExtension.onActivate")?.(ctx);
+  __sigilActivateLifecycle();
 }
 
 export function deactivate() {

@@ -44,10 +44,25 @@ export function emitWire(ir: IR): string {
     .map(([file, names]) => `import { ${[...names].sort().join(", ")} } from "${relativeImport(file)}";`)
     .join("\n");
 
+  // hidratação: instancia + adota + injeta posts — re-executável (hot swap)
+  const hydrateLines = [
+    `  instance = new ${ir.extensionClass}();`,
+    `  adoptRegistrations(${JSON.stringify(ir.extensionClass)}, ${ir.extensionClass});`,
+    ...ir.treeViews.flatMap((t) => [
+      `  new ${t.key}();`,
+      `  adoptRegistrations(${JSON.stringify(t.key)}, ${t.key});`,
+    ]),
+    ...ir.webviews.flatMap((w) => [
+      `  const wv_${w.key} = new ${w.key}();`,
+      `  adoptRegistrations(${JSON.stringify(w.key)}, ${w.key});`,
+      `  (wv_${w.key} as { post?: (msg: unknown) => void }).post = (msg) => registry.webviewPosts.get(${JSON.stringify(w.key)})!(msg);`,
+    ]),
+  ].join("\n");
+
   const treeSetup = ir.treeViews
     .map((t) => {
       const binding = { key: t.key, id: t.id, rootsKey: t.rootsKey, childrenKey: t.childrenKey, itemKey: t.itemKey };
-      return `  new ${t.key}();\n  adoptRegistrations(${JSON.stringify(t.key)}, ${t.key});\n  ctx.subscriptions.push(bindTreeView(${JSON.stringify(binding)}));\n`;
+      return `  ctx.subscriptions.push(bindTreeView(${JSON.stringify(binding)}));\n`;
     })
     .join("");
 
@@ -62,7 +77,7 @@ export function emitWire(ir: IR): string {
         requests: w.requestHandlers,
       };
       const bindFn = w.location === "sidebar" ? "bindWebviewView" : "bindWebview";
-      return `  const wv_${w.key} = new ${w.key}();\n  adoptRegistrations(${JSON.stringify(w.key)}, ${w.key});\n  ctx.subscriptions.push(${bindFn}(wv_${w.key}, ${JSON.stringify(binding)}, ctx));\n`;
+      return `  ctx.subscriptions.push(${bindFn}(${JSON.stringify(binding)}, ctx));\n`;
     })
     .join("");
 
@@ -108,19 +123,32 @@ const WATCHES = ${JSON.stringify(watches, null, 2)} as const;
 
 let instance: ${ir.extensionClass} | undefined;
 
+/**
+ * (Re)instancia as classes e adota as registrações no registry. O hot swap
+ * (sigil sandbox) re-executa isto num bundle recém-carregado: os registros do
+ * VSCode ficam intactos e o dispatch dinâmico passa a apontar para os
+ * handlers novos.
+ */
+export function __sigilHydrate() {
+${hydrateLines}
+}
+
+/** Roda o @Activate — na ativação e depois de cada hot swap. */
+export function __sigilActivateLifecycle() {
+${ir.activateKey ? `  registry.lifecycle.get(${JSON.stringify(ir.activateKey)})?.(registry.context);\n` : ""}}
+
 export function activate(ctx: vscode.ExtensionContext) {
   registry.context = ctx;
   registry.prefix = ${JSON.stringify(ir.prefix)};
   ctx.subscriptions.push(bindLog(${JSON.stringify(ir.displayName)}));
-  instance = new ${ir.extensionClass}();
-  adoptRegistrations(${JSON.stringify(ir.extensionClass)}, ${ir.extensionClass});
+  __sigilHydrate();
 ${treeSetup}${webviewSetup}${statusBarSetup}${settingsSetup}  for (const c of COMMANDS) {
-    const fn = registry.commands.get(c.key);
-    if (!fn) throw new Error(\`sigil: handler ausente para \${c.key}. Rode 'sigil build'.\`);
-    ctx.subscriptions.push(vscode.commands.registerCommand(c.id, guard(\`comando \${c.id}\`, fn, { notify: true })));
+    if (!registry.commands.has(c.key)) throw new Error(\`sigil: handler ausente para \${c.key}. Rode 'sigil build'.\`);
+    ctx.subscriptions.push(vscode.commands.registerCommand(c.id, guard(\`comando \${c.id}\`, (...args: unknown[]) => registry.commands.get(c.key)!(...args), { notify: true })));
   }
   ctx.subscriptions.push(bindConfigWatchers(WATCHES));
-${ir.activateKey ? `  registry.lifecycle.get(${JSON.stringify(ir.activateKey)})?.(ctx);\n` : ""}}
+  __sigilActivateLifecycle();
+}
 
 export function deactivate() {
 ${ir.deactivateKey ? `  registry.lifecycle.get(${JSON.stringify(ir.deactivateKey)})?.();\n` : ""}  instance = undefined;
