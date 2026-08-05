@@ -7,6 +7,7 @@ import {
   createProgramFromTsconfig,
   emitActivationEvents,
   emitManifest,
+  emitUiEnv,
   emitTypes,
   emitWire,
   formatDiagnostics,
@@ -76,6 +77,14 @@ export function computeProject(projectDir: string, existingProgram?: ts.Program)
     { path: path.join(genDir, "wire.ts"), label: "src/.generated/wire.ts", content: emitWire(ir) },
     { path: path.join(genDir, "config.d.ts"), label: "src/.generated/config.d.ts", content: emitTypes(ir) },
   ];
+  // protocolo tipado das UIs: um sigil-env.d.ts por pasta apontada em `ui:`
+  for (const f of emitUiEnv(ir)) {
+    files.push({
+      path: path.join(projectDir, f.dir, "sigil-env.d.ts"),
+      label: path.posix.join(f.dir, "sigil-env.d.ts"),
+      content: f.content,
+    });
+  }
   return { ok: true, ir, hash: hashIR(ir), files };
 }
 

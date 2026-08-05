@@ -188,6 +188,27 @@ Sintaxe inválida (`&&&`, parênteses desbalanceados) → `SIGIL1019`.
 sync() { /* … */ }
 ```
 
+## O protocolo do webview, tipado
+
+O mesmo princípio aplicado ao terceiro contrato stringly-typed do ecossistema:
+`sigil build` gera um `sigil-env.d.ts` na pasta apontada pelo `ui:`, e o
+`acquireVsCodeApi()` daquela pasta passa a aceitar **só** os tipos declarados
+nos `@OnMessage`/`@OnRequest` da classe — com o shape do `value` derivado do
+parâmetro do handler (`Parameters<>`): mudou o tipo no host, a UI vê na hora,
+sem rebuild.
+
+```js
+// ui/notes.js — JS puro com // @ts-check já basta
+vscode.postMessage({ type: "add", value: "texto" });   // ✓ autocomplete em tudo
+vscode.postMessage({ type: "addd", value: "x" });      // erro: Did you mean '"add"'?
+vscode.postMessage({ type: "remove", value: "sete" }); // erro: onRemove espera number
+```
+
+São só tipos — funciona com qualquer bundler (ou nenhum): um app React/Vite
+inclui o arquivo no tsconfig **dele** e ganha o mesmo contrato. Convenção
+recomendada: uma pasta (com um tsconfig `lib: DOM` + `checkJs`) por webview —
+[examples/notes](examples/notes) é a vitrine.
+
 ## Plataforma de runtime
 
 Além dos decorators, o `@sigilkit/core` traz a base que toda extensão reescreve:

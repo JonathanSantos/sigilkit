@@ -99,6 +99,21 @@ re-executável; adoptRegistrations migra statusBarItems vivos entre buckets;
 binds de webview não recebem mais instância — post vai em registry.webviewPosts
 e o wire injeta forwarders.
 
+Protocolo de UI tipado (emit/ui-env.ts): sigil build gera sigil-env.d.ts na
+pasta do `ui:` de cada webview/custom editor — script GLOBAL (sem import/
+export de topo; `type X = import(...)` mantém ambient) tipando
+acquireVsCodeApi com os @OnMessage/@OnRequest; `value` derivado por
+Parameters<InstanceType<import()>> (muda tipo no host → UI vê sem reemitir;
+add/remove de mensagem é mudança de IR). Sem mudança de IR (opcionalidade do
+value resolvida em type-level: `undefined extends V`). Uma pasta+tsconfig por
+webview (globais colidem em pasta compartilhada — união documentada). O
+tsconfig da UI precisa incluir "../src/.generated/config.d.ts" (a augmentation
+do getConfig não entra sozinha no programa da UI e o host quebraria o check).
+JS puro + // @ts-check funciona (checkJs). Vitrine: examples/notes (script
+externo). Sem bundling de UI por decisão (nível 0: build externo aponta ui:
+para o dist; tipos independem de quem bundla). tests/ui-types.test.ts tem o
+teste negativo (typo → TS2820 com sugestão).
+
 Quarto pacote: @sigilkit/test (packages/test) — simulador do vscode para testar
 extensões sem host: ativa o bundle real interceptando require("vscode"),
 semeia defaults do manifesto, expõe sondas (commands/config/tree/panel).

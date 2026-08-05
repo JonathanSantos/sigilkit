@@ -4,6 +4,14 @@ Os quatro pacotes `@sigilkit/*` versionam em lockstep — cada entrada aqui vale
 para `core`, `compiler`, `cli` e `test` na mesma versão. Pré-1.0, mudanças de
 API podem acontecer entre versões minor; sempre listadas aqui.
 
+## Não publicado
+
+- **Protocolo do webview tipado** — `sigil build` gera `sigil-env.d.ts` na
+  pasta do `ui:` de cada `@Webview`/`@CustomEditor`: `acquireVsCodeApi()`
+  tipado com os `@OnMessage`/`@OnRequest` declarados, `value` derivado do
+  parâmetro do handler via `Parameters<>`. Typo no `type` ou shape errado é
+  erro de typecheck na UI — inclusive em JS puro com `// @ts-check`.
+
 ## 0.1.0 — 2026-08-05
 
 Primeira versão publicada. Tudo abaixo é novo:

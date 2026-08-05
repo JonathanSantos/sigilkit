@@ -12,3 +12,4 @@ export { emitManifest, emitActivationEvents, OWNED_CONTRIBUTES, CONDITIONAL_CONT
 export type { Contributes, OwnedContributeKey, ConditionalContributeKey } from "./emit/manifest";
 export { emitWire } from "./emit/wire";
 export { emitTypes } from "./emit/types";
+export { emitUiEnv } from "./emit/ui-env";
