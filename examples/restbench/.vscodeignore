@@ -1,0 +1,13 @@
+.vscode/**
+src/**
+test/**
+node_modules/**
+out/**/*.map
+tsconfig.json
+ui/src/**
+ui/tsconfig.json
+ui/sigil-env.d.ts
+.gitignore
+**/*.ts
+**/*.tsx
+out/sigil-sim.js

@@ -4,7 +4,7 @@ Os quatro pacotes `@sigilkit/*` versionam em lockstep — cada entrada aqui vale
 para `core`, `compiler`, `cli` e `test` na mesma versão. Pré-1.0, mudanças de
 API podem acontecer entre versões minor; sempre listadas aqui.
 
-## Não publicado
+## 0.4.0 — 2026-08-05
 
 - **`editor.openText(conteudo, { language, beside })`** no core — renderização
   vscode-native: abre um documento virtual num editor real (highlight, folding
@@ -12,7 +12,11 @@ API podem acontecer entre versões minor; sempre listadas aqui.
   `@sigilkit/test`.
 - **restbench polido**: highlight de JSON no painel com as cores do tema,
   botão "Abrir no editor", headers da resposta expansíveis, tamanho e botão
-  copiar — headers/size/language agora fazem parte do `RequestResult`.
+  copiar — headers/size/language agora fazem parte do `RequestResult`. O
+  visualizador de resposta ocupa todo o height restante do painel (layout de
+  app com lateral de histórico/autorização; empilha em painéis estreitos), e
+  o `.vscodeignore` do exemplo empacota um `.vsix` de 210 KB só com o
+  essencial.
 
 ## 0.3.0 — 2026-08-05
 

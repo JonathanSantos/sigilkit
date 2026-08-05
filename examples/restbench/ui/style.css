@@ -1,14 +1,46 @@
 :root {
   color-scheme: light dark;
 }
+html, body, #root {
+  height: 100%;
+}
 body {
   margin: 0;
-  padding: 16px;
+  overflow: hidden; /* o scroll é dos painéis internos, não da página */
   font-family: var(--vscode-font-family, system-ui, sans-serif);
   font-size: var(--vscode-font-size, 13px);
   color: var(--vscode-editor-foreground, #ddd);
   background: var(--vscode-editor-background, #1e1e1e);
 }
+
+/* layout de app: principal (request + response) + lateral (auth + histórico) */
+.app {
+  display: flex;
+  height: 100%;
+  gap: 16px;
+  padding: 14px;
+  box-sizing: border-box;
+}
+.principal {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.lateral {
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+/* painel estreito → colunas empilham e a página volta a rolar */
+@media (max-width: 560px) {
+  body { overflow: auto; }
+  .app { flex-direction: column; height: auto; }
+  .lateral { width: auto; }
+  .resposta .corpo { max-height: 45vh; }
+}
+
 .linha { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; }
 .linha input[type="text"], .linha select, textarea {
   background: var(--vscode-input-background, #2a2a33);
@@ -18,39 +50,46 @@ body {
   padding: 6px 8px;
   font-family: var(--vscode-editor-font-family, monospace);
 }
-.linha input[type="text"] { flex: 1; }
-textarea { width: 100%; box-sizing: border-box; min-height: 70px; }
+.linha input[type="text"] { flex: 1; min-width: 0; }
+textarea { width: 100%; box-sizing: border-box; min-height: 70px; resize: vertical; }
 button {
   background: var(--vscode-button-background, #7c3aed);
   color: var(--vscode-button-foreground, #fff);
   border: none; border-radius: 4px; padding: 6px 14px; cursor: pointer;
+  white-space: nowrap;
 }
 button:disabled { opacity: 0.5; cursor: default; }
 button.secundario {
   background: var(--vscode-button-secondaryBackground, #3a3a4a);
   color: var(--vscode-button-secondaryForeground, #ddd);
 }
+
+/* o visualizador de resposta ocupa TODO o height restante da coluna */
 .resposta {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--vscode-panel-border, #444);
-  border-radius: 6px; padding: 10px 12px; margin: 12px 0;
+  border-radius: 6px;
+  padding: 10px 12px;
 }
-.resposta pre {
-  margin: 8px 0 0; max-height: 260px; overflow: auto; white-space: pre-wrap;
+.resposta .linha { margin-bottom: 0; }
+.resposta .corpo {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin: 8px 0 0;
+  white-space: pre-wrap;
   font-family: var(--vscode-editor-font-family, monospace);
 }
-.status-ok { color: var(--vscode-testing-iconPassed, #4ade80); font-weight: 600; }
-.status-erro { color: var(--vscode-errorForeground, #f87171); font-weight: 600; }
-.historico { list-style: none; padding: 0; margin: 8px 0; }
-.historico li {
-  padding: 5px 8px; border-radius: 4px; cursor: pointer;
-  display: flex; gap: 8px; align-items: baseline;
+.resposta.vazia { align-items: center; justify-content: center; border-style: dashed; }
+.resposta details { margin-top: 6px; }
+.resposta details pre {
+  margin: 6px 0 0; max-height: 140px; overflow: auto; white-space: pre-wrap;
+  font-family: var(--vscode-editor-font-family, monospace); opacity: 0.85;
 }
-.historico li:hover { background: var(--vscode-list-hoverBackground, #2f2f3a); }
-.historico .metodo { font-weight: 700; min-width: 52px; }
-.historico .url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.9; }
-h1 { font-size: 16px; margin: 0 0 12px; }
-h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; margin: 18px 0 6px; }
-.dica { opacity: 0.55; font-size: 12px; }
+details summary { cursor: pointer; opacity: 0.7; font-size: 12px; }
 
 /* highlight de JSON com as cores do tema (fallbacks para o sim --ui) */
 .tk-key { color: var(--vscode-symbolIcon-propertyForeground, #9cdcfe); }
@@ -58,5 +97,20 @@ h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; opacity
 .tk-num { color: var(--vscode-debugTokenExpression-number, #b5cea8); }
 .tk-kw  { color: var(--vscode-debugTokenExpression-boolean, #569cd6); }
 .espaco { flex: 1; }
-details summary { cursor: pointer; opacity: 0.7; font-size: 12px; margin-top: 6px; }
-details pre { opacity: 0.85; }
+
+.historico {
+  list-style: none; padding: 0; margin: 8px 0;
+  flex: 1; min-height: 0; overflow-y: auto;
+}
+.historico li {
+  padding: 5px 8px; border-radius: 4px; cursor: pointer;
+  display: flex; gap: 8px; align-items: baseline;
+}
+.historico li:hover { background: var(--vscode-list-hoverBackground, #2f2f3a); }
+.historico .metodo { font-weight: 700; min-width: 44px; font-size: 11px; }
+.historico .url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.9; }
+.status-ok { color: var(--vscode-testing-iconPassed, #4ade80); font-weight: 600; }
+.status-erro { color: var(--vscode-errorForeground, #f87171); font-weight: 600; }
+h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; margin: 14px 0 6px; }
+h2:first-child { margin-top: 0; }
+.dica { opacity: 0.55; font-size: 12px; }

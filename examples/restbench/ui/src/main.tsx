@@ -74,91 +74,99 @@ function App() {
     setToken("");
   }
 
+  // Layout de app: a coluna principal é 100% do height do painel e o
+  // visualizador de resposta ocupa TODO o espaço restante (flex: 1), com
+  // scroll próprio — como um cliente REST de verdade.
   return (
-    <>
-      <h1>REST Bench</h1>
+    <div className="app">
+      <section className="principal">
+        <div className="linha">
+          <select value={method} onChange={(e) => setMethod(e.target.value as Metodo)}>
+            {METODOS.map((m) => (
+              <option key={m}>{m}</option>
+            ))}
+          </select>
+          <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://… ou /caminho (usa restbench.baseUrl)" />
+          <button onClick={() => void enviar()} disabled={ocupado || url.trim() === ""}>
+            {ocupado ? "Enviando…" : "Enviar"}
+          </button>
+        </div>
 
-      <div className="linha">
-        <select value={method} onChange={(e) => setMethod(e.target.value as Metodo)}>
-          {METODOS.map((m) => (
-            <option key={m}>{m}</option>
-          ))}
-        </select>
-        <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://… ou /caminho (usa restbench.baseUrl)" />
-        <button onClick={() => void enviar()} disabled={ocupado || url.trim() === ""}>
-          {ocupado ? "Enviando…" : "Enviar"}
-        </button>
-      </div>
+        {method !== "GET" && (
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder='corpo JSON, ex: { "nome": "sigil" }' />
+        )}
 
-      {method !== "GET" && (
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder='corpo JSON, ex: { "nome": "sigil" }' />
-      )}
-
-      {resp && (
-        <div className="resposta">
-          <div className="linha">
-            <span className={resp.ok ? "status-ok" : "status-erro"}>{resp.status || "erro"}</span>
-            <span className="dica">{resp.ms}ms · {fmtBytes(resp.size)}{resp.error ? ` · ${resp.error}` : ""}</span>
-            <span className="espaco" />
+        {resp ? (
+          <div className="resposta">
+            <div className="linha">
+              <span className={resp.ok ? "status-ok" : "status-erro"}>{resp.status || "erro"}</span>
+              <span className="dica">{resp.ms}ms · {fmtBytes(resp.size)}{resp.error ? ` · ${resp.error}` : ""}</span>
+              <span className="espaco" />
+              {resp.body && (
+                <>
+                  <button className="secundario" onClick={() => void navigator.clipboard.writeText(resp.body)}>
+                    Copiar
+                  </button>
+                  <button
+                    className="secundario"
+                    title="abre num editor real do VSCode — highlight, folding e busca"
+                    onClick={() => postToHost({ type: "openInEditor", value: { body: resp.body, language: resp.language } })}
+                  >
+                    Abrir no editor
+                  </button>
+                </>
+              )}
+            </div>
             {resp.body && (
-              <>
-                <button className="secundario" onClick={() => void navigator.clipboard.writeText(resp.body)}>
-                  Copiar
-                </button>
-                <button
-                  className="secundario"
-                  title="abre num editor real do VSCode — highlight, folding e busca"
-                  onClick={() => postToHost({ type: "openInEditor", value: { body: resp.body, language: resp.language } })}
-                >
-                  Abrir no editor
-                </button>
-              </>
+              <pre className="corpo">{resp.language === "json" ? highlightJson(resp.body) : resp.body}</pre>
+            )}
+            {Object.keys(resp.headers).length > 0 && (
+              <details>
+                <summary>headers ({Object.keys(resp.headers).length})</summary>
+                <pre>{Object.entries(resp.headers).map(([nome, valor]) => `${nome}: ${valor}`).join("\n")}</pre>
+              </details>
             )}
           </div>
-          {resp.body && (
-            <pre>{resp.language === "json" ? highlightJson(resp.body) : resp.body}</pre>
-          )}
-          {Object.keys(resp.headers).length > 0 && (
-            <details>
-              <summary>headers ({Object.keys(resp.headers).length})</summary>
-              <pre>{Object.entries(resp.headers).map(([nome, valor]) => `${nome}: ${valor}`).join("\n")}</pre>
-            </details>
-          )}
+        ) : (
+          <div className="resposta vazia">
+            <p className="dica">envie uma requisição — a resposta aparece aqui, com highlight do seu tema</p>
+          </div>
+        )}
+      </section>
+
+      <aside className="lateral">
+        <h2>Autorização</h2>
+        <div className="linha">
+          <input type="text" value={token} onChange={(e) => setToken(e.target.value)} placeholder={temToken ? "token guardado ✓" : "Bearer token"} title="vai para o SecretStorage; vazio remove" />
+          <button className="secundario" onClick={() => void guardarToken()}>Guardar</button>
         </div>
-      )}
 
-      <h2>Autorização</h2>
-      <div className="linha">
-        <input type="text" value={token} onChange={(e) => setToken(e.target.value)} placeholder={temToken ? "token guardado ✓ (vazio remove)" : "Bearer token (vai para o SecretStorage)"} />
-        <button className="secundario" onClick={() => void guardarToken()}>Guardar</button>
-      </div>
-
-      <h2>Histórico</h2>
-      {hist.length === 0 && <p className="dica">as requisições ficam aqui — e sobrevivem a fechar o VSCode (@State)</p>}
-      <ul className="historico">
-        {hist.map((item, i) => (
-          <li
-            key={i}
-            title="clique para repetir"
-            onClick={() => {
-              setMethod(item.spec.method);
-              setUrl(item.spec.url);
-              setBody(item.spec.body ?? "");
-            }}
-          >
-            <span className="metodo">{item.spec.method}</span>
-            <span className="url">{item.spec.url}</span>
-            <span className={item.result.ok ? "status-ok" : "status-erro"}>{item.result.status || "erro"}</span>
-            <span className="dica">{item.result.ms}ms</span>
-          </li>
-        ))}
-      </ul>
-      {hist.length > 0 && (
-        <button className="secundario" onClick={() => postToHost({ type: "clear" })}>
-          Limpar histórico
-        </button>
-      )}
-    </>
+        <h2>Histórico</h2>
+        {hist.length === 0 && <p className="dica">as requisições ficam aqui — e sobrevivem a fechar o VSCode (@State)</p>}
+        <ul className="historico">
+          {hist.map((item, i) => (
+            <li
+              key={i}
+              title="clique para repetir"
+              onClick={() => {
+                setMethod(item.spec.method);
+                setUrl(item.spec.url);
+                setBody(item.spec.body ?? "");
+              }}
+            >
+              <span className="metodo">{item.spec.method}</span>
+              <span className="url">{item.spec.url}</span>
+              <span className={item.result.ok ? "status-ok" : "status-erro"}>{item.result.status || "erro"}</span>
+            </li>
+          ))}
+        </ul>
+        {hist.length > 0 && (
+          <button className="secundario" onClick={() => postToHost({ type: "clear" })}>
+            Limpar histórico
+          </button>
+        )}
+      </aside>
+    </div>
   );
 }
 
