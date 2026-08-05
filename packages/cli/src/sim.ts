@@ -5,14 +5,22 @@ import ts from "typescript";
 import { buildSync } from "esbuild";
 import { activateExtension, SigilTestHost } from "@sigil/test";
 import { computeProject, reportFailure, writeChanged, writeStoredHash } from "./pipeline";
+import { startSimUi, SimUiHandle } from "./sim-ui";
+
+export interface SimOptions {
+  /** sobe o workbench visual em http://127.0.0.1:<port> */
+  ui?: boolean;
+  port?: number;
+}
 
 /**
  * Hot reload da extensão em modo dev SIMULADO: watch incremental do TS →
  * re-bundle → re-ativação no simulador @sigil/test, preservando as configs
- * entre reloads. O REPL deixa exercitar a extensão sem abrir o VSCode:
- * executar comandos, editar configs, inspecionar trees/webviews/logs.
+ * entre reloads. O REPL deixa exercitar a extensão sem abrir o VSCode —
+ * e com --ui, um workbench fake no browser renderiza o estado ao vivo
+ * (palette, trees, configs, status bar, logs e webviews DE VERDADE).
  */
-export function runSim(projectDir: string): number {
+export function runSim(projectDir: string, options: SimOptions = {}): number {
   const configPath = ts.findConfigFile(projectDir, ts.sys.fileExists, "tsconfig.json");
   if (!configPath) {
     console.error(`sigil: tsconfig.json não encontrado a partir de ${projectDir}`);
@@ -21,6 +29,7 @@ export function runSim(projectDir: string): number {
 
   const bundlePath = path.join(projectDir, "out", "sigil-sim.js");
   let host: SigilTestHost | undefined;
+  let ui: SimUiHandle | undefined;
   let carriedConfig: Record<string, unknown> = {};
   let lastCounts = { info: 0, warn: 0, error: 0, logs: 0 };
   let lastHash: string | undefined;
@@ -73,6 +82,7 @@ export function runSim(projectDir: string): number {
     console.log(
       `\nsim: 🔄 recarregado — comandos: ${host.commands.join(", ") || "nenhum"}${sb ? `\nsim: status bar: ${sb}` : ""}`
     );
+    ui?.notifyChange();
     printNewMessages();
     if (replOpen) rl.prompt();
   };
@@ -210,6 +220,11 @@ export function runSim(projectDir: string): number {
     replOpen = false;
     console.log("sim: REPL encerrado — watch continua (Ctrl+C para sair)");
   });
+
+  if (options.ui) {
+    ui = startSimUi({ projectDir, port: options.port ?? 4400, getHost: () => host });
+    console.log(`sigil sim: 🖥  workbench visual em ${ui.url}`);
+  }
 
   console.log(`sigil sim: hot reload simulado em ${projectDir} — digite 'help'`);
   return 0;

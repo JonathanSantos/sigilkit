@@ -58,6 +58,13 @@ sim` = hot reload simulado (watch incremental → esbuild → activateExtension
 no @sigil/test, configs preservadas entre reloads) com REPL; cli depende de
 @sigil/test e esbuild.
 
+`sigil sim --ui` = workbench visual (cli/src/sim-ui.ts + sim-ui-page.ts):
+servidor http sem deps, SSE para push de estado (buildSnapshot serializa
+palette/trees/configs/statusbar/logs/webviews), POST /api/* para interações;
+webviews em iframes srcdoc com shim de acquireVsCodeApi (CSP meta é removida
+no iframe; sigil-webview:// → /webview-resource); input interativo via
+state.interactiveInput no mock (fila vazia → modal na página em vez de ESC).
+
 `sigil sandbox` = VSCode REAL isolado (download via @vscode/test-electron em
 .vscode-test/; user-data/extensions próprios) + companion gerado (socket TCP,
 JSON por linha) + hot swap: bundle com @sigil/core EXTERNO (registry singleton

@@ -109,6 +109,24 @@ sigil> input Comprar café        # resposta para o próximo showInputBox
 sigil> logs | panels | reload | help | exit
 ```
 
+### `sigil sim --ui` — workbench visual no browser
+
+```bash
+sigil sim --ui minha-extensao/     # abre http://127.0.0.1:4400 (--port=N)
+```
+
+Um workbench fake renderizando o estado do simulador **ao vivo** (push por
+SSE a cada hot reload): command palette clicável, trees com expansão, editor
+de configs (mudar dispara `@Watch`), status bar, toasts de notificação, aba
+de Output com os logs — e **webviews renderizadas de verdade** em iframes com
+shim de `acquireVsCodeApi`: a UI da sua extensão funciona com mouse, e
+mensagens fluem nos dois sentidos. `showInputBox`/`showQuickPick` viram
+modais reais (a Promise da extensão espera a resposta na página).
+
+Guarda-corpo de escopo: a página renderiza somente o que o simulador modela —
+é um harness visual, não um clone do VSCode (o editor não é simulado). Para
+fidelidade total, use `sigil sandbox`.
+
 ## VSCode standalone com hot swap — `sigil sandbox`
 
 ```bash

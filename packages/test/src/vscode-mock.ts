@@ -323,6 +323,11 @@ export interface VscodeMockState {
   inputBoxQueue: (string | undefined)[];
   /** respostas enfileiradas para showQuickPick; fila vazia = usuário cancelou */
   quickPickQueue: unknown[];
+  /**
+   * Modo interativo (sim --ui): com as filas vazias, showInputBox/QuickPick
+   * delegam para este handler em vez de devolver undefined (ESC).
+   */
+  interactiveInput?: (kind: "inputBox" | "quickPick", opts: unknown, items?: unknown) => Promise<unknown>;
   /** as opções de cada showInputBox chamado, na ordem */
   inputBoxCalls: unknown[];
   /** os itens (e opções) de cada showQuickPick chamado, na ordem */
@@ -394,6 +399,7 @@ export function resetState(state: VscodeMockState): void {
   state.statusBarItems.length = 0;
   state.outputChannels.length = 0;
   state.configListeners = [];
+  state.interactiveInput = undefined;
 }
 
 function unsupported(what: string): never {
@@ -450,14 +456,19 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
         state.errorMessages.push(String(msg));
         return Promise.resolve(undefined);
       },
-      // fila vazia → undefined, o mesmo que o usuário apertar ESC no VSCode
+      // fila com resposta → usa; fila vazia → handler interativo (sim --ui)
+      // ou undefined, o mesmo que o usuário apertar ESC no VSCode
       showInputBox: (opts?: unknown) => {
         state.inputBoxCalls.push(opts ?? {});
-        return Promise.resolve(state.inputBoxQueue.shift());
+        if (state.inputBoxQueue.length > 0) return Promise.resolve(state.inputBoxQueue.shift());
+        if (state.interactiveInput) return state.interactiveInput("inputBox", opts);
+        return Promise.resolve(undefined);
       },
       showQuickPick: (items?: unknown, options?: unknown) => {
         state.quickPickCalls.push({ items, options });
-        return Promise.resolve(state.quickPickQueue.shift());
+        if (state.quickPickQueue.length > 0) return Promise.resolve(state.quickPickQueue.shift());
+        if (state.interactiveInput) return state.interactiveInput("quickPick", options, items);
+        return Promise.resolve(undefined);
       },
       get activeTextEditor() {
         return state.activeTextEditor;

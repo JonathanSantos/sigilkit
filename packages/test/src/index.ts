@@ -201,6 +201,21 @@ export class SigilTestHost {
     return [...this.state.quickPickCalls];
   }
 
+  /**
+   * Modo interativo (sim --ui): com as filas vazias, showInputBox/QuickPick
+   * delegam para o handler — a Promise da extensão espera a resposta da UI.
+   */
+  onInputRequest(
+    handler?: (kind: "inputBox" | "quickPick", opts: unknown, items?: unknown) => Promise<unknown>
+  ): void {
+    this.state.interactiveInput = handler;
+  }
+
+  /** viewTypes das webviews de SIDEBAR registradas (resolvidas ou não). */
+  get webviewViewIds(): string[] {
+    return [...this.state.webviewViewProviders.keys()].sort();
+  }
+
   /** Abre um documento fake e o torna o activeTextEditor. */
   async openTextDocument(content: string, languageId = "plaintext") {
     const workspace = this.vscode.workspace as {
