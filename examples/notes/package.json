@@ -2,6 +2,15 @@
   "name": "notes",
   "displayName": "Notes (exemplo sigil)",
   "description": "Exemplo de Webview do sigil: assets externos reescritos via asWebviewUri, protocolo de mensagens tipado e estado que sobrevive ao painel.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JonathanSantos/sigilkit.git",
+    "directory": "examples/notes"
+  },
+  "homepage": "https://github.com/JonathanSantos/sigilkit#readme",
+  "bugs": {
+    "url": "https://github.com/JonathanSantos/sigilkit/issues"
+  },
   "version": "0.0.1",
   "publisher": "sigil-example",
   "private": true,

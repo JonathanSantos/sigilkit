@@ -10,6 +10,11 @@
   O TypeScript é a fonte única de verdade; o <code>package.json</code> é derivado dele.
 </p>
 
+<p align="center">
+  <a href="https://github.com/JonathanSantos/sigilkit/actions/workflows/ci.yml"><img src="https://github.com/JonathanSantos/sigilkit/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licen%C3%A7a-MIT-8b5cf6" alt="Licença MIT"></a>
+</p>
+
 ---
 
 ```ts

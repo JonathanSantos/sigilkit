@@ -3,6 +3,15 @@
   "version": "0.1.0",
   "description": "Ambiente simulado do VSCode para testar extensões sigil sem extension host — rápido, determinístico e fiel ao subconjunto da API que o sigil toca.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JonathanSantos/sigilkit.git",
+    "directory": "packages/test"
+  },
+  "homepage": "https://github.com/JonathanSantos/sigilkit#readme",
+  "bugs": {
+    "url": "https://github.com/JonathanSantos/sigilkit/issues"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [

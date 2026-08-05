@@ -2,6 +2,15 @@
   "name": "hello",
   "displayName": "Hello (exemplo sigil)",
   "description": "Extensão de exemplo do sigil — nenhuma linha de contributes é escrita à mão.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JonathanSantos/sigilkit.git",
+    "directory": "examples/hello"
+  },
+  "homepage": "https://github.com/JonathanSantos/sigilkit#readme",
+  "bugs": {
+    "url": "https://github.com/JonathanSantos/sigilkit/issues"
+  },
   "version": "0.0.1",
   "publisher": "sigil-example",
   "private": true,

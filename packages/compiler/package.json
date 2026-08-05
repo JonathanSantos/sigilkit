@@ -3,6 +3,15 @@
   "version": "0.1.0",
   "description": "Build time do sigil — AST → IR → manifesto/wire/tipos. Nunca entra no bundle da extensão; nunca importa vscode (R2).",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JonathanSantos/sigilkit.git",
+    "directory": "packages/compiler"
+  },
+  "homepage": "https://github.com/JonathanSantos/sigilkit#readme",
+  "bugs": {
+    "url": "https://github.com/JonathanSantos/sigilkit/issues"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [

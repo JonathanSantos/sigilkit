@@ -2,6 +2,15 @@
   "name": "todos",
   "displayName": "Todos (exemplo sigil)",
   "description": "Exemplo de TreeView interativa do sigil: estado mutável, showInputBox, menu de contexto por item e refresh dirigido por @Watch.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JonathanSantos/sigilkit.git",
+    "directory": "examples/todos"
+  },
+  "homepage": "https://github.com/JonathanSantos/sigilkit#readme",
+  "bugs": {
+    "url": "https://github.com/JonathanSantos/sigilkit/issues"
+  },
   "version": "0.0.1",
   "publisher": "sigil-example",
   "private": true,

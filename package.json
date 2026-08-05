@@ -3,6 +3,14 @@
   "private": true,
   "description": "Framework declarativo para extensões do VSCode — o TypeScript é a fonte única de verdade, o manifesto é derivado.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JonathanSantos/sigilkit.git"
+  },
+  "homepage": "https://github.com/JonathanSantos/sigilkit#readme",
+  "bugs": {
+    "url": "https://github.com/JonathanSantos/sigilkit/issues"
+  },
   "workspaces": [
     "packages/*",
     "examples/*"

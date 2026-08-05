@@ -2,6 +2,15 @@
   "name": "counter",
   "displayName": "Counter (exemplo sigil)",
   "description": "Exemplo mínimo do sigil: uma classe, dois comandos, config com enum de união e keybinding com variante mac.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JonathanSantos/sigilkit.git",
+    "directory": "examples/counter"
+  },
+  "homepage": "https://github.com/JonathanSantos/sigilkit#readme",
+  "bugs": {
+    "url": "https://github.com/JonathanSantos/sigilkit/issues"
+  },
   "version": "0.0.1",
   "publisher": "sigil-example",
   "private": true,
