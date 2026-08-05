@@ -50,14 +50,13 @@ describe("notes — webview de SIDEBAR com assets e config", () => {
     expect(view.posted.at(-1)).toEqual({ type: "error", value: "limite de 1 notas atingido" });
   });
 
-  it("@OnRequest: callHost recebe o retorno do handler com correlação", async () => {
+  it("@OnRequest: view.request faz o RPC com correlação, como o callHost da UI", async () => {
     const view = await host.webviewView("notes.panel");
-    view.receive({ type: "count", __sigilRpcId: 42 });
-    await new Promise((r) => setTimeout(r, 0));
-    expect(view.posted.at(-1)).toEqual({ type: "__sigilRpcResult", id: 42, ok: true, value: 1 });
+    expect(await view.request("count")).toBe(1);
   });
 
   it("@OnRequest de tipo desconhecido responde erro em vez de silêncio (R6)", async () => {
+    // envelope cru de propósito: este teste documenta o protocolo do fio
     const view = await host.webviewView("notes.panel");
     view.receive({ type: "inexistente", __sigilRpcId: 43 });
     await new Promise((r) => setTimeout(r, 0));

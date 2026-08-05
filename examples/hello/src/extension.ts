@@ -49,7 +49,7 @@ export class HelloExtension {
     console.log(`greeting: ${prev} → ${next}`);
   }
 
-  @Activate()
+  @Activate
   onActivate(ctx: vscode.ExtensionContext) {
     // opcional; roda depois do wiring
   }
