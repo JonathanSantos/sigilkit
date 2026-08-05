@@ -63,3 +63,26 @@ documentados nas erratas ao final dele e no [CLAUDE.md](CLAUDE.md).
 TypeScript estrito, sem dependências novas no core (zero deps em runtime é
 requisito — o bundle da extensão embute tudo). Mensagens de erro em pt-BR,
 descritivas e com próximo passo claro, no padrão das existentes.
+
+## Release (mantenedores)
+
+Os quatro pacotes `@sigilkit/*` versionam em **lockstep** (dependências
+internas pinadas exatas). O fluxo inteiro:
+
+```bash
+node scripts/version.mjs 0.2.0        # bump dos 4 + deps internas
+git commit -am "release: v0.2.0"
+git tag v0.2.0
+git push --follow-tags
+```
+
+A tag dispara o workflow [release.yml](.github/workflows/release.yml), que
+confere tag == versões, roda a suíte completa (build + testes + typecheck +
+`sigil check` nos exemplos), publica os pacotes no npm **com provenance** na
+ordem de dependência (core, compiler, test, cli) e cria o GitHub Release com
+notas geradas.
+
+Configuração única (feita uma vez pelo dono do repo): criar em
+npmjs.com → Access Tokens um **token granular** com permissão *Read and
+write* no escopo `@sigilkit`, e salvá-lo como secret **`NPM_TOKEN`** em
+Settings → Secrets and variables → Actions do repositório.

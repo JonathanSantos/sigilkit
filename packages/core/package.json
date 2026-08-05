@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Runtime do sigil — decorators e registry. Vai para o bundle da extensão; nunca importa typescript (R1).",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/JonathanSantos/sigilkit.git",

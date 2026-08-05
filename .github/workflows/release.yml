@@ -1,0 +1,65 @@
+name: Release
+
+# Dispara ao empurrar uma tag vX.Y.Z (use scripts/version.mjs para o bump).
+# Publica os quatro pacotes @sigilkit/* no npm com provenance e cria o
+# GitHub Release. Exige o secret NPM_TOKEN (token granular com permissão de
+# publish no escopo @sigilkit).
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write # criar o GitHub Release
+  id-token: write # provenance do npm
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+
+      - name: Tag deve bater com a versão dos quatro pacotes
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          for p in core compiler cli test; do
+            V=$(node -p "require('./packages/$p/package.json').version")
+            if [ "$V" != "$TAG" ]; then
+              echo "::error::@sigilkit/$p está em $V, mas a tag é v$TAG — rode scripts/version.mjs"
+              exit 1
+            fi
+          done
+
+      # a mesma bateria do CI: build + exemplos + vitest, typecheck e o
+      # guardião de manifesto stale
+      - run: npm test
+      - run: npm run typecheck:examples
+      - name: sigil check nos exemplos
+        run: |
+          for dir in examples/*/; do
+            node packages/cli/bin/sigil.js check "$dir"
+          done
+
+      - name: LICENSE em cada tarball
+        run: for p in core compiler cli test; do cp LICENSE "packages/$p/"; done
+
+      # cli por último: depende de @sigilkit/compiler e @sigilkit/test
+      - name: Publicar no npm (com provenance)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          for p in core compiler test cli; do
+            npm publish --workspace "@sigilkit/$p" --provenance --access public
+          done
+
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --generate-notes

@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "CLI do sigil — orquestração e IO. build/check/dev.",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/JonathanSantos/sigilkit.git",

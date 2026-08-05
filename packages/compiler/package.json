@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Build time do sigil — AST → IR → manifesto/wire/tipos. Nunca entra no bundle da extensão; nunca importa vscode (R2).",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/JonathanSantos/sigilkit.git",
