@@ -1,6 +1,6 @@
 {
   "name": "@sigilkit/core",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "description": "Runtime do sigil — decorators e registry. Vai para o bundle da extensão; nunca importa typescript (R1).",
   "license": "MIT",
   "publishConfig": {
