@@ -30,11 +30,11 @@ export type { WebviewOptions } from "./decorators/webview";
 export { StatusBar, bindStatusBar } from "./decorators/status-bar";
 export type { StatusBarOptions, StatusBarBinding } from "./decorators/status-bar";
 
-export { Language, Hover, Completion, CodeLens, Diagnostics, bindLanguage } from "./decorators/language";
+export { Language, Hover, Completion, CodeLens, Diagnostics, InlineCompletion, bindLanguage } from "./decorators/language";
 export type { LanguageOptions, CompletionOptions, DiagnosticsOptions, LanguageBinding } from "./decorators/language";
 
-export { ChatParticipant, ChatRequest, ChatFollowups, bindChatParticipant } from "./decorators/chat";
-export type { ChatParticipantOptions, ChatParticipantBinding } from "./decorators/chat";
+export { ChatParticipant, ChatRequest, ChatFollowups, ChatCommand, bindChatParticipant } from "./decorators/chat";
+export type { ChatParticipantOptions, ChatParticipantBinding, ChatCommandOptions } from "./decorators/chat";
 
 export { CustomEditor, bindCustomEditor } from "./custom-editor";
 export type { CustomEditorOptions, CustomEditorBinding, SigilEditorContext } from "./custom-editor";
@@ -55,6 +55,8 @@ export { withCommandProgress } from "./progress";
 export type { CommandProgress } from "./progress";
 
 export { llm } from "./llm";
+export { LmTool, McpServers, bindLmTools, bindMcpServers } from "./decorators/lm";
+export type { LmToolOptions, McpServersOptions, LmToolBinding, McpProviderBinding } from "./decorators/lm";
 export type { LlmOptions } from "./llm";
 
 export { log, bindLog } from "./log";

@@ -268,7 +268,11 @@ export class SigilTestHost {
   }
 
   /** Envia um request de chat ao participante; retorna o stream gravado. */
-  async chatRequest(participantId: string, prompt: string): Promise<ChatResponseStreamMock> {
+  async chatRequest(
+    participantId: string,
+    prompt: string,
+    opts: { command?: string } = {}
+  ): Promise<ChatResponseStreamMock> {
     const participant = this.state.chatParticipants.find((p) => p.id === participantId);
     if (!participant) {
       throw new Error(
@@ -276,8 +280,55 @@ export class SigilTestHost {
       );
     }
     const stream = new ChatResponseStreamMock();
-    await participant.handler({ prompt }, { history: [] }, stream, { isCancellationRequested: false });
+    await participant.handler(
+      { prompt, command: opts.command },
+      { history: [] },
+      stream,
+      { isCancellationRequested: false }
+    );
     return stream;
+  }
+
+  /** Nomes das @LmTool registradas (lm.registerTool). */
+  get lmTools(): string[] {
+    return this.state.lmTools.map((t) => t.name);
+  }
+
+  /** Invoca uma @LmTool como o agent mode faria; devolve o TEXTO do resultado. */
+  async invokeTool(name: string, input?: unknown): Promise<string> {
+    const entry = this.state.lmTools.find((t) => t.name === name);
+    if (!entry) {
+      throw new Error(
+        `sigil-test: tool '${name}' não registrada (registradas: ${this.state.lmTools.map((t) => t.name).join(", ") || "nenhuma"})`
+      );
+    }
+    const result = (await entry.tool.invoke({ input }, { isCancellationRequested: false })) as {
+      content?: { value?: string }[];
+    };
+    return (result?.content ?? []).map((c) => c.value ?? "").join("");
+  }
+
+  /** Resolve as definições de um @McpServers registrado. */
+  async mcpServers(providerId: string): Promise<Record<string, unknown>[]> {
+    const entry = this.state.mcpProviders.find((p) => p.id === providerId);
+    if (!entry) {
+      throw new Error(
+        `sigil-test: provedor MCP '${providerId}' não registrado (registrados: ${this.state.mcpProviders.map((p) => p.id).join(", ") || "nenhum"})`
+      );
+    }
+    return ((await entry.provider.provideMcpServerDefinitions()) ?? []) as Record<string, unknown>[];
+  }
+
+  /** Ghost text: roda o @InlineCompletion como o editor faria. */
+  async provideInlineCompletions(languageId: string, text = "", position = { line: 0, character: 0 }) {
+    const entry = this.state.inlineProviders.find((p) =>
+      Array.isArray(p.selector) ? (p.selector as string[]).includes(languageId) : p.selector === languageId
+    );
+    if (!entry) {
+      throw new Error(`sigil-test: nenhum provider de inline completion para '${languageId}'`);
+    }
+    const doc = new TextDocumentMock(text, languageId, uriFile(`/fake/inline.${languageId}`));
+    return entry.provider.provideInlineCompletionItems(doc, position, { triggerKind: 0 }, { isCancellationRequested: false });
   }
 
   /** Valor corrente de uma @ContextKey (publicada via setContext). */

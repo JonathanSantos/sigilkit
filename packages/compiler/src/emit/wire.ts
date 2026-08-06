@@ -44,6 +44,8 @@ export function emitWire(ir: IR): string {
   if (ir.secrets.length > 0) coreImports.push("bindSecrets");
   if (ir.contextKeys.length > 0) coreImports.push("bindContextKeys");
   if (ir.uriHandlerKey) coreImports.push("bindUriHandler");
+  if (ir.lmTools.length > 0) coreImports.push("bindLmTools");
+  if (ir.mcpProviders.length > 0) coreImports.push("bindMcpServers");
   if (ir.commands.some((c) => c.progress)) coreImports.push("withCommandProgress");
   coreImports.push("bindEvery"); // @Every da classe @Extension (no-op sem timers)
 
@@ -133,6 +135,7 @@ export function emitWire(ir: IR): string {
         key: l.key,
         selector: l.selector,
         hoverKey: l.hoverKey,
+        inlineKey: l.inlineKey,
         completionKey: l.completionKey,
         completionTriggers: l.completionTriggers,
         codeLensKey: l.codeLensKey,
@@ -145,7 +148,7 @@ export function emitWire(ir: IR): string {
 
   const chatSetup = ir.chatParticipants
     .map((c) => {
-      const binding = { key: c.key, id: c.id, requestKey: c.requestKey, followupsKey: c.followupsKey };
+      const binding = compactEntry({ key: c.key, id: c.id, requestKey: c.requestKey, followupsKey: c.followupsKey, commands: c.commands });
       return `  ctx.subscriptions.push(bindChatParticipant(${JSON.stringify(binding)}, ctx));\n`;
     })
     .join("");
@@ -177,6 +180,12 @@ export function emitWire(ir: IR): string {
       ? `  ctx.subscriptions.push(bindFileWatchers(${JSON.stringify(ir.fileWatchers.map((f) => compactEntry({ key: f.key, glob: f.glob, kind: f.kind, debounce: f.debounce })))}));\n`
       : "",
     ir.uriHandlerKey ? `  ctx.subscriptions.push(bindUriHandler(${JSON.stringify(ir.uriHandlerKey)}));\n` : "",
+    ir.lmTools.length > 0
+      ? `  ctx.subscriptions.push(bindLmTools(${JSON.stringify(ir.lmTools.map((t) => compactEntry({ key: t.key, name: t.name, invocationMessage: t.invocationMessage })))}));\n`
+      : "",
+    ir.mcpProviders.length > 0
+      ? `  ctx.subscriptions.push(bindMcpServers(${JSON.stringify(ir.mcpProviders.map((m) => ({ key: m.key, id: m.id })))}));\n`
+      : "",
     // timers @Every da classe @Extension (os de @Webview vivem no ciclo do painel)
     `  ctx.subscriptions.push(bindEvery(${JSON.stringify(ir.extensionClass)}));\n`,
   ].join("");

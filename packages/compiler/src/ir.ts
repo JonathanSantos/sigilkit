@@ -1,4 +1,4 @@
-export const IR_VERSION = 7;
+export const IR_VERSION = 8;
 
 export interface SourceLoc {
   file: string;
@@ -106,6 +106,8 @@ export interface IRLanguage {
   key: string; // nome da classe
   selector: string[]; // ids de linguagem (emite activationEvents onLanguage:*)
   hoverKey?: string;
+  /** @InlineCompletion: ghost text */
+  inlineKey?: string;
   completionKey?: string;
   completionTriggers?: string[];
   codeLensKey?: string;
@@ -125,7 +127,32 @@ export interface IRChatParticipant {
   isSticky?: boolean;
   requestKey: string;
   followupsKey?: string;
+  /** slash commands (@ChatCommand): declarados no manifesto e roteados por request.command */
+  commands?: { name: string; description?: string; key: string }[];
   sourceFile: string;
+  loc: SourceLoc;
+}
+
+/** Tool do agent mode (@LmTool): contributes.languageModelTools + lm.registerTool. */
+export interface IRLmTool {
+  key: string; // Classe.membro (join)
+  name: string; // nome público da tool (<prefix>_<membro> por default)
+  description: string; // modelDescription
+  displayName?: string;
+  /** habilita #referencia no prompt do usuário */
+  referenceName?: string;
+  invocationMessage?: string;
+  tags?: string[];
+  /** DERIVADO do tipo do parâmetro do handler (assinatura sigil) */
+  inputSchema?: Record<string, unknown>;
+  loc: SourceLoc;
+}
+
+/** Provedor de servidores MCP (@McpServers). */
+export interface IRMcpProvider {
+  key: string;
+  id: string; // id do contributes.mcpServerDefinitionProviders
+  label: string;
   loc: SourceLoc;
 }
 
@@ -204,6 +231,8 @@ export interface IR {
   languages: IRLanguage[];
   chatParticipants: IRChatParticipant[];
   customEditors: IRCustomEditor[];
+  lmTools: IRLmTool[];
+  mcpProviders: IRMcpProvider[];
   events: IREventHandler[];
   fileWatchers: IRFileWatcher[];
   secrets: IRSecret[];

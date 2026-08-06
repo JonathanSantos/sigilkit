@@ -10,6 +10,8 @@ import {
   IREventHandler,
   IRFileWatcher,
   IRLanguage,
+  IRLmTool,
+  IRMcpProvider,
   IRSecret,
   IRSettingsPanel,
   IRStatusBar,
@@ -22,7 +24,7 @@ import {
 } from "../ir";
 import { diagAt, diagGlobal, SIGIL } from "../diagnostics";
 import { evalStatic, StaticEvalError, IdentifierResolver } from "./static-eval";
-import { typeNodeToSchema, schemaFromValue } from "./type-to-schema";
+import { typeNodeToSchema, schemaFromValue, typeToToolSchema } from "./type-to-schema";
 import { compact, toPosix } from "../util";
 
 export interface CollectOptions {
@@ -83,11 +85,13 @@ const EXTENSION_MEMBERS = [
   "State",
   "Secret",
   "ContextKey",
+  "LmTool",
+  "McpServers",
 ] as const;
 const TREE_MEMBERS = ["TreeRoot", "TreeChildren", "TreeItem", "Command"] as const;
 const WEBVIEW_MEMBERS = ["OnMessage", "OnRequest"] as const;
-const LANGUAGE_MEMBERS = ["Hover", "Completion", "CodeLens", "Diagnostics"] as const;
-const CHAT_MEMBERS = ["ChatRequest", "ChatFollowups"] as const;
+const LANGUAGE_MEMBERS = ["Hover", "Completion", "CodeLens", "Diagnostics", "InlineCompletion"] as const;
+const CHAT_MEMBERS = ["ChatRequest", "ChatFollowups", "ChatCommand"] as const;
 const ALL_MEMBERS = [
   ...new Set([...EXTENSION_MEMBERS, ...TREE_MEMBERS, ...WEBVIEW_MEMBERS, ...LANGUAGE_MEMBERS, ...CHAT_MEMBERS]),
 ];
@@ -259,6 +263,8 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
   const chatParticipants: IRChatParticipant[] = [];
   const customEditors: IRCustomEditor[] = [];
   const events: IREventHandler[] = [];
+  const lmTools: IRLmTool[] = [];
+  const mcpProviders: IRMcpProvider[] = [];
   const fileWatchers: IRFileWatcher[] = [];
   const secrets: IRSecret[] = [];
   const contextKeys: IRContextKey[] = [];
@@ -475,6 +481,72 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
         return;
       }
       uriHandlerKey = key;
+      return;
+    }
+
+    const lmToolDec = getDecorator(m, checker, "LmTool");
+    if (lmToolDec) {
+      const optsNode = optionsNodeOf(lmToolDec);
+      const raw = optsNode ? tryEval(optsNode) : undefined;
+      if (raw === EVAL_FAILED) return;
+      const o = (raw ?? {}) as Record<string, unknown>;
+      if (typeof o.description !== "string" || o.description.length === 0) {
+        diagnostics.push(
+          diagAt(optsNode ?? m.name, SIGIL.MissingRequiredOption, "@LmTool exige 'description' (o modelo decide usar a tool por ela)")
+        );
+        return;
+      }
+      // inputSchema DERIVADO do tipo do primeiro parâmetro (assinatura sigil)
+      let inputSchema: Record<string, unknown> | undefined;
+      const param = m.parameters[0];
+      if (param) {
+        const paramType = checker.getTypeAtLocation(param);
+        inputSchema = typeToToolSchema(paramType, checker);
+        if (!inputSchema || inputSchema.type !== "object") {
+          diagnostics.push(
+            diagAt(param, SIGIL.UnsupportedToolInput, `o input de @LmTool '${methodName}' precisa ser um objeto de primitivos/uniões de literais/arrays/objetos aninhados — o schema é derivado dele`)
+          );
+          return;
+        }
+      }
+      // nomes de tool são globais: prefixo com _ (padrão do marketplace)
+      const toolName = `${prefix.replace(/[^\w-]/g, "_")}_${(o.name as string | undefined) ?? methodName}`;
+      lmTools.push(
+        compact({
+          key,
+          name: toolName,
+          description: o.description,
+          displayName: o.displayName as string | undefined,
+          referenceName: o.referenceName as string | undefined,
+          invocationMessage: o.invocationMessage as string | undefined,
+          tags: Array.isArray(o.tags) ? (o.tags as string[]) : undefined,
+          inputSchema,
+          loc: locOf(m.name),
+        }) as IRLmTool
+      );
+      return;
+    }
+
+    const mcpDec = getDecorator(m, checker, "McpServers");
+    if (mcpDec) {
+      const optsNode = optionsNodeOf(mcpDec);
+      const raw = optsNode ? tryEval(optsNode) : undefined;
+      if (raw === EVAL_FAILED) return;
+      const o = (raw ?? {}) as Record<string, unknown>;
+      if (typeof o.label !== "string" || o.label.length === 0) {
+        diagnostics.push(
+          diagAt(optsNode ?? m.name, SIGIL.MissingRequiredOption, "@McpServers exige 'label' (nome exibido ao usuário)")
+        );
+        return;
+      }
+      mcpProviders.push(
+        compact({
+          key,
+          id: `${prefix}.${(o.id as string | undefined) ?? methodName}`,
+          label: o.label,
+          loc: locOf(m.name),
+        }) as IRMcpProvider
+      );
       return;
     }
 
@@ -868,6 +940,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     selector.sort();
 
     let hoverKey: string | undefined;
+    let inlineKey: string | undefined;
     let completionKey: string | undefined;
     let completionTriggers: string[] | undefined;
     let codeLensKey: string | undefined;
@@ -899,6 +972,8 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
       const lensDec = getDecorator(member, checker, "CodeLens");
       const diagDec = getDecorator(member, checker, "Diagnostics");
       if (hoverDec && single(hoverKey, "Hover", member.name)) hoverKey = key;
+      const inlineDec = getDecorator(member, checker, "InlineCompletion");
+      if (inlineDec && single(inlineKey, "InlineCompletion", member.name)) inlineKey = key;
       else if (complDec && single(completionKey, "Completion", member.name)) {
         completionKey = key;
         const cOpts = optionsNodeOf(complDec) ? tryEval(optionsNodeOf(complDec)!) : {};
@@ -915,7 +990,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
       }
     }
 
-    if (!hoverKey && !completionKey && !codeLensKey && !diagnosticsKey) {
+    if (!hoverKey && !inlineKey && !completionKey && !codeLensKey && !diagnosticsKey) {
       diagnostics.push(
         diagAt(lang.name, SIGIL.TreeViewIncomplete, `@Language '${langClassName}' precisa de ao menos um provider (@Hover, @Completion, @CodeLens ou @Diagnostics)`)
       );
@@ -927,6 +1002,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
         key: langClassName,
         selector,
         hoverKey,
+        inlineKey,
         completionKey,
         completionTriggers,
         codeLensKey,
@@ -959,6 +1035,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
 
     let requestKey: string | undefined;
     let followupsKey: string | undefined;
+    const chatCommands: { name: string; description?: string; key: string }[] = [];
     for (const member of chat.members) {
       if (!ts.isMethodDeclaration(member)) continue;
       if (
@@ -983,8 +1060,32 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
           continue;
         }
         followupsKey = key;
+      } else {
+        const cmdDec = getDecorator(member, checker, "ChatCommand");
+        if (cmdDec) {
+          const call = ts.isCallExpression(cmdDec.expression) ? cmdDec.expression : undefined;
+          const nameRaw = call?.arguments[0] ? tryEval(call.arguments[0]) : undefined;
+          if (nameRaw === EVAL_FAILED) continue;
+          if (typeof nameRaw !== "string" || nameRaw.length === 0) {
+            diagnostics.push(diagAt(call?.arguments[0] ?? member.name, SIGIL.NotStaticLiteral, '@ChatCommand exige o nome do slash command (string literal, sem "/")'));
+            continue;
+          }
+          if (chatCommands.some((c) => c.name === nameRaw)) {
+            diagnostics.push(diagAt(call?.arguments[0] ?? member.name, SIGIL.DuplicateMessageType, `slash command duplicado: /${nameRaw}`));
+            continue;
+          }
+          const cmdOptsRaw = call?.arguments[1] ? tryEval(call.arguments[1]) : {};
+          if (cmdOptsRaw === EVAL_FAILED) continue;
+          const description = (cmdOptsRaw as { description?: unknown } | null)?.description;
+          chatCommands.push(
+            compact({ name: nameRaw, description: typeof description === "string" ? description : undefined, key }) as {
+              name: string; description?: string; key: string;
+            }
+          );
+        }
       }
     }
+    chatCommands.sort((a, b) => (a.name < b.name ? -1 : 1));
 
     if (!requestKey) {
       diagnostics.push(
@@ -995,6 +1096,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
 
     chatParticipants.push(
       compact({
+        commands: chatCommands.length > 0 ? chatCommands : undefined,
         key: chatClassName,
         id: `${prefix}.${o.id as string}`,
         name: o.name as string,
@@ -1078,6 +1180,8 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
   statusBars.sort(byKey);
   languages.sort(byKey);
   chatParticipants.sort(byId);
+  lmTools.sort((a, b) => (a.name < b.name ? -1 : 1));
+  mcpProviders.sort(byId);
   customEditors.sort((a, b) => (a.viewType < b.viewType ? -1 : a.viewType > b.viewType ? 1 : 0));
   events.sort(byKey);
   fileWatchers.sort(byKey);
@@ -1103,6 +1207,8 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     languages,
     chatParticipants,
     customEditors,
+    lmTools,
+    mcpProviders,
     events,
     fileWatchers,
     secrets,

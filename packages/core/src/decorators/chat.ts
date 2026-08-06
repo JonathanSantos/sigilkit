@@ -36,11 +36,26 @@ export const ChatRequest = dual(() => registerBoundMember("chatHandlers"));
 /** provideFollowups(result, context, token) — sugestões pós-resposta. Opcional. */
 export const ChatFollowups = dual(() => registerBoundMember("chatHandlers"));
 
+export interface ChatCommandOptions {
+  description?: string;
+}
+
+/**
+ * Slash command do participante (`/fix`, `/explain`): declarado no manifesto
+ * (chatParticipants[].commands) e roteado por request.command — o método
+ * recebe (request, context, stream, token) como o @ChatRequest.
+ */
+export function ChatCommand(_name: string, _opts: ChatCommandOptions = {}) {
+  return registerBoundMember("chatHandlers");
+}
+
 export interface ChatParticipantBinding {
   readonly key: string;
   readonly id: string;
   readonly requestKey: string;
   readonly followupsKey?: string;
+  /** slash commands: nome → chave do handler */
+  readonly commands?: readonly { name: string; key: string }[];
 }
 
 // Tipagem mínima local: evita exigir @types/vscode >= 1.90 de quem não usa chat.
@@ -66,9 +81,14 @@ export function bindChatParticipant(binding: ChatParticipantBinding, ctx: vscode
   }
 
   const participant = chat.createChatParticipant(binding.id, (...args: unknown[]) => {
-    const fn = registry.chatHandlers.get(binding.requestKey);
-    if (!fn) throw new Error(`sigil: handler ausente para ${binding.requestKey}. Rode 'sigil build'.`);
-    return guard(`@ChatRequest de ${binding.key}`, fn)(...args);
+    // request.command roteia para o @ChatCommand correspondente; sem match,
+    // cai no @ChatRequest — sempre resolvido do registry (hot-swap safe)
+    const command = (args[0] as { command?: string } | undefined)?.command;
+    const match = command ? binding.commands?.find((c) => c.name === command) : undefined;
+    const key = match?.key ?? binding.requestKey;
+    const fn = registry.chatHandlers.get(key);
+    if (!fn) throw new Error(`sigil: handler ausente para ${key}. Rode 'sigil build'.`);
+    return guard(`${match ? `@ChatCommand /${command}` : "@ChatRequest"} de ${binding.key}`, fn)(...args);
   });
   if (binding.followupsKey) {
     const followupsKey = binding.followupsKey;

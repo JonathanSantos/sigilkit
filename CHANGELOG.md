@@ -4,6 +4,25 @@ Os pacotes (`@sigilkit/*` e `create-sigil`) versionam em lockstep — cada
 entrada aqui vale para todos na mesma versão. Pré-1.0, mudanças de API podem
 acontecer entre versões minor; sempre listadas aqui.
 
+## Não publicado
+
+A fornada de IA — as superfícies que o Copilot invoca:
+
+- **`@LmTool`** — tools do agent mode com `inputSchema` **derivado do tipo do
+  parâmetro** (JSDoc → description, uniões → enum, opcionais → não-required,
+  aliases via checker); `contributes.languageModelTools` + `lm.registerTool`
+  + join no wire. `host.invokeTool()` testa sem Copilot. Input não-derivável
+  é `SIGIL1021` com caret.
+- **`@ChatCommand("fix")`** — slash commands declarados no manifesto e
+  roteados por `request.command` (fallback no `@ChatRequest`).
+- **`@InlineCompletion`** — ghost text; strings viram itens.
+- **`@McpServers`** — provedores de servidores MCP (stdio e http) com
+  `contributes.mcpServerDefinitionProviders` derivado.
+- **`llm.agent()`** — o loop de tool-calling (invokeTool → resultado → nova
+  rodada) sem boilerplate.
+- Sondas novas no `@sigilkit/test`: `lmTools`, `invokeTool`, `mcpServers`,
+  `provideInlineCompletions`, `chatRequest` com `command`.
+
 ## 0.6.2 — 2026-08-06
 
 - **Hot reload de UI no `sim` e no `sandbox`** — `WebviewHandle.refresh()`

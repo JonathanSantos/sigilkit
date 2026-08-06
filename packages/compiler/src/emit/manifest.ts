@@ -17,7 +17,7 @@ export type OwnedContributeKey = (typeof OWNED_CONTRIBUTES)[number];
  * sigil as emite, mas NUNCA removidas quando ausentes — o usuário pode
  * mantê-las à mão enquanto não usar a forma declarativa (container inline).
  */
-export const CONDITIONAL_CONTRIBUTES = ["viewsContainers", "chatParticipants", "customEditors"] as const;
+export const CONDITIONAL_CONTRIBUTES = ["viewsContainers", "chatParticipants", "customEditors", "languageModelTools", "mcpServerDefinitionProviders"] as const;
 export type ConditionalContributeKey = (typeof CONDITIONAL_CONTRIBUTES)[number];
 
 export type Contributes = Partial<Record<OwnedContributeKey | ConditionalContributeKey, unknown>>;
@@ -116,8 +116,31 @@ export function emitManifest(ir: IR): Contributes {
         fullName: c.fullName,
         description: c.description,
         isSticky: c.isSticky,
+        commands:
+          c.commands && c.commands.length > 0
+            ? c.commands.map((cmd) => compact({ name: cmd.name, description: cmd.description }))
+            : undefined,
       })
     );
+  }
+
+  if (ir.lmTools.length > 0) {
+    out.languageModelTools = ir.lmTools.map((t) =>
+      compact({
+        name: t.name,
+        displayName: t.displayName ?? t.name,
+        modelDescription: t.description,
+        userDescription: t.displayName ? t.description : undefined,
+        canBeReferencedInPrompt: t.referenceName ? true : undefined,
+        toolReferenceName: t.referenceName,
+        tags: t.tags,
+        inputSchema: t.inputSchema,
+      })
+    );
+  }
+
+  if (ir.mcpProviders.length > 0) {
+    out.mcpServerDefinitionProviders = ir.mcpProviders.map((m) => ({ id: m.id, label: m.label }));
   }
 
   if (ir.customEditors.length > 0) {

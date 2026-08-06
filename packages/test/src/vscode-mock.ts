@@ -536,6 +536,9 @@ export interface VscodeMockState {
   progressRuns: { title?: string; location?: unknown }[];
   /** respostas enfileiradas para llm.ask/stream (fila vazia → "resposta simulada") */
   llmQueue: string[];
+  lmTools: { name: string; tool: { invoke(options: { input?: unknown }, token?: unknown): unknown; prepareInvocation?(): unknown } }[];
+  mcpProviders: { id: string; provider: { provideMcpServerDefinitions(): unknown } }[];
+  inlineProviders: { selector: unknown; provider: { provideInlineCompletionItems(...args: unknown[]): unknown } }[];
   treeProviders: Map<string, TreeDataProviderLike>;
   panels: WebviewPanelMock[];
   webviewViewProviders: Map<string, { resolveWebviewView(view: unknown): unknown }>;
@@ -573,6 +576,9 @@ export function createState(): VscodeMockState {
     uriHandler: undefined,
     progressRuns: [],
     llmQueue: [],
+    lmTools: [],
+    mcpProviders: [],
+    inlineProviders: [],
     treeProviders: new Map(),
     panels: [],
     webviewViewProviders: new Map(),
@@ -620,6 +626,9 @@ export function resetState(state: VscodeMockState): void {
   state.uriHandler = undefined;
   state.progressRuns.length = 0;
   state.llmQueue.length = 0;
+  state.lmTools.length = 0;
+  state.mcpProviders.length = 0;
+  state.inlineProviders.length = 0;
   state.treeProviders.clear();
   state.panels.length = 0;
   state.webviewViewProviders.clear();
@@ -695,6 +704,11 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
     __resolveWebviewView: resolveWebviewView,
     __fireDoc: fireDoc,
     languages: {
+      registerInlineCompletionItemProvider: (selector: unknown, provider: { provideInlineCompletionItems(...args: unknown[]): unknown }) => {
+        const entry = { selector, provider };
+        state.inlineProviders.push(entry);
+        return { dispose: () => void state.inlineProviders.splice(state.inlineProviders.indexOf(entry), 1) };
+      },
       registerHoverProvider: (selector: unknown, provider: Record<string, (...args: unknown[]) => unknown>) => {
         const entry: LanguageProviderEntry = { kind: "hover", selector: toSelectorArray(selector), provider };
         state.languageProviders.push(entry);
@@ -725,7 +739,34 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
       User: (content: string) => ({ role: "user", content }),
       Assistant: (content: string) => ({ role: "assistant", content }),
     },
+    LanguageModelToolResult: class {
+      constructor(public content: unknown[]) {}
+    },
+    LanguageModelTextPart: class {
+      constructor(public value: string) {}
+    },
     lm: {
+      registerTool: (name: string, tool: (typeof state.lmTools)[number]["tool"]) => {
+        if (state.lmTools.some((t) => t.name === name)) {
+          throw new Error(`sigil-test: tool '${name}' registrada duas vezes`);
+        }
+        const entry = { name, tool };
+        state.lmTools.push(entry);
+        return { dispose: () => void state.lmTools.splice(state.lmTools.indexOf(entry), 1) };
+      },
+      get tools() {
+        return state.lmTools.map((t) => ({ name: t.name }));
+      },
+      invokeTool: async (name: string, options: { input?: unknown }) => {
+        const entry = state.lmTools.find((t) => t.name === name);
+        if (!entry) throw new Error(`sigil-test: tool '${name}' não registrada`);
+        return entry.tool.invoke(options ?? {}, { isCancellationRequested: false });
+      },
+      registerMcpServerDefinitionProvider: (id: string, provider: (typeof state.mcpProviders)[number]["provider"]) => {
+        const entry = { id, provider };
+        state.mcpProviders.push(entry);
+        return { dispose: () => void state.mcpProviders.splice(state.mcpProviders.indexOf(entry), 1) };
+      },
       selectChatModels: (_selector?: unknown) =>
         Promise.resolve([
           {

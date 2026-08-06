@@ -120,6 +120,8 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "sourceFile": "src/extension.ts",
     },
   ],
+  "lmTools": [],
+  "mcpProviders": [],
   "prefix": "hello",
   "secrets": [],
   "settingsPanel": {
@@ -166,7 +168,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "sourceFile": "src/views/tasks.ts",
     },
   ],
-  "version": 7,
+  "version": 8,
   "viewContainers": [],
   "watches": [
     {

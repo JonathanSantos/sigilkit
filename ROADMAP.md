@@ -6,6 +6,10 @@ ataquem qualquer item (ou tragam fricções novas) são bem-vindos.
 
 ## Agora
 
+- ~~Tools do agent mode, slash commands, ghost text, MCP~~ — **entregue**
+  (`@LmTool` com schema derivado, `@ChatCommand`, `@InlineCompletion`,
+  `@McpServers`, `llm.agent`).
+
 - **Estabilizar o modo enxerto** com casos reais: adotar o sigil em extensões
   existentes sem reescrever nada (`"sigil": { "graft": true }` — ver README).
 - **Publicar uma extensão real no Marketplace** construída com sigil.

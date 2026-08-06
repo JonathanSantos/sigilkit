@@ -37,6 +37,12 @@ export function Completion(_opts: CompletionOptions = {}) {
 /** provideCodeLenses(document, token). */
 export const CodeLens = dual(() => registerBoundMember("languageHandlers"));
 
+/**
+ * Ghost text (inline completion): handler(doc, pos, context, token) retorna
+ * string, string[] ou InlineCompletionItem[] — strings viram itens.
+ */
+export const InlineCompletion = dual(() => registerBoundMember("languageHandlers"));
+
 export interface DiagnosticsOptions {
   /** quando revalidar: a cada edição (default) ou só ao salvar */
   on?: "change" | "save";
@@ -54,6 +60,7 @@ export interface LanguageBinding {
   readonly key: string;
   readonly selector: readonly string[];
   readonly hoverKey?: string;
+  readonly inlineKey?: string;
   readonly completionKey?: string;
   readonly completionTriggers?: readonly string[];
   readonly codeLensKey?: string;
@@ -66,7 +73,7 @@ export interface LanguageBinding {
  * cada chamada — hot swap troca os providers por baixo) e guard em tudo.
  */
 export function bindLanguage(binding: LanguageBinding, ctx: vscode.ExtensionContext): vscode.Disposable {
-  for (const key of [binding.hoverKey, binding.completionKey, binding.codeLensKey, binding.diagnosticsKey]) {
+  for (const key of [binding.hoverKey, binding.inlineKey, binding.completionKey, binding.codeLensKey, binding.diagnosticsKey]) {
     if (key && !registry.languageHandlers.has(key)) {
       throw new Error(`sigil: handler de linguagem ausente para ${key}. Rode 'sigil build'.`);
     }
@@ -89,6 +96,22 @@ export function bindLanguage(binding: LanguageBinding, ctx: vscode.ExtensionCont
       vscode.languages.registerHoverProvider(selector, {
         provideHover: (doc, pos, token) =>
           call(`@Hover de ${binding.key}`, key, [doc, pos, token]) as vscode.ProviderResult<vscode.Hover>,
+      })
+    );
+  }
+  if (binding.inlineKey) {
+    const key = binding.inlineKey;
+    disposables.push(
+      vscode.languages.registerInlineCompletionItemProvider(selector, {
+        provideInlineCompletionItems: async (doc, pos, context, token) => {
+          const result = await call(`@InlineCompletion de ${binding.key}`, key, [doc, pos, context, token]);
+          if (result == null) return [];
+          // strings viram itens; itens prontos passam direto
+          const lista = Array.isArray(result) ? result : [result];
+          return lista.map((item) =>
+            typeof item === "string" ? { insertText: item } : item
+          ) as vscode.InlineCompletionItem[];
+        },
       })
     );
   }

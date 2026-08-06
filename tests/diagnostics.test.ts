@@ -142,6 +142,11 @@ describe("diagnósticos (§9)", () => {
     expect(validate(ir!, program, FIXTURES, { nlsKeys: ["fx.title", "fx.desc"] })).toEqual([]);
   });
 
+  it("SIGIL1021 — input de @LmTool que o schema não deriva", () => {
+    const { diags } = collectFixture("lmtool-bad-input.ts");
+    expect(lineOf(only(diags, SIGIL.UnsupportedToolInput))).toBe(6);
+  });
+
   it("SIGIL1019 — when com sintaxe inválida", () => {
     const { diags } = collectFixture("when-bad-syntax.ts");
     expect(lineOf(only(diags, SIGIL.InvalidWhenExpression))).toBe(9);

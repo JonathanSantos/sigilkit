@@ -135,11 +135,42 @@ npm test                         # unidade + simulador + E2E do CLI
 | `@Every(ms)` | método | timer com o ciclo certo: na `@Extension` vive da ativação à desativação; num `@Webview`, só enquanto o painel está aberto |
 | `@Language({ id })` + `@Hover`/`@Completion`/`@CodeLens`/`@Diagnostics` | classe | providers de linguagem (+ `onLanguage:*` automático) |
 | `@ChatParticipant({ id, name })` + `@ChatRequest`/`@ChatFollowups` | classe | participante de chat (`@nome` no Copilot Chat) |
+| `@ChatCommand("fix", { description? })` | método | slash command do participante — declarado no manifesto e roteado por `request.command` |
+| `@LmTool({ description, referenceName? })` | método | **tool do agent mode** — `inputSchema` DERIVADO do tipo do parâmetro; o Copilot invoca |
+| `@McpServers({ label })` | método | provedor de servidores MCP (retorne `{label, command, args}` ou `{label, uri}`) |
+| `@InlineCompletion` | método | ghost text (`InlineCompletionItemProvider`) — retorne strings |
 | `@CustomEditor({ id, filenamePattern, ui })` | classe | editor custom sobre o shell de webview, com `applyEdit` undo-friendly |
 
 Strings do manifesto aceitam `%chaves%` de localização: mantenha seu
 `package.nls.json` e o build **valida** cada chave usada — inexistente é
 `SIGIL1020` com caret na linha.
+
+## A era do agent mode: `@LmTool`
+
+O ponto de integração da era Copilot é a tool que o agent mode invoca — e o
+`contributes.languageModelTools` exige um **JSON Schema escrito à mão**
+duplicando um tipo TS, amarrado por string ao `registerTool`. No sigil:
+
+```ts
+interface BuscaInput {
+  /** o texto a procurar */
+  consulta: string;
+  estado?: "aberta" | "fechada";
+  max?: number;
+}
+
+@LmTool({ description: "Busca issues do projeto", referenceName: "issues" })
+buscarIssues(input: BuscaInput): string { ... }
+```
+
+O `inputSchema` **sai do tipo** (JSDoc vira `description`, união de literais
+vira `enum`, opcional vira não-required, aliases resolvem via checker), o
+registro e o join são do wire, e `host.invokeTool("…")` testa a tool no
+simulador sem Copilot nenhum. Slash commands (`@ChatCommand`), ghost text
+(`@InlineCompletion`), provedores MCP (`@McpServers`) e `llm.agent()` — o
+loop de tool-calling sem boilerplate — completam a fornada. Tudo sobre API
+estável, acessada dinamicamente: sem exigir `@types/vscode` novo, com erro
+alto em host antigo.
 
 ## Superfícies de linguagem, chat e editores
 

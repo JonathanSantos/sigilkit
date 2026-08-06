@@ -73,6 +73,9 @@ export class Registry {
   readonly webviewDisposeHandlers = new Map<string, () => unknown>();
   /** timers @Every(ms) por chave Classe.membro */
   readonly everyHandlers = new Map<string, { ms: number; fn: () => unknown }>();
+  /** handlers @LmTool e @McpServers por chave Classe.membro */
+  readonly lmToolHandlers = new Map<string, (...args: unknown[]) => unknown>();
+  readonly mcpServerHandlers = new Map<string, (...args: unknown[]) => unknown>();
   /** buckets adotados por nome declarado de classe (ver metadata.ts) */
   readonly buckets = new Map<string, import("./metadata").Bucket>();
   /** instâncias criadas pelo wire, chaveadas pelo CONSTRUTOR (minificação-safe;

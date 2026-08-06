@@ -66,4 +66,59 @@ export const llm = {
   ask(promptText: string, opts: LlmOptions = {}): Promise<string> {
     return llm.stream(promptText, () => {}, opts);
   },
+
+  /**
+   * O loop agêntico sem boilerplate: manda o prompt COM as tools do host
+   * (lm.tools — as suas @LmTool inclusive), executa cada tool call via
+   * lm.invokeTool e devolve o resultado ao modelo, até a resposta final.
+   * Duck-typed sobre as parts da LM API — não exige @types novo.
+   */
+  async agent(promptText: string, opts: LlmOptions & { maxRounds?: number; tools?: string[] } = {}): Promise<string> {
+    const lmApi = (vscode as unknown as {
+      lm?: {
+        tools?: { name: string; description: string; inputSchema?: unknown }[];
+        invokeTool?(name: string, options: Record<string, unknown>, token?: unknown): Thenable<{ content?: { value?: string }[] }>;
+      };
+    }).lm;
+    if (!lmApi?.invokeTool) {
+      throw new Error("sigil: llm.agent exige a Language Model Tools API (VSCode >= 1.95)");
+    }
+    const disponiveis = (lmApi.tools ?? []).filter(
+      (t) => !opts.tools || opts.tools.includes(t.name)
+    );
+    const model = await selectModel(opts);
+    const content = opts.system ? `${opts.system}\n\n${promptText}` : promptText;
+    const messages: unknown[] = [userMessage(content)];
+    let texto = "";
+
+    for (let round = 0; round < (opts.maxRounds ?? 5); round++) {
+      const response = (await model.sendRequest(
+        messages,
+        { tools: disponiveis },
+        { isCancellationRequested: false }
+      )) as { text: AsyncIterable<string>; stream?: AsyncIterable<unknown> };
+
+      const toolCalls: { callId: string; name: string; input: unknown }[] = [];
+      if (response.stream) {
+        for await (const part of response.stream) {
+          const p = part as { value?: unknown; callId?: string; name?: string; input?: unknown };
+          if (typeof p.value === "string") texto += p.value;
+          else if (p.callId && p.name) toolCalls.push({ callId: p.callId, name: p.name, input: p.input });
+        }
+      } else {
+        for await (const chunk of response.text) texto += chunk;
+      }
+      if (toolCalls.length === 0) return texto;
+
+      // devolve os resultados das tools ao modelo e segue o loop
+      const resultados: string[] = [];
+      for (const call of toolCalls) {
+        log.debug(`llm.agent: tool ${call.name}`);
+        const r = await lmApi.invokeTool(call.name, { input: call.input, toolInvocationToken: undefined });
+        resultados.push(`[${call.name}] ${(r.content ?? []).map((c) => c.value ?? "").join("")}`);
+      }
+      messages.push(userMessage(`Resultados das ferramentas:\n${resultados.join("\n")}`));
+    }
+    return texto;
+  },
 };

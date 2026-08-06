@@ -97,3 +97,64 @@ export function schemaFromValue(v: unknown): SchemaInfo | undefined {
   }
   return undefined;
 }
+
+/**
+ * Tipo do parâmetro de uma @LmTool → JSON Schema de objeto (inputSchema do
+ * contributes.languageModelTools) — a assinatura sigil aplicada ao agent
+ * mode: o schema que todo mundo escreve à mão em JSON sai do tipo TS.
+ * Suporta objetos aninhados, arrays, primitivos, uniões de literais string e
+ * opcionais (viram não-required). Retorna undefined para algo fora disso
+ * (vira diagnóstico no coletor).
+ */
+export function typeToToolSchema(type: ts.Type, checker: ts.TypeChecker, depth = 0): Record<string, unknown> | undefined {
+  if (depth > 6) return undefined; // guarda de ciclo/profundidade
+
+  if (type.flags & ts.TypeFlags.Boolean) return { type: "boolean" };
+  if (type.flags & ts.TypeFlags.String) return { type: "string" };
+  if (type.flags & ts.TypeFlags.Number) return { type: "number" };
+  if (type.flags & (ts.TypeFlags.BooleanLiteral | ts.TypeFlags.BooleanLike)) return { type: "boolean" };
+
+  if (type.isUnion()) {
+    // opcional aparece como T | undefined — trata o undefined fora daqui
+    const membros = type.types.filter((t) => !(t.flags & (ts.TypeFlags.Undefined | ts.TypeFlags.Null)));
+    if (membros.length === 1) return typeToToolSchema(membros[0]!, checker, depth);
+    const literais: string[] = [];
+    for (const m of membros) {
+      if (m.isStringLiteral()) literais.push(m.value);
+      else if (m.flags & ts.TypeFlags.BooleanLiteral) return { type: "boolean" };
+      else return undefined;
+    }
+    return { type: "string", enum: literais };
+  }
+
+  // arrays
+  const indexType = checker.getIndexTypeOfType?.(type, ts.IndexKind.Number);
+  if (checker.isArrayType?.(type) && indexType) {
+    const items = typeToToolSchema(indexType, checker, depth + 1);
+    return items ? { type: "array", items } : undefined;
+  }
+
+  // objetos: propriedades viram properties/required
+  if (type.flags & ts.TypeFlags.Object) {
+    // funções/métodos (e classes como Map/Date, cheias deles) não têm JSON schema
+    if (type.getCallSignatures().length > 0) return undefined;
+    const properties: Record<string, unknown> = {};
+    const required: string[] = [];
+    for (const prop of checker.getPropertiesOfType(type)) {
+      const decl = prop.valueDeclaration ?? prop.declarations?.[0];
+      if (!decl) return undefined;
+      const propType = checker.getTypeOfSymbolAtLocation(prop, decl);
+      const schema = typeToToolSchema(propType, checker, depth + 1);
+      if (!schema) return undefined;
+      // descrição vem do JSDoc da propriedade, se houver
+      const doc = ts.displayPartsToString(prop.getDocumentationComment(checker)).trim();
+      properties[prop.name] = doc ? { ...schema, description: doc } : schema;
+      if (!(prop.flags & ts.SymbolFlags.Optional)) required.push(prop.name);
+    }
+    const out: Record<string, unknown> = { type: "object", properties };
+    if (required.length > 0) out.required = required.sort();
+    return out;
+  }
+
+  return undefined;
+}

@@ -45,6 +45,7 @@ export const SIGIL = {
   /** cláusula when com sintaxe inválida */
   InvalidWhenExpression: 1019,
   UnknownNlsKey: 1020,
+  UnsupportedToolInput: 1021,
 } as const;
 
 export function diagAt(node: ts.Node, code: number, message: string): ts.Diagnostic {

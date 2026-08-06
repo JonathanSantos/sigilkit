@@ -69,6 +69,19 @@ llm (vscode.lm dinâmico). Validação de when em validate.ts: SIGIL1018 (token
 `<prefix>.*` precisa ser @ContextKey/view/comando declarado) e SIGIL1019
 (sintaxe via tokenizer sticky + parênteses).
 
+Fornada de IA (IR v8): @LmTool (bucket lmTools; nome <prefix>_<membro>;
+inputSchema DERIVADO via typeToToolSchema — checker, JSDoc→description,
+call signatures rejeitadas [Map/Date/fn = SIGIL1021]; wrap de retorno
+string→LanguageModelToolResult dinâmico); @ChatCommand (chatHandlers;
+manifesto chatParticipants[].commands; bindChatParticipant roteia por
+request.command com fallback no @ChatRequest); @InlineCompletion
+(languageHandlers; strings viram itens); @McpServers (bucket mcpServers;
+defs simples {label,command,args}/{label,uri} viram classes Mcp* do host
+dinamicamente); llm.agent() (loop invokeTool duck-typed sobre parts).
+Tudo lm.* dinâmico (tools >=1.95, MCP >=1.101; host velho = erro alto).
+Sondas: lmTools/invokeTool/mcpServers/provideInlineCompletions/chatRequest
+com command. tests/ai-lab.test.ts exercita tudo do zero.
+
 Superfícies de linguagem/chat/editor: @Language({id}) com @Hover/@Completion/
 @CodeLens/@Diagnostics (bindLanguage; activationEvents onLanguage:* são
 SUBCONJUNTO gerenciado no merge — resto do array é do usuário);
