@@ -6,9 +6,9 @@ acontecer entre versões minor; sempre listadas aqui.
 
 ## 0.7.1 — 2026-08-06
 
-A fornada de IA — as superfícies que o Copilot invoca. (Publicada como
-0.7.1: a tag v0.7.0 nunca chegou ao npm — o Actions estava bloqueado por
-billing no momento do release.)
+A fornada de IA — as superfícies que o Copilot invoca. (A 0.7.0 acabou
+saindo no npm por um run atrasado durante um incidente de billing do
+Actions; a 0.7.1 tem o mesmo conteúdo com o release consolidado — use-a.)
 
 - **`@LmTool`** — tools do agent mode com `inputSchema` **derivado do tipo do
   parâmetro** (JSDoc → description, uniões → enum, opcionais → não-required,
