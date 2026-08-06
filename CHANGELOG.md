@@ -4,7 +4,7 @@ Os quatro pacotes `@sigilkit/*` versionam em lockstep — cada entrada aqui vale
 para `core`, `compiler`, `cli` e `test` na mesma versão. Pré-1.0, mudanças de
 API podem acontecer entre versões minor; sempre listadas aqui.
 
-## Não publicado
+## 0.5.0 — 2026-08-06
 
 - **`registry.panel(Classe)`** — acesso tipado ao webview de outra classe,
   sem strings: `post` (envia se aberto → `true`; fechado → `false`), `open()`
