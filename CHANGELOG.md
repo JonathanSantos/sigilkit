@@ -4,6 +4,17 @@ Os pacotes (`@sigilkit/*` e `create-sigil`) versionam em lockstep — cada
 entrada aqui vale para todos na mesma versão. Pré-1.0, mudanças de API podem
 acontecer entre versões minor; sempre listadas aqui.
 
+## Não publicado
+
+- **Template React estruturado** — `--template=react-webview` agora scaffolda
+  um app funcional de verdade: `components/` + `hooks/` (`useHostRequest`/
+  `useHostMessage`, os hooks React por cima do protocolo tipado), CSS com as
+  variáveis de tema do VSCode, e uma lista de tarefas persistida com `@State`
+  demonstrando request/message/push, `registry.panel` e `registry.instance`.
+- **Release idempotente** — o publish pula versões já publicadas: um release
+  que falhou no meio (ex.: token sem permissão num pacote) pode ser
+  re-emitido sem conflito de "cannot publish over".
+
 ## 0.6.0 — 2026-08-06
 
 - **Modo enxerto (adoção incremental)** — `"sigil": { "graft": true }` no

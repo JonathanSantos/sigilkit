@@ -23,10 +23,10 @@ interface TemplateFile {
 }
 
 /**
- * Template do §16 do spec, com as correções aprendidas nas Fases 1–3:
- * decorators stage 3 (experimentalDecorators: false), e o esbuild com
- * `--keep-names` (chave de registry = nome da classe) E `--target=es2022`
- * (sem target o esbuild deixa a sintaxe de decorator crua no bundle).
+ * Templates do sigil init. Regras aprendidas nas fases: decorators stage 3
+ * (experimentalDecorators: false) e esbuild com `--target=es2022` (sem
+ * target a sintaxe de decorator fica crua no bundle). `--keep-names` NÃO é
+ * necessário — o join usa Symbol.metadata.
  */
 export type InitTemplate = "basic" | "react-webview";
 
@@ -63,11 +63,11 @@ function templateFiles(name: string, template: InitTemplate): TemplateFile[] {
       "vscode:prepublish": "npm run build",
     },
     dependencies: {
-      "@sigilkit/core": "^0.3.0",
+      "@sigilkit/core": "^0.6.0",
       ...(react ? { react: "^19.0.0", "react-dom": "^19.0.0" } : {}),
     },
     devDependencies: {
-      "@sigilkit/cli": "^0.3.0",
+      "@sigilkit/cli": "^0.6.0",
       ...(react ? { "@types/react": "^19.0.0", "@types/react-dom": "^19.0.0" } : {}),
       "@types/vscode": "^1.75.0",
       "@vscode/vsce": "^3.2.1",
@@ -94,37 +94,63 @@ function templateFiles(name: string, template: InitTemplate): TemplateFile[] {
 `;
 
   const extension = react
-    ? `import { Extension, Command, Config, Webview, OnMessage, OnRequest, registry } from "@sigilkit/core";
+    ? `import { Extension, Command, Config, OnMessage, OnRequest, State, Webview, registry } from "@sigilkit/core";
 
 // O manifesto é derivado destas classes: rode \`sigil build\` (ou \`npm run build\`)
 // e o package.json ganha o bloco contributes. O sigil-env.d.ts gerado em ui/
-// tipa o protocolo do painel dos dois lados.
+// tipa o protocolo do painel dos dois lados — typo vira erro de build na UI.
+
+export interface Tarefa {
+  id: number;
+  texto: string;
+  feita: boolean;
+}
+
+type HostToUi = { type: "tarefas"; value: Tarefa[] };
+
 @Extension()
 export class ${className} {
-  @Config({ description: "Saudação usada pelo painel" })
-  accessor greeting: string = "Olá";
+  @Config({ description: "Máximo de tarefas na lista", minimum: 1, maximum: 500 })
+  accessor maxTarefas: number = 50;
+
+  /** Persistidas por workspace — sobrevivem a fechar o VSCode. */
+  @State("workspace")
+  accessor tarefas: Tarefa[] = [];
 
   @Command({ title: "Open Panel" })
   openPanel() {
-    return registry.webviews.get("MainPanel")!.open();
+    return registry.panel(MainPanel).open();
   }
 }
 
-type HostToUi = { type: "pong"; value: number };
-
 @Webview({ id: "panel", title: "${name}", ui: "./ui/index.html" })
 export class MainPanel {
-  private pings = 0;
-
-  // callHost("saudar", nome) na UI — o retorno resolve a Promise, tipado
-  @OnRequest("saudar")
-  saudar(nome: string): string {
-    return \`\${registry.instance(${className}).greeting}, \${nome}!\`;
+  /** A UI pede o estado inicial ao montar (useHostRequest("tarefas")). */
+  @OnRequest("tarefas")
+  listar(): Tarefa[] {
+    return registry.instance(${className}).tarefas;
   }
 
-  @OnMessage("ping")
-  ping() {
-    this.post({ type: "pong", value: ++this.pings });
+  @OnMessage("adicionar")
+  adicionar(texto: string) {
+    const ext = registry.instance(${className});
+    if (texto.trim() === "" || ext.tarefas.length >= ext.maxTarefas) return;
+    ext.tarefas = [...ext.tarefas, { id: Date.now(), texto: texto.trim(), feita: false }];
+    this.post({ type: "tarefas", value: ext.tarefas });
+  }
+
+  @OnMessage("alternar")
+  alternar(id: number) {
+    const ext = registry.instance(${className});
+    ext.tarefas = ext.tarefas.map((t) => (t.id === id ? { ...t, feita: !t.feita } : t));
+    this.post({ type: "tarefas", value: ext.tarefas });
+  }
+
+  @OnMessage("remover")
+  remover(id: number) {
+    const ext = registry.instance(${className});
+    ext.tarefas = ext.tarefas.filter((t) => t.id !== id);
+    this.post({ type: "tarefas", value: ext.tarefas });
   }
 
   post!: (msg: HostToUi) => void; // injetado pelo wire
@@ -152,6 +178,7 @@ export class ${className} {
 <head>
   <meta charset="UTF-8">
   <title>${name}</title>
+  <link href="dist/main.css" rel="stylesheet">
 </head>
 <body>
   <div id="root"></div>
@@ -160,32 +187,190 @@ export class ${className} {
 </html>
 `;
 
-  const uiMain = `import { useEffect, useState } from "react";
-import { createRoot } from "react-dom/client";
-import { callHost, onHostMessage, postToHost } from "@sigilkit/core/ui";
+  const uiMain = `import { createRoot } from "react-dom/client";
+import { App } from "./App";
+import "./styles.css";
 
-// Tipos vêm do sigil-env.d.ts gerado: callHost/postToHost/onHostMessage já
-// saem tipados pelos @OnMessage/@OnRequest do host — typo é erro de build.
-function App() {
-  const [frase, setFrase] = useState("…");
-  const [pongs, setPongs] = useState(0);
+createRoot(document.getElementById("root")!).render(<App />);
+`;
 
+  const uiApp = `import { useEffect, useState } from "react";
+import { postToHost } from "@sigilkit/core/ui";
+import { useHostRequest, useHostMessage } from "./hooks/useHost";
+import { TaskInput } from "./components/TaskInput";
+import { TaskList } from "./components/TaskList";
+
+// Tudo tipado pelo sigil-env.d.ts gerado: "tarefas"/"adicionar"/"alternar"/
+// "remover" autocompletam, e um typo em qualquer chave é erro de build.
+export function App() {
+  const [tarefas, setTarefas] = useState<NonNullable<ReturnType<typeof useHostRequest<"tarefas">>["data"]>>([]);
+
+  // estado inicial via request; atualizações via push do host
+  const inicial = useHostRequest("tarefas");
   useEffect(() => {
-    void callHost("saudar", "mundo").then(setFrase);
-    return onHostMessage((msg) => {
-      if (msg.type === "pong") setPongs(msg.value);
-    });
-  }, []);
+    if (inicial.data) setTarefas(inicial.data);
+  }, [inicial.data]);
+  useHostMessage((msg) => {
+    if (msg.type === "tarefas") setTarefas(msg.value);
+  });
+
+  const pendentes = tarefas.filter((t) => !t.feita).length;
 
   return (
     <main>
-      <h1>{frase}</h1>
-      <button onClick={() => postToHost({ type: "ping" })}>ping ({pongs} pongs)</button>
+      <header>
+        <h1>Tarefas</h1>
+        <span className="dica">
+          {tarefas.length === 0 ? "persistidas por workspace (@State)" : \`\${pendentes} pendente(s)\`}
+        </span>
+      </header>
+      <TaskInput onAdd={(texto) => postToHost({ type: "adicionar", value: texto })} />
+      <TaskList
+        tarefas={tarefas}
+        onToggle={(id) => postToHost({ type: "alternar", value: id })}
+        onRemove={(id) => postToHost({ type: "remover", value: id })}
+      />
     </main>
   );
 }
+`;
 
-createRoot(document.getElementById("root")!).render(<App />);
+  const uiHooks = `import { useEffect, useRef, useState } from "react";
+import { callHost, onHostMessage, type SigilUiFromHost, type SigilUiRequests } from "@sigilkit/core/ui";
+
+type ResultOf<K extends keyof SigilUiRequests> = SigilUiRequests[K] extends { result: infer R }
+  ? R
+  : never;
+/** a união host→UI derivada do post da classe (via sigil-env.d.ts) */
+type HostMsg = SigilUiFromHost extends { message: infer M } ? M : unknown;
+
+/**
+ * Request ao host no mount, com estado de loading/erro — a versão React do
+ * callHost. As chaves e o tipo do retorno vêm do sigil-env.d.ts gerado.
+ */
+export function useHostRequest<K extends keyof SigilUiRequests & string>(type: K) {
+  const [state, setState] = useState<{ data?: ResultOf<K>; error?: string; loading: boolean }>({
+    loading: true,
+  });
+  useEffect(() => {
+    let vivo = true;
+    (callHost as (t: K) => Promise<ResultOf<K>>)(type).then(
+      (data) => vivo && setState({ data, loading: false }),
+      (e: unknown) => vivo && setState({ error: String(e), loading: false })
+    );
+    return () => {
+      vivo = false;
+    };
+  }, [type]);
+  return state;
+}
+
+/** Assina mensagens do host com unsubscribe automático (e handler sempre fresco). */
+export function useHostMessage(handler: (msg: HostMsg) => void): void {
+  const ref = useRef(handler);
+  ref.current = handler;
+  useEffect(() => onHostMessage<HostMsg>((msg) => ref.current(msg)), []);
+}
+`;
+
+  const uiTaskInput = `import { useState } from "react";
+
+export function TaskInput({ onAdd }: { onAdd(texto: string): void }) {
+  const [texto, setTexto] = useState("");
+  const enviar = () => {
+    if (texto.trim() === "") return;
+    onAdd(texto);
+    setTexto("");
+  };
+  return (
+    <div className="linha">
+      <input
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && enviar()}
+        placeholder="Nova tarefa…"
+      />
+      <button onClick={enviar} disabled={texto.trim() === ""}>
+        Adicionar
+      </button>
+    </div>
+  );
+}
+`;
+
+  const uiTaskList = `import type { Tarefa } from "../../../src/extension";
+
+interface Props {
+  tarefas: Tarefa[];
+  onToggle(id: number): void;
+  onRemove(id: number): void;
+}
+
+export function TaskList({ tarefas, onToggle, onRemove }: Props) {
+  if (tarefas.length === 0) {
+    return <p className="dica">nada por aqui — adicione a primeira acima</p>;
+  }
+  return (
+    <ul className="lista">
+      {tarefas.map((t) => (
+        <li key={t.id} className={t.feita ? "feita" : ""}>
+          <label>
+            <input type="checkbox" checked={t.feita} onChange={() => onToggle(t.id)} />
+            <span>{t.texto}</span>
+          </label>
+          <button className="remover" title="remover" onClick={() => onRemove(t.id)}>
+            ×
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+`;
+
+  const uiStyles = `/* As variáveis --vscode-* vêm do tema do usuário — a UI acompanha
+   qualquer tema, claro ou escuro, sem código. */
+:root { color-scheme: light dark; }
+body {
+  margin: 0;
+  padding: 16px;
+  font-family: var(--vscode-font-family, system-ui, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+  color: var(--vscode-editor-foreground, #ddd);
+  background: var(--vscode-editor-background, #1e1e1e);
+}
+header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+h1 { font-size: 16px; margin: 0; }
+.dica { opacity: 0.55; font-size: 12px; }
+.linha { display: flex; gap: 8px; margin-bottom: 12px; }
+input[type="text"], input:not([type]) {
+  flex: 1;
+  background: var(--vscode-input-background, #2a2a33);
+  color: var(--vscode-input-foreground, #eee);
+  border: 1px solid var(--vscode-input-border, #444);
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+button {
+  background: var(--vscode-button-background, #0e639c);
+  color: var(--vscode-button-foreground, #fff);
+  border: none; border-radius: 4px; padding: 6px 14px; cursor: pointer;
+}
+button:disabled { opacity: 0.5; cursor: default; }
+.lista { list-style: none; padding: 0; margin: 0; }
+.lista li {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 4px;
+}
+.lista li:hover { background: var(--vscode-list-hoverBackground, #2f2f3a); }
+.lista label { display: flex; align-items: center; gap: 8px; flex: 1; cursor: pointer; }
+.lista li.feita span { text-decoration: line-through; opacity: 0.55; }
+.remover {
+  background: transparent;
+  color: var(--vscode-descriptionForeground, #999);
+  padding: 2px 8px; font-size: 14px;
+}
+.remover:hover { color: var(--vscode-errorForeground, #f87171); }
 `;
 
   const uiTsconfig = `{
@@ -261,6 +446,11 @@ tsconfig.json
       ? [
           { rel: "ui/index.html", content: uiHtml },
           { rel: "ui/src/main.tsx", content: uiMain },
+          { rel: "ui/src/App.tsx", content: uiApp },
+          { rel: "ui/src/hooks/useHost.ts", content: uiHooks },
+          { rel: "ui/src/components/TaskInput.tsx", content: uiTaskInput },
+          { rel: "ui/src/components/TaskList.tsx", content: uiTaskList },
+          { rel: "ui/src/styles.css", content: uiStyles },
           { rel: "ui/tsconfig.json", content: uiTsconfig },
         ]
       : []),

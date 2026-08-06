@@ -83,7 +83,16 @@ describe("sigil init --template react-webview", () => {
 
   it("scaffolda a UI React com tsconfig próprio e scripts de bundle", () => {
     expect(react("init").status).toBe(0);
-    for (const rel of ["ui/index.html", "ui/src/main.tsx", "ui/tsconfig.json"]) {
+    for (const rel of [
+      "ui/index.html",
+      "ui/src/main.tsx",
+      "ui/src/App.tsx",
+      "ui/src/hooks/useHost.ts",
+      "ui/src/components/TaskInput.tsx",
+      "ui/src/components/TaskList.tsx",
+      "ui/src/styles.css",
+      "ui/tsconfig.json",
+    ]) {
       expect(fs.existsSync(path.join(REACT_TMP, rel)), rel).toBe(true);
     }
     const pkg = JSON.parse(fs.readFileSync(path.join(REACT_TMP, "package.json"), "utf8"));
@@ -100,8 +109,9 @@ describe("sigil init --template react-webview", () => {
       "init-react.openPanel"
     );
     const env = fs.readFileSync(path.join(REACT_TMP, "ui/sigil-env.d.ts"), "utf8");
-    expect(env).toContain(`__SigilReq<"saudar"`);
-    expect(env).toContain(`__SigilMsg<"ping"`);
+    expect(env).toContain(`__SigilReq<"tarefas"`);
+    expect(env).toContain(`__SigilMsg<"adicionar"`);
+    expect(env).toContain(`__SigilMsg<"alternar"`);
     expect(env).toContain("MainPanelHostMessage");
   });
 
