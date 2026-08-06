@@ -21,11 +21,11 @@
     "package": "vsce package --no-dependencies"
   },
   "dependencies": {
-    "@sigilkit/core": "0.6.0"
+    "@sigilkit/core": "0.6.1"
   },
   "devDependencies": {
-    "@sigilkit/cli": "0.6.0",
-    "@sigilkit/test": "0.6.0",
+    "@sigilkit/cli": "0.6.1",
+    "@sigilkit/test": "0.6.1",
     "@types/vscode": "^1.75.0",
     "esbuild": "^0.24.2",
     "@vscode/vsce": "^3.2.1"
