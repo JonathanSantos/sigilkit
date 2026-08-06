@@ -42,10 +42,13 @@ export function computeProject(projectDir: string, existingProgram?: ts.Program)
   const pkgText = fs.readFileSync(pkgPath, "utf8");
   let defaultPrefix: string;
   let displayName: string | undefined;
+  // modo enxerto: adoção incremental numa extensão existente ("sigil": {"graft": true})
+  let graft = false;
   try {
-    const pkg = JSON.parse(pkgText) as { name?: string; displayName?: string };
+    const pkg = JSON.parse(pkgText) as { name?: string; displayName?: string; sigil?: { graft?: boolean } };
     defaultPrefix = pkg.name ?? "extension";
     displayName = pkg.displayName ?? pkg.name;
+    graft = pkg.sigil?.graft === true;
   } catch {
     return { ok: false, message: `sigil: package.json inválido em ${pkgPath}` };
   }
@@ -80,7 +83,7 @@ export function computeProject(projectDir: string, existingProgram?: ts.Program)
     {
       path: pkgPath,
       label: "package.json",
-      content: mergePackageJson(pkgText, emitManifest(ir), emitActivationEvents(ir)),
+      content: mergePackageJson(pkgText, emitManifest(ir), emitActivationEvents(ir), { graft }),
     },
     { path: path.join(genDir, "wire.ts"), label: "src/.generated/wire.ts", content: emitWire(ir) },
     { path: path.join(genDir, "config.d.ts"), label: "src/.generated/config.d.ts", content: emitTypes(ir) },

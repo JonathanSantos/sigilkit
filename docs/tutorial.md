@@ -4,15 +4,16 @@ Vamos criar uma extensão de frases motivacionais — com comando, atalho,
 configurações, status bar, logs e aba de opções — **sem escrever uma linha de
 `package.json`** e vendo tudo funcionar **sem abrir o VSCode**.
 
-> **Pré-requisito (por enquanto):** clone deste repositório, `npm install` e
-> `npm run build` na raiz. Quando o sigil for publicado no npm, este passo
-> vira `npm create sigil`. Os comandos abaixo rodam da **raiz do repo**.
+> **Pré-requisito:** Node 20+. Só. Os pacotes vêm do npm.
 
 ## Minuto 1 — criar o projeto
 
 ```bash
-npx sigil init playground/frases
+npm create sigil frases
+cd frases && npm install
 ```
+
+(Quer um painel React de brinde? `npm create sigil frases -- --template=react-webview`.)
 
 Olhe o que foi gerado: `package.json` **sem** bloco `contributes` (ele será
 derivado), `tsconfig.json` com decorators stage 3, `src/extension.ts` mínimo,
@@ -21,10 +22,10 @@ derivado), `tsconfig.json` com decorators stage 3, `src/extension.ts` mínimo,
 ## Minuto 2 — o manifesto nasce do código
 
 ```bash
-npx sigil build playground/frases
+npm run build
 ```
 
-Abra o `playground/frases/package.json`: o bloco `contributes` apareceu —
+Abra o `package.json`: o bloco `contributes` apareceu —
 comando `frases.hello`, config `frases.greeting` — derivado dos decorators de
 `src/extension.ts`. Renomeie um método, rode o build de novo, e o manifesto
 acompanha. **Dessincronizar é impossível**: se você esquecer o build, o
@@ -33,7 +34,7 @@ acompanha. **Dessincronizar é impossível**: se você esquecer o build, o
 ## Minuto 3 — ver funcionando sem VSCode
 
 ```bash
-npx sigil sim --ui playground/frases
+npx sigil sim --ui .
 ```
 
 Abra **http://127.0.0.1:4400**: um workbench com a command palette, as
@@ -43,7 +44,7 @@ de agora recarrega sozinho na página.
 
 ## Minuto 4 — a extensão de verdade
 
-Substitua o conteúdo de `playground/frases/src/extension.ts` por:
+Substitua o conteúdo de `src/extension.ts` por:
 
 ```ts
 import * as vscode from "vscode";
@@ -109,7 +110,7 @@ Clique em `Sortear frase` e veja o toast, a status bar e o log mudarem juntos.
 ## Minuto 5 — VSCode de verdade e o pacote final
 
 ```bash
-npx sigil sandbox playground/frases
+npx sigil sandbox .
 ```
 
 Abre um **VSCode real e isolado** (não toca no seu) com a extensão carregada:
@@ -120,7 +121,7 @@ Mude algo de identidade (um `title`, uma config nova) e a janela recarrega
 sozinha. Para gerar o `.vsix` instalável:
 
 ```bash
-cd playground/frases && npm run package
+npm run package
 ```
 
 ## O que você NÃO fez

@@ -29,7 +29,7 @@ jobs:
       - name: Tag deve bater com a versão dos quatro pacotes
         run: |
           TAG="${GITHUB_REF_NAME#v}"
-          for p in core compiler cli test; do
+          for p in core compiler cli test create; do
             V=$(node -p "require('./packages/$p/package.json').version")
             if [ "$V" != "$TAG" ]; then
               echo "::error::@sigilkit/$p está em $V, mas a tag é v$TAG — rode scripts/version.mjs"
@@ -48,7 +48,7 @@ jobs:
           done
 
       - name: LICENSE em cada tarball
-        run: for p in core compiler cli test; do cp LICENSE "packages/$p/"; done
+        run: for p in core compiler cli test create; do cp LICENSE "packages/$p/"; done
 
       # cli por último: depende de @sigilkit/compiler e @sigilkit/test
       - name: Publicar no npm (com provenance)
@@ -58,6 +58,7 @@ jobs:
           for p in core compiler test cli; do
             npm publish --workspace "@sigilkit/$p" --provenance --access public
           done
+          npm publish --workspace create-sigil --provenance --access public
 
       - name: GitHub Release
         env:

@@ -126,6 +126,18 @@ test; sigil init --template=react-webview (registry.instance + protocolo
 tipado no template). Princípio nomeado no CONTRIBUTING: resolução tardia
 de dependências externas (fetch/vscode.* lidos na chamada, nunca no load).
 
+Modo enxerto: "sigil": {"graft": true} no package.json do usuário →
+mergePackageJson({graft}) troca substituição integral por merge POR
+IDENTIDADE (command/id; configuration por properties, aceita forma array
+de seções; menus/views por sub-chave). Trade documentado: entrada
+ex-gerenciada removida do código sai à mão. tests/graft.test.ts prova
+extensão legada + sigil convivendo (activate manual chama o do wire).
+packages/create = create-sigil (npm create sigil): bin fino que delega ao
+sigil init via require.resolve("@sigilkit/cli/bin/sigil.js"); publicado
+pelo release.yml junto com os 4 (loops incluem "create"). Tutorial usa
+npm create sigil (código do minuto 4 segue PINADO pelo teste — só prosa
+mudou). ROADMAP.md + templates de issue/PR em .github/.
+
 Fornada webview (pós-case): registry.panel(Classe) tipado por
 Parameters<T["post"]>[0] (webviewKeys WeakMap ctor→nome preenchido pelo
 wire; webviewLive mantido pelos binds; post devolve boolean, nunca lança);

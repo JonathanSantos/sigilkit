@@ -1,0 +1,27 @@
+{
+  "name": "create-sigil",
+  "version": "0.5.0",
+  "description": "npm create sigil — sua extensão do VSCode com manifesto derivado do TypeScript",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JonathanSantos/sigilkit.git",
+    "directory": "packages/create"
+  },
+  "homepage": "https://github.com/JonathanSantos/sigilkit#readme",
+  "bugs": {
+    "url": "https://github.com/JonathanSantos/sigilkit/issues"
+  },
+  "bin": {
+    "create-sigil": "./bin/create-sigil.js"
+  },
+  "files": [
+    "bin"
+  ],
+  "dependencies": {
+    "@sigilkit/cli": "0.5.0"
+  }
+}

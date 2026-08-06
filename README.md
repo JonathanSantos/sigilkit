@@ -94,11 +94,13 @@ do código tem os dois lados.
 Os pacotes estão no npm sob o escopo [`@sigilkit`](https://www.npmjs.com/org/sigilkit):
 
 ```bash
-npm i -D @sigilkit/cli
-npx sigil init minha-extensao
+npm create sigil minha-extensao
 cd minha-extensao && npm install && npm run build
 # abra no VSCode e aperte F5 — ou: npx sigil sim --ui .
 ```
+
+(`--template=react-webview` gera um painel React com o protocolo tipado
+pronto. Sem o `npm create`: `npm i -D @sigilkit/cli && npx sigil init`.)
 
 **Siga o [tutorial: sua primeira extensão em 5 minutos](docs/tutorial.md)** —
 comando, config, status bar, watch, aba de opções e `.vsix`, sem abrir o
@@ -251,6 +253,23 @@ Além dos decorators, o `@sigilkit/core` traz a base que toda extensão reescrev
 - **Aba de configurações pronta** — `@Extension({ settings: true })` gera o
   comando `<prefix>.configure` com formulário derivado do schema das `@Config`.
 
+## Adoção incremental — o modo enxerto
+
+Tem uma extensão existente? **Não reescreva nada.** Três passos:
+
+1. `"sigil": { "graft": true }` no seu `package.json` — o merge passa a
+   preservar todo o seu `contributes` manual, entrada por entrada;
+2. escreva a primeira classe sigil (um comando novo basta);
+3. no SEU `activate()`, uma linha: `await sigilActivate(ctx)` (importado de
+   `./.generated/wire`).
+
+O `sigil build` soma o manifesto derivado ao seu sem tocar no que é manual, e
+os dois mundos convivem em runtime. Daí em diante a migração é um comando por
+vez, no seu ritmo — cada um migrado ganha `when` validado, config tipada e
+testabilidade no simulador. (Trade documentado: no enxerto, entrada gerenciada
+que você REMOVER do código sai do manifesto à mão — sem substituição integral
+não há como distinguir "manual" de "ex-gerenciada".)
+
 ## Modos de desenvolvimento
 
 | Comando | O que faz | Quando usar |
@@ -391,6 +410,11 @@ estado, plataforma de runtime, os quatro modos de desenvolvimento e o
 empacotamento. A [tabela de decorators](#os-decorators) reflete o que está
 implementado e testado — hoje o sigil cobre declarativamente a grande maioria
 dos tipos de extensão do marketplace.
+
+## Roadmap
+
+A fila pública está no [ROADMAP.md](ROADMAP.md) — o sigil evolui por dogfood,
+e issues com fricções reais são o combustível.
 
 ## Estabilidade
 

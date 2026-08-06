@@ -1,8 +1,19 @@
 # Changelog
 
-Os quatro pacotes `@sigilkit/*` versionam em lockstep — cada entrada aqui vale
-para `core`, `compiler`, `cli` e `test` na mesma versão. Pré-1.0, mudanças de
-API podem acontecer entre versões minor; sempre listadas aqui.
+Os pacotes (`@sigilkit/*` e `create-sigil`) versionam em lockstep — cada
+entrada aqui vale para todos na mesma versão. Pré-1.0, mudanças de API podem
+acontecer entre versões minor; sempre listadas aqui.
+
+## Não publicado
+
+- **Modo enxerto (adoção incremental)** — `"sigil": { "graft": true }` no
+  package.json: o merge preserva o `contributes` manual entrada por entrada e
+  soma o derivado; seu `activate()` chama o do wire com uma linha. Migre uma
+  extensão existente um comando por vez.
+- **`create-sigil`** — `npm create sigil minha-extensao` (com
+  `--template=react-webview` opcional); a porta de entrada oficial.
+- **Tutorial** atualizado para o fluxo npm real (sem clonar o repo).
+- Templates de issue/PR e [ROADMAP.md](ROADMAP.md) público.
 
 ## 0.5.0 — 2026-08-06
 
