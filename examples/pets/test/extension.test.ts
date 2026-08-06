@@ -102,4 +102,25 @@ describe("pets — o host do vscode-pets reescrito em sigil", () => {
     expect((host.globalState.get("petsSalvos") as unknown[]).length).toBe(0);
     expect(postados(panel).at(-1)).toEqual({ command: "reset-pet" });
   });
+
+  it("@OnOpen logou e o @Every tica enquanto o painel vive", async () => {
+    expect(host.logText()).toContain("painel dos bichos aberto");
+    const antes = panel.posted.filter((m) => (m as { command?: string }).command === "tick").length;
+    await new Promise((r) => setTimeout(r, 350));
+    const depois = panel.posted.filter((m) => (m as { command?: string }).command === "tick").length;
+    expect(depois).toBeGreaterThan(antes);
+  });
+
+  // ÚLTIMO teste de propósito: fecha o painel
+  it("dispose: @OnDispose roda, ticks PARAM (o leak morreu) e post vira no-op", async () => {
+    panel.dispose();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(host.logText()).toContain("painel dos bichos fechado");
+    const congelado = panel.posted.length;
+    await new Promise((r) => setTimeout(r, 350));
+    expect(panel.posted.length).toBe(congelado); // nenhum tick pós-dispose
+    // comandos que postam não explodem com o painel fechado — post() devolve false
+    await host.executeCommand("vscode-pets.roll-call");
+    expect(panel.posted.length).toBe(congelado);
+  });
 });

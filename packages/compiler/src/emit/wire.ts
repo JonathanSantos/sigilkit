@@ -45,6 +45,7 @@ export function emitWire(ir: IR): string {
   if (ir.contextKeys.length > 0) coreImports.push("bindContextKeys");
   if (ir.uriHandlerKey) coreImports.push("bindUriHandler");
   if (ir.commands.some((c) => c.progress)) coreImports.push("withCommandProgress");
+  coreImports.push("bindEvery"); // @Every da classe @Extension (no-op sem timers)
 
   const byFile = new Map<string, Set<string>>();
   const addImport = (file: string, cls: string): void => {
@@ -78,6 +79,7 @@ export function emitWire(ir: IR): string {
     ...ir.webviews.flatMap((w) =>
       hydrate(w.key, [
         `  (i_${w.key} as { post?: (msg: unknown) => void }).post = (msg) => registry.webviewPosts.get(${JSON.stringify(w.key)})!(msg);`,
+        `  registry.webviewKeys.set(${w.key}, ${JSON.stringify(w.key)});`,
       ])
     ),
     ...ir.languages.flatMap((l) => hydrate(l.key)),
@@ -175,6 +177,8 @@ export function emitWire(ir: IR): string {
       ? `  ctx.subscriptions.push(bindFileWatchers(${JSON.stringify(ir.fileWatchers.map((f) => compactEntry({ key: f.key, glob: f.glob, kind: f.kind, debounce: f.debounce })))}));\n`
       : "",
     ir.uriHandlerKey ? `  ctx.subscriptions.push(bindUriHandler(${JSON.stringify(ir.uriHandlerKey)}));\n` : "",
+    // timers @Every da classe @Extension (os de @Webview vivem no ciclo do painel)
+    `  ctx.subscriptions.push(bindEvery(${JSON.stringify(ir.extensionClass)}));\n`,
   ].join("");
 
   const statusBarSetup = ir.statusBars

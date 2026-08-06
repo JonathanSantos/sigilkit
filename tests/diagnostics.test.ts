@@ -113,6 +113,35 @@ describe("diagnósticos (§9)", () => {
     expect(lineOf(only(diags, SIGIL.UnknownContextKey))).toBe(9);
   });
 
+  it("SIGIL1018 — when de VIEW (sidebar webview) com typo de context key", () => {
+    const { diags } = collectFixture("when-view-bad.ts");
+    expect(lineOf(only(diags, SIGIL.UnknownContextKey))).toBe(10);
+  });
+
+  it("SIGIL1020 — %chave% sem package.nls.json e chave inexistente", () => {
+    const file = path.join(FIXTURES, "nls-keys.ts");
+    const program = ts.createProgram({
+      rootNames: [file],
+      options: {
+        target: ts.ScriptTarget.ES2022,
+        module: ts.ModuleKind.Node16,
+        moduleResolution: ts.ModuleResolutionKind.Node16,
+        strict: true,
+        useDefineForClassFields: true,
+        skipLibCheck: true,
+      },
+    });
+    const { ir } = collect(program, { defaultPrefix: "fx", projectDir: FIXTURES });
+    // sem package.nls.json no projeto → toda %chave% é erro
+    const semArquivo = validate(ir!, program, FIXTURES, { nlsKeys: null });
+    expect(semArquivo.filter((d) => d.code === SIGIL.UnknownNlsKey)).toHaveLength(2);
+    // com o arquivo mas faltando uma chave → só a faltante é erro, com caret
+    const faltando = validate(ir!, program, FIXTURES, { nlsKeys: ["fx.title"] });
+    expect(lineOf(only(faltando, SIGIL.UnknownNlsKey))).toBe(6); // a @Config da %fx.desc%
+    // com todas as chaves → limpo
+    expect(validate(ir!, program, FIXTURES, { nlsKeys: ["fx.title", "fx.desc"] })).toEqual([]);
+  });
+
   it("SIGIL1019 — when com sintaxe inválida", () => {
     const { diags } = collectFixture("when-bad-syntax.ts");
     expect(lineOf(only(diags, SIGIL.InvalidWhenExpression))).toBe(9);

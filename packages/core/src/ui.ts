@@ -127,3 +127,19 @@ export function callHost(type: string, value?: unknown): Promise<unknown> {
     vscodeApi().postMessage({ type, value, __sigilRpcId: id });
   });
 }
+
+/**
+ * Base de recursos da UI derivada da URI do PRÓPRIO script — o jeito de
+ * construir URLs de mídia em runtime (sprites, imagens) que funciona em
+ * qualquer host de webview, sem o host precisar mandar a base por mensagem.
+ * `selector` acha o script de referência (default: o primeiro com src).
+ * Ex.: `new URL("../media/gato.gif", resourceBase())`.
+ */
+export function resourceBase(selector = "script[src]"): string {
+  const el = (globalThis as { document?: { querySelector(s: string): { src?: string } | null } })
+    .document?.querySelector(selector);
+  if (!el?.src) {
+    throw new Error(`sigil/ui: nenhum script encontrado para '${selector}' — resourceBase precisa de um <script src>`);
+  }
+  return new URL(".", el.src).toString();
+}

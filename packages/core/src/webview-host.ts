@@ -94,6 +94,36 @@ export async function fillWebview(
 }
 
 /**
+ * Ciclo de vida de painel/view por classe: liveness (panel().isOpen/post),
+ * handlers @OnOpen/@OnDispose e timers @Every — ligados no open/resolve,
+ * desligados no dispose. Handlers resolvem do registry a cada uso (hot swap).
+ */
+function lifecycleFor(key: string): { opened(): void; closed(): void } {
+  const timers: ReturnType<typeof setInterval>[] = [];
+  const each = (map: Map<string, () => unknown>, what: string): void => {
+    for (const k of map.keys()) {
+      if (k.startsWith(`${key}.`)) guard(`${what} ${k}`, () => map.get(k)?.())();
+    }
+  };
+  return {
+    opened() {
+      registry.webviewLive.set(key, true);
+      each(registry.webviewOpenHandlers, "@OnOpen");
+      for (const k of registry.everyHandlers.keys()) {
+        if (!k.startsWith(`${key}.`)) continue;
+        const ms = registry.everyHandlers.get(k)!.ms;
+        timers.push(setInterval(guard(`@Every ${k}`, () => registry.everyHandlers.get(k)?.fn()), ms));
+      }
+    },
+    closed() {
+      registry.webviewLive.set(key, false);
+      for (const t of timers.splice(0)) clearInterval(t);
+      each(registry.webviewDisposeHandlers, "@OnDispose");
+    },
+  };
+}
+
+/**
  * @Webview com location "panel" (§15.2): painel lazy e singleton —
  * `registry.webviews.get(key)!.open()` cria ou revela.
  */
@@ -110,6 +140,7 @@ export function bindWebview(binding: WebviewBinding, ctx: vscode.ExtensionContex
   // o wire injeta um forwarder nas instâncias (inclusive re-hidratadas no hot swap)
   registry.webviewPosts.set(binding.key, post);
   const router = makeRouter(binding, (msg) => void panel?.webview.postMessage(msg));
+  const lifecycle = lifecycleFor(binding.key);
 
   const open = async (): Promise<void> => {
     if (panel) {
@@ -124,8 +155,10 @@ export function bindWebview(binding: WebviewBinding, ctx: vscode.ExtensionContex
     panel.webview.onDidReceiveMessage(router);
     panel.onDidDispose(() => {
       panel = undefined;
+      lifecycle.closed();
     });
     await fillWebview(panel.webview, binding, ctx);
+    lifecycle.opened();
   };
 
   registry.webviews.set(binding.key, { open, post });
@@ -155,6 +188,7 @@ export function bindWebviewView(binding: WebviewBinding, ctx: vscode.ExtensionCo
   };
   registry.webviewPosts.set(binding.key, post);
   const router = makeRouter(binding, (msg) => void current?.webview.postMessage(msg));
+  const lifecycle = lifecycleFor(binding.key);
 
   const provider: vscode.WebviewViewProvider = {
     resolveWebviewView: async (view) => {
@@ -163,8 +197,10 @@ export function bindWebviewView(binding: WebviewBinding, ctx: vscode.ExtensionCo
       view.webview.onDidReceiveMessage(router);
       view.onDidDispose(() => {
         current = undefined;
+        lifecycle.closed();
       });
       await fillWebview(view.webview, binding, ctx);
+      lifecycle.opened();
     },
   };
 

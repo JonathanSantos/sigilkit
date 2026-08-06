@@ -1,9 +1,22 @@
 import ts from "typescript";
-import { IR } from "./ir";
+import { IR , SourceLoc } from "./ir";
 import { diagAtLoc, SIGIL } from "./diagnostics";
 
 /** Regras semânticas sobre o IR (§9). Cada violação vira diagnóstico com posição. */
-export function validate(ir: IR, program: ts.Program, projectDir: string): ts.Diagnostic[] {
+export interface ValidateExtras {
+  /**
+   * Chaves do package.nls.json do projeto (lido pelo CLI — o compiler não faz
+   * IO). `null` = arquivo não existe; `undefined` = não checar %chaves%.
+   */
+  nlsKeys?: string[] | null;
+}
+
+export function validate(
+  ir: IR,
+  program: ts.Program,
+  projectDir: string,
+  extras: ValidateExtras = {}
+): ts.Diagnostic[] {
   const diags: ts.Diagnostic[] = [];
 
   const commandIds = new Set<string>();
@@ -122,6 +135,42 @@ export function validate(ir: IR, program: ts.Program, projectDir: string): ts.Di
     if (c.enablement) checkWhen(c.enablement, `o enablement de ${c.id}`, c.loc);
     for (const m of c.menus) if (m.when) checkWhen(m.when, `o when do menu ${m.menu} de ${c.id}`, c.loc);
     if (c.keybinding?.when) checkWhen(c.keybinding.when, `o when do keybinding de ${c.id}`, c.loc);
+  }
+
+  // when nas VIEWS (tree e webview de sidebar) — mesma validação dos comandos
+  for (const t of ir.treeViews) {
+    if (t.when) checkWhen(t.when, `o when da view ${t.id}`, t.loc);
+  }
+  for (const w of ir.webviews) {
+    if (w.when) checkWhen(w.when, `o when da view ${w.id}`, w.loc);
+  }
+
+  // l10n pragmática: strings %chave% precisam existir no package.nls.json
+  if (extras.nlsKeys !== undefined) {
+    const known = new Set(extras.nlsKeys ?? []);
+    const check = (value: string | undefined, what: string, loc: SourceLoc): void => {
+      const m = value?.match(/^%(.+)%$/);
+      if (!m) return;
+      if (extras.nlsKeys === null) {
+        diags.push(
+          diagAtLoc(program, projectDir, loc, SIGIL.UnknownNlsKey, `${what} usa a chave de localização ${value}, mas o projeto não tem package.nls.json`)
+        );
+      } else if (!known.has(m[1]!)) {
+        diags.push(
+          diagAtLoc(program, projectDir, loc, SIGIL.UnknownNlsKey, `${what} usa %${m[1]!}%, que não existe no package.nls.json`)
+        );
+      }
+    };
+    for (const c of ir.commands) {
+      check(c.title, `o title de ${c.id}`, c.loc);
+      check(c.category, `a category de ${c.id}`, c.loc);
+    }
+    for (const c of ir.configs) check(c.description, `a description de ${c.id}`, c.loc);
+    for (const t of ir.treeViews) check(t.name, `o name da view ${t.id}`, t.loc);
+    for (const w of ir.webviews) {
+      check(w.title, `o title de ${w.id}`, w.loc);
+      check(w.name, `o name da view ${w.id}`, w.loc);
+    }
   }
 
   const keybindings = new Map<string, string>();

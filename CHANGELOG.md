@@ -6,6 +6,20 @@ API podem acontecer entre versões minor; sempre listadas aqui.
 
 ## Não publicado
 
+- **`registry.panel(Classe)`** — acesso tipado ao webview de outra classe,
+  sem strings: `post` (envia se aberto → `true`; fechado → `false`), `open()`
+  e `isOpen`. O último reduto stringly do dogfood caiu.
+- **`@OnOpen` / `@OnDispose`** — ciclo de vida de painel/view; e
+  **`@Every(ms)`**: timer declarativo com o ciclo certo (extensão: ativação↔
+  desativação; webview: aberto↔fechado). O leak de setInterval do case pets
+  virou o teste de regressão.
+- **`when` em views** — `@Webview({ location: "sidebar", when })` e
+  `@TreeView({ when })`, passando pela mesma validação SIGIL1018/1019.
+- **l10n pragmática** — strings `%chave%` no manifesto validadas contra o
+  `package.nls.json` do projeto (SIGIL1020 para chave inexistente ou arquivo
+  ausente; o CLI lê o arquivo — o compiler segue sem IO).
+- **`resourceBase()`** em `@sigilkit/core/ui` — base de mídia derivada da URI
+  do próprio script, para URLs construídas em runtime.
 - **Inferência de schema segue aliases** — `accessor petType: PetType` (alias,
   `keyof typeof`, indexed access) resolve via checker para união de literais →
   enum no manifesto; antes só uniões inline funcionavam (SIGIL1007).

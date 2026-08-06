@@ -126,6 +126,21 @@ test; sigil init --template=react-webview (registry.instance + protocolo
 tipado no template). Princípio nomeado no CONTRIBUTING: resolução tardia
 de dependências externas (fetch/vscode.* lidos na chamada, nunca no load).
 
+Fornada webview (pós-case): registry.panel(Classe) tipado por
+Parameters<T["post"]>[0] (webviewKeys WeakMap ctor→nome preenchido pelo
+wire; webviewLive mantido pelos binds; post devolve boolean, nunca lança);
+@OnOpen/@OnDispose (buckets webviewOpen/webviewDispose; lifecycleFor no
+webview-host liga no open/resolve e desliga no dispose); @Every(ms)
+(bucket every {ms,fn}; em @Webview vive no ciclo do painel, em @Extension
+via bindEvery(className) chamado pelo wire — handlers resolvem do registry
+a cada disparo, hot-swap safe); when em @Webview sidebar/@TreeView (IR v7;
+manifest emite; validate cobre com SIGIL1018/1019; when em panel → erro);
+l10n: %chaves% validadas contra package.nls.json (SIGIL1020; pipeline lê o
+arquivo e passa nlsKeys ao validate — compiler sem IO); resourceBase() no
+core/ui. Ainda de fora (consciente): classe única painel+sidebar; replay
+de mensagens do sim em iframe recriado; @OnOpen em classe errada é
+silenciosamente ignorado (runtime-only, sem IR).
+
 Case de rewrite: examples/pets = host do vscode-pets (MIT, upstream em
 ui-src/ INTACTO + subconjunto de media) reescrito em sigil (~260 linhas vs
 1347). ui/boot.js (~35 linhas) adapta {command}→{type,value}, faz handshake

@@ -1,7 +1,10 @@
 import { registerBoundMember } from "../metadata";
+import { dual } from "./dual";
 import type { ViewContainerSpec } from "./tree-view";
 
 export interface WebviewOptions {
+  /** location "sidebar": when da view (ex.: "meuprefixo.modo == 'explorer'") — validado no build. */
+  when?: string;
   id: string;
   title: string;
   /** Caminho do HTML da UI, relativo à raiz da extensão (ex.: "./ui/settings.html"). */
@@ -37,3 +40,9 @@ export function OnMessage(_type: string) {
 export function OnRequest(_type: string) {
   return registerBoundMember("webviewHandlers");
 }
+
+/** Chamado quando o painel abre / a view resolve (depois do HTML carregado). */
+export const OnOpen = dual(() => registerBoundMember("webviewOpen"));
+
+/** Chamado quando o painel/view fecha — o lugar de limpar o que @OnOpen criou. */
+export const OnDispose = dual(() => registerBoundMember("webviewDispose"));

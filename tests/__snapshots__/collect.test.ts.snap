@@ -166,7 +166,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "sourceFile": "src/views/tasks.ts",
     },
   ],
-  "version": 6,
+  "version": 7,
   "viewContainers": [],
   "watches": [
     {
@@ -286,7 +286,7 @@ exports[`coletor sobre examples/hello > snapshot do manifesto 1`] = `
 exports[`coletor sobre examples/hello > snapshot do wire 1`] = `
 "// GERADO POR sigil — NÃO EDITE
 import * as vscode from "vscode";
-import { registry, adoptRegistrations, bindConfigWatchers, bindLog, guard, bindTreeView, bindWebview, bindStatusBar, bindSettingsApp, bindLanguage } from "@sigilkit/core";
+import { registry, adoptRegistrations, bindConfigWatchers, bindLog, guard, bindTreeView, bindWebview, bindStatusBar, bindSettingsApp, bindLanguage, bindEvery } from "@sigilkit/core";
 import { HelloExtension, MarkdownAssist } from "../extension";
 import { TasksView } from "../views/tasks";
 import { SettingsPanel } from "../panels/settings";
@@ -335,6 +335,7 @@ export function __sigilHydrate() {
   adoptRegistrations("SettingsPanel", SettingsPanel);
   registry.instances.set(SettingsPanel, i_SettingsPanel);
   (i_SettingsPanel as { post?: (msg: unknown) => void }).post = (msg) => registry.webviewPosts.get("SettingsPanel")!(msg);
+  registry.webviewKeys.set(SettingsPanel, "SettingsPanel");
   const i_MarkdownAssist = new MarkdownAssist();
   adoptRegistrations("MarkdownAssist", MarkdownAssist);
   registry.instances.set(MarkdownAssist, i_MarkdownAssist);
@@ -353,6 +354,7 @@ export async function activate(ctx: vscode.ExtensionContext) {
   ctx.subscriptions.push(bindTreeView({"key":"TasksView","id":"hello.tasks","rootsKey":"TasksView.roots","childrenKey":"TasksView.children","itemKey":"TasksView.render"}));
   ctx.subscriptions.push(bindWebview({"key":"SettingsPanel","id":"hello.settings","title":"Hello Settings","uiEntry":"ui/settings.html","handlers":[{"type":"reset","key":"SettingsPanel.onReset"},{"type":"save","key":"SettingsPanel.onSave"}],"requests":[]}, ctx));
   ctx.subscriptions.push(bindLanguage({"key":"MarkdownAssist","selector":["markdown"],"hoverKey":"MarkdownAssist.hover","diagnosticsKey":"MarkdownAssist.pendencias","diagnosticsOn":"change"}, ctx));
+  ctx.subscriptions.push(bindEvery("HelloExtension"));
   ctx.subscriptions.push(bindStatusBar({"key":"HelloExtension.status","alignment":"left","priority":100,"command":"hello.sayHello","tooltip":"Diga olá"}));
   const settingsApp = bindSettingsApp({"viewType":"hello.sigilSettings","title":"hello — Configurações","prefix":"hello","fields":[{"id":"hello.greeting","label":"greeting","type":"string","description":"Texto exibido na saudação","default":"Olá"},{"id":"hello.retries","label":"retries","type":"number","description":"Número de tentativas","minimum":1,"maximum":10,"default":3}]}, ctx);
   ctx.subscriptions.push(settingsApp);

@@ -3,8 +3,11 @@ import {
   Activate,
   Command,
   Config,
+  Every,
   Extension,
+  OnDispose,
   OnMessage,
+  OnOpen,
   State,
   Watch,
   Webview,
@@ -83,7 +86,7 @@ export class PetsExtension {
   // walkthroughs de usuários continuariam funcionando num drop-in)
   @Command({ id: "start", title: "Start pet coding session", category: "Pets" })
   abrir() {
-    return registry.webviews.get("PetsPanel")!.open();
+    return registry.panel(PetsPanel).open();
   }
 
   @Command({ id: "spawn-pet", title: "Spawn additional pet", category: "Pets" })
@@ -99,12 +102,12 @@ export class PetsExtension {
 
     const spec: PetSpec = { type: escolha.type, color: escolha.color as PetColor, name: escolha.name };
     this.petsSalvos = [...this.petsSalvos, spec];
-    const panel = registry.webviewPosts.get("PetsPanel");
-    if (panel) {
-      panel({ command: "spawn-pet", ...spec } satisfies HostToUi);
-      panel({ command: "set-size", size: this.petSize } satisfies HostToUi);
+    const panel = registry.panel(PetsPanel);
+    if (panel.isOpen) {
+      panel.post({ command: "spawn-pet", ...spec });
+      panel.post({ command: "set-size", size: this.petSize });
     } else {
-      await this.abrir(); // o painel abre e repovoa do estado (inclui o novo)
+      await panel.open(); // abre e repovoa do estado (inclui o novo)
     }
   }
 
@@ -120,17 +123,17 @@ export class PetsExtension {
   @Command({ id: "remove-all-pets", title: "Remove all pets", category: "Pets" })
   removerTodos() {
     this.petsSalvos = [];
-    registry.webviewPosts.get("PetsPanel")?.({ command: "reset-pet" } satisfies HostToUi);
+    registry.panel(PetsPanel).post({ command: "reset-pet" });
   }
 
   @Command({ id: "roll-call", title: "Roll-call", category: "Pets" })
   chamada() {
-    registry.webviewPosts.get("PetsPanel")?.({ command: "roll-call" } satisfies HostToUi);
+    registry.panel(PetsPanel).post({ command: "roll-call" });
   }
 
   @Command({ id: "throw-ball", title: "Throw ball", category: "Pets" })
   bolinha() {
-    registry.webviewPosts.get("PetsPanel")?.({ command: "throw-ball" } satisfies HostToUi);
+    registry.panel(PetsPanel).post({ command: "throw-ball" });
   }
 
   @Command({ id: "throw-with-mouse", title: "Toggle: throw ball with mouse", category: "Pets" })
@@ -151,17 +154,17 @@ export class PetsExtension {
 
   @Watch("throwBallWithMouse")
   aoMudarMouse(ativo: boolean) {
-    registry.webviewPosts.get("PetsPanel")?.({ command: "throw-with-mouse", enabled: ativo } satisfies HostToUi);
+    registry.panel(PetsPanel).post({ command: "throw-with-mouse", enabled: ativo });
   }
 
   @Watch("disableEffects")
   aoMudarEfeitos(desligado: boolean) {
-    registry.webviewPosts.get("PetsPanel")?.({ command: "disable-effects", disabled: desligado } satisfies HostToUi);
+    registry.panel(PetsPanel).post({ command: "disable-effects", disabled: desligado });
   }
 
   @Watch("petSize")
   aoMudarTamanho(tamanho: string) {
-    registry.webviewPosts.get("PetsPanel")?.({ command: "set-size", size: tamanho } satisfies HostToUi);
+    registry.panel(PetsPanel).post({ command: "set-size", size: tamanho });
   }
 }
 
@@ -170,14 +173,27 @@ export class PetsPanel {
   /** ligado pelo comando delete-pet: a próxima lista vira um QuickPick */
   aguardandoRemocao = false;
 
-  /** a animação do app é dirigida por ticks do HOST (como no upstream, 100ms) */
-  private tickTimer?: ReturnType<typeof setInterval>;
+  /** A animação do app é dirigida por ticks do HOST (como no upstream, 100ms).
+   *  @Every em classe @Webview roda ENQUANTO o painel está aberto — liga no
+   *  open, desliga no dispose. O setInterval manual (que vazava) morreu. */
+  @Every(100)
+  tick() {
+    this.post({ command: "tick" });
+  }
+
+  @OnOpen
+  aoAbrir() {
+    log.info("painel dos bichos aberto");
+  }
+
+  @OnDispose
+  aoFechar() {
+    log.info("painel dos bichos fechado");
+  }
 
   /** O boot.js avisa que o app carregou → mandamos init + repovoamos. */
   @OnMessage("ready")
   pronto() {
-    clearInterval(this.tickTimer);
-    this.tickTimer = setInterval(() => this.post({ command: "tick" }), 100);
     const ext = registry.instance(PetsExtension);
     this.post({
       command: "init",

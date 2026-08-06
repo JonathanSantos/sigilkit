@@ -23,6 +23,11 @@ export type ConditionalContributeKey = (typeof CONDITIONAL_CONTRIBUTES)[number];
 export type Contributes = Partial<Record<OwnedContributeKey | ConditionalContributeKey, unknown>>;
 
 /** IR → bloco contributes. Retorna APENAS as chaves gerenciadas não-vazias. */
+function compactView<T extends Record<string, unknown>>(v: T): T {
+  for (const k of Object.keys(v)) if (v[k] === undefined) delete v[k];
+  return v;
+}
+
 export function emitManifest(ir: IR): Contributes {
   const out: Contributes = {};
 
@@ -86,12 +91,12 @@ export function emitManifest(ir: IR): Contributes {
 
   const views: Record<string, unknown[]> = {};
   for (const t of ir.treeViews) {
-    (views[t.container] ??= []).push({ id: t.id, name: t.name });
+    (views[t.container] ??= []).push(compactView({ id: t.id, name: t.name, when: t.when }));
   }
   // webviews de sidebar são views com type "webview"; painéis não contribuem nada
   for (const w of ir.webviews) {
     if (w.location !== "sidebar") continue;
-    (views[w.container ?? "explorer"] ??= []).push({ id: w.id, name: w.name ?? w.title, type: "webview" });
+    (views[w.container ?? "explorer"] ??= []).push(compactView({ id: w.id, name: w.name ?? w.title, type: "webview", when: w.when }));
   }
   if (Object.keys(views).length > 0) out.views = views;
 

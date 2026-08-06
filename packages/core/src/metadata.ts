@@ -20,6 +20,9 @@ export interface Bucket {
   languageHandlers: Map<string, (...args: unknown[]) => unknown>;
   chatHandlers: Map<string, (...args: unknown[]) => unknown>;
   events: Map<string, (...args: unknown[]) => unknown>;
+  webviewOpen: Map<string, (...args: unknown[]) => unknown>;
+  webviewDispose: Map<string, (...args: unknown[]) => unknown>;
+  every: Map<string, { ms: number; fn: () => unknown }>;
   configDefaults: Map<string, unknown>;
   statusBarText: Map<string, string>;
   statusBarItems: Map<string, StatusBarItemLike>;
@@ -44,6 +47,9 @@ export function bucketOf(metadata: object | undefined): Bucket {
       languageHandlers: new Map(),
       chatHandlers: new Map(),
       events: new Map(),
+      webviewOpen: new Map(),
+      webviewDispose: new Map(),
+      every: new Map(),
       configDefaults: new Map(),
       statusBarText: new Map(),
       statusBarItems: new Map(),
@@ -61,7 +67,23 @@ type BoundMemberKind =
   | "webviewHandlers"
   | "languageHandlers"
   | "chatHandlers"
-  | "events";
+  | "events"
+  | "webviewOpen"
+  | "webviewDispose";
+
+/** @Every(ms): método (bound) + intervalo no bucket — quem agenda é o bind. */
+export function registerEveryMember(ms: number) {
+  return function <This, Value extends (this: This, ...args: any[]) => any>(
+    value: Value,
+    ctx: ClassMethodDecoratorContext<This, Value>
+  ): void {
+    const name = String(ctx.name);
+    const metadata = ctx.metadata;
+    ctx.addInitializer(function (this: This) {
+      bucketOf(metadata).every.set(name, { ms, fn: (value as () => unknown).bind(this) });
+    });
+  };
+}
 
 /** Fábrica dos decorators de método: registra o método (bound) no bucket da classe. */
 export function registerBoundMember(kind: BoundMemberKind) {
@@ -127,6 +149,15 @@ export function adoptRegistrations(
   }
   for (const [member, fn] of bucket.events) {
     registry.events.set(`${className}.${member}`, fn);
+  }
+  for (const [member, fn] of bucket.webviewOpen) {
+    registry.webviewOpenHandlers.set(`${className}.${member}`, fn as () => unknown);
+  }
+  for (const [member, fn] of bucket.webviewDispose) {
+    registry.webviewDisposeHandlers.set(`${className}.${member}`, fn as () => unknown);
+  }
+  for (const [member, spec] of bucket.every) {
+    registry.everyHandlers.set(`${className}.${member}`, spec);
   }
   for (const [member, v] of bucket.configDefaults) {
     registry.configDefaults.set(`${className}.${member}`, v);

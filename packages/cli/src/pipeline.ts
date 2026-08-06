@@ -62,7 +62,15 @@ export function computeProject(projectDir: string, existingProgram?: ts.Program)
   }
 
   const { ir, diagnostics } = collect(program, { defaultPrefix, displayName, projectDir });
-  const all = [...diagnostics, ...(ir ? validate(ir, program, projectDir) : [])];
+  // l10n: o compiler não faz IO — o CLI lê o package.nls.json e passa as chaves
+  const nlsPath = path.join(projectDir, "package.nls.json");
+  let nlsKeys: string[] | null = null;
+  try {
+    nlsKeys = Object.keys(JSON.parse(fs.readFileSync(nlsPath, "utf8")) as Record<string, string>);
+  } catch {
+    nlsKeys = null; // sem arquivo (ou inválido): %chaves% usadas viram SIGIL1020
+  }
+  const all = [...diagnostics, ...(ir ? validate(ir, program, projectDir, { nlsKeys }) : [])];
   if (all.length > 0 || !ir) {
     return { ok: false, diagnostics: all };
   }

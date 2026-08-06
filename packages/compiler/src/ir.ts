@@ -1,4 +1,4 @@
-export const IR_VERSION = 6;
+export const IR_VERSION = 7;
 
 export interface SourceLoc {
   file: string;
@@ -48,6 +48,8 @@ export interface IRTreeView {
   key: string;
   id: string;
   name: string;
+  /** when da view (contributes.views[].when) — validado como todo when. */
+  when?: string;
   container: "explorer" | "scm" | "debug" | string;
   rootsKey: string;
   childrenKey?: string;
@@ -89,6 +91,8 @@ export interface IRWebview {
   name?: string;
   /** sidebar: container da view (builtin ou id de container inline). */
   container?: string;
+  /** sidebar: when da view (contributes.views[].when) — validado. */
+  when?: string;
   messageHandlers: { type: string; key: string }[];
   /** @OnRequest: request/response (o retorno volta para o callHost da UI). */
   requestHandlers: { type: string; key: string }[];

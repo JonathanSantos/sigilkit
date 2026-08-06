@@ -127,11 +127,17 @@ npm test                         # unidade + simulador + E2E do CLI
 | `@State("global" \| "workspace")` | accessor | persistência em `Memento`, tipada — **reatribua** (`this.x = [...]`); mutação interna (`push`) não persiste |
 | `@Secret()` | accessor | `SecretStorage` com cache síncrono |
 | `@ContextKey()` | accessor | `setContext` ao atribuir — e habilita a validação de `when` |
-| `@TreeView({ name, container? })` + `@TreeRoot`/`@TreeChildren`/`@TreeItem` | classe | view na sidebar com `TreeDataProvider` adaptado |
-| `@Webview({ title, ui, location? })` + `@OnMessage`/`@OnRequest` | classe | painel ou sidebar com shell HTML (CSP + nonce) e RPC tipado |
+| `@TreeView({ name, container?, when? })` + `@TreeRoot`/`@TreeChildren`/`@TreeItem` | classe | view na sidebar com `TreeDataProvider` adaptado; `when` validado |
+| `@Webview({ title, ui, location?, when? })` + `@OnMessage`/`@OnRequest` | classe | painel ou sidebar com shell HTML (CSP + nonce) e RPC tipado; `when` (sidebar) validado |
+| `@OnOpen` / `@OnDispose` | método | ciclo de vida do painel/view — abre/fecha |
+| `@Every(ms)` | método | timer com o ciclo certo: na `@Extension` vive da ativação à desativação; num `@Webview`, só enquanto o painel está aberto |
 | `@Language({ id })` + `@Hover`/`@Completion`/`@CodeLens`/`@Diagnostics` | classe | providers de linguagem (+ `onLanguage:*` automático) |
 | `@ChatParticipant({ id, name })` + `@ChatRequest`/`@ChatFollowups` | classe | participante de chat (`@nome` no Copilot Chat) |
 | `@CustomEditor({ id, filenamePattern, ui })` | classe | editor custom sobre o shell de webview, com `applyEdit` undo-friendly |
+
+Strings do manifesto aceitam `%chaves%` de localização: mantenha seu
+`package.nls.json` e o build **valida** cada chave usada — inexistente é
+`SIGIL1020` com caret na linha.
 
 ## Superfícies de linguagem, chat e editores
 
@@ -229,7 +235,10 @@ Além dos decorators, o `@sigilkit/core` traz a base que toda extensão reescrev
   json() }`) sem lançar em não-2xx.
 - **Ponte entre classes** — `registry.instance(MinhaExtensao)` devolve a
   instância viva e tipada de qualquer classe gerenciada (do painel para a
-  extensão, por exemplo); classe não gerenciada lança na hora.
+  extensão, por exemplo); classe não gerenciada lança na hora. E
+  `registry.panel(MeuPainel)` fala com o webview de outra classe **sem
+  strings**: `post` tipado pelo `post!` da classe (envia se aberto, `false`
+  se fechado), `open()` e `isOpen`.
 - **Recursos** — `resources.readText/readJson/readBytes` para arquivos
   empacotados (via `workspace.fs`, funciona no vscode.dev).
 - **Editor como renderer** — `editor.openText(conteudo, { language, beside })`

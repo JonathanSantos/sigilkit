@@ -1,4 +1,5 @@
 export { registry, Registry } from "./registry";
+export type { SigilPanelHandle } from "./registry";
 export type {
   CommandHandler,
   LifecycleHandler,
@@ -23,7 +24,7 @@ export type { WatchBinding } from "./decorators/watch";
 export { TreeView, TreeRoot, TreeChildren, TreeItem, bindTreeView } from "./decorators/tree-view";
 export type { TreeViewOptions, TreeViewBinding, ViewContainerSpec } from "./decorators/tree-view";
 
-export { Webview, OnMessage, OnRequest } from "./decorators/webview";
+export { Webview, OnMessage, OnRequest, OnOpen, OnDispose } from "./decorators/webview";
 export type { WebviewOptions } from "./decorators/webview";
 
 export { StatusBar, bindStatusBar } from "./decorators/status-bar";
@@ -41,7 +42,7 @@ export type { CustomEditorOptions, CustomEditorBinding, SigilEditorContext } fro
 export { adoptRegistrations, bucketOf } from "./metadata";
 export type { Bucket } from "./metadata";
 
-export { On, OnFile, UriHandler, bindEvents, bindFileWatchers, bindUriHandler } from "./decorators/events";
+export { On, OnFile, UriHandler, Every, bindEvents, bindFileWatchers, bindUriHandler, bindEvery } from "./decorators/events";
 export type { OnOptions, OnFileOptions, EventBinding, FileWatcherBinding } from "./decorators/events";
 
 export { State, Secret, ContextKey, bindSecrets, bindContextKeys } from "./decorators/state";

@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { dual } from "./dual";
 import { registry } from "../registry";
-import { registerBoundMember } from "../metadata";
+import { registerBoundMember, registerEveryMember } from "../metadata";
 import { guard } from "../guard";
 
 export interface OnOptions {
@@ -108,4 +108,34 @@ export function bindUriHandler(key: string): vscode.Disposable {
   return vscode.window.registerUriHandler({
     handleUri: (uri) => dynamicHandler(`@UriHandler (${key})`, key)(uri),
   });
+}
+
+/**
+ * Timer declarativo com o ciclo de vida certo, sem setInterval solto:
+ * - em classe @Extension: roda da ativação até a desativação;
+ * - em classe @Webview: roda ENQUANTO o painel/view está aberto (o tick de
+ *   animação do vscode-pets é o caso canônico) — abre liga, fecha desliga.
+ * O handler resolve do registry a cada disparo (hot-swap safe) e passa por
+ * guard (erro vira log, o timer sobrevive).
+ */
+export function Every(ms: number) {
+  return registerEveryMember(ms);
+}
+
+/**
+ * Timers @Every de uma classe fora do ciclo de webview (a @Extension): ligam
+ * na ativação e desligam na desativação. O wire chama com o nome da classe.
+ */
+export function bindEvery(className: string): { dispose(): void } {
+  const timers: ReturnType<typeof setInterval>[] = [];
+  for (const key of registry.everyHandlers.keys()) {
+    if (!key.startsWith(`${className}.`)) continue;
+    const ms = registry.everyHandlers.get(key)!.ms;
+    timers.push(setInterval(guard(`@Every ${key}`, () => registry.everyHandlers.get(key)?.fn()), ms));
+  }
+  return {
+    dispose() {
+      for (const t of timers.splice(0)) clearInterval(t);
+    },
+  };
 }

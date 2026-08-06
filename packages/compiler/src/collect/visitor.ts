@@ -700,11 +700,17 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
       return;
     }
 
+    if (o.when !== undefined && typeof o.when !== "string") {
+      diagnostics.push(diagAt(optsNode, SIGIL.NotStaticLiteral, "o 'when' de @TreeView precisa ser uma string literal"));
+      return;
+    }
+
     treeViews.push(
       compact({
         key: treeClassName,
         id: viewId,
         name: o.name,
+        when: o.when as string | undefined,
         container,
         rootsKey,
         childrenKey,
@@ -800,6 +806,12 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
         return;
       }
     }
+    if (o.when !== undefined && (typeof o.when !== "string" || (o.location ?? "panel") === "panel")) {
+      diagnostics.push(
+        diagAt(optsNode, SIGIL.MissingRequiredOption, "o 'when' de @Webview só existe para location \"sidebar\" (painéis não têm entrada em contributes.views)")
+      );
+      return;
+    }
     const location = o.location ?? "panel";
     if (location !== "panel" && location !== "sidebar") {
       diagnostics.push(diagAt(optsNode, SIGIL.MissingRequiredOption, `location de @Webview precisa ser "panel" ou "sidebar"`));
@@ -823,6 +835,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
         uiEntry: toPosix(o.ui as string).replace(/^\.\//, ""),
         location,
         name: location === "sidebar" ? ((o.name as string | undefined) ?? (o.title as string)) : undefined,
+        when: o.when as string | undefined,
         container,
         messageHandlers: handlers,
         requestHandlers: requests,

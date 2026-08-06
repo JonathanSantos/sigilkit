@@ -14,6 +14,8 @@ export interface ViewContainerSpec {
 }
 
 export interface TreeViewOptions {
+  /** when da view (contributes.views[].when) — validado no build. */
+  when?: string;
   id: string;
   name: string;
   container?: "explorer" | "scm" | "debug" | (string & {}) | ViewContainerSpec;

@@ -61,6 +61,15 @@ export class Registry {
   readonly secretsCache = new Map<string, string>();
   /** post de cada webview (preenchido pelo bind); o wire injeta forwarders nas instâncias */
   readonly webviewPosts = new Map<string, (msg: unknown) => void>();
+  /** construtor → nome declarado da classe @Webview (o wire preenche no hydrate) */
+  readonly webviewKeys = new WeakMap<abstract new (...args: never[]) => unknown, string>();
+  /** painel/view aberto agora? (o bind mantém; alimenta panel().isOpen) */
+  readonly webviewLive = new Map<string, boolean>();
+  /** handlers @OnOpen/@OnDispose por chave Classe.membro */
+  readonly webviewOpenHandlers = new Map<string, () => unknown>();
+  readonly webviewDisposeHandlers = new Map<string, () => unknown>();
+  /** timers @Every(ms) por chave Classe.membro */
+  readonly everyHandlers = new Map<string, { ms: number; fn: () => unknown }>();
   /** buckets adotados por nome declarado de classe (ver metadata.ts) */
   readonly buckets = new Map<string, import("./metadata").Bucket>();
   /** instâncias criadas pelo wire, chaveadas pelo CONSTRUTOR (minificação-safe;
@@ -81,6 +90,47 @@ export class Registry {
     }
     return found as T;
   }
+
+  /**
+   * Acesso TIPADO ao webview de uma classe, pelo construtor — sem strings.
+   * `post` envia se o painel estiver aberto (true) ou descarta (false) — a
+   * semântica "poste se aberto" explícita; `open()` abre/foca; `isOpen` diz.
+   */
+  panel<T extends { post(msg: never): void }>(
+    cls: abstract new (...args: never[]) => T
+  ): SigilPanelHandle<Parameters<T["post"]>[0]> {
+    const key = this.webviewKeys.get(cls);
+    if (!key) {
+      throw new Error(
+        `sigil: ${cls.name || "(classe)"} não é uma classe @Webview gerenciada deste wire. Rode 'sigil build' se acabou de decorá-la.`
+      );
+    }
+    const self = this;
+    return {
+      get isOpen() {
+        return self.webviewLive.get(key) === true;
+      },
+      post(msg) {
+        if (self.webviewLive.get(key) !== true) return false;
+        self.webviewPosts.get(key)?.(msg);
+        return true;
+      },
+      async open() {
+        const handle = self.webviews.get(key);
+        if (!handle) throw new Error(`sigil: webview '${key}' ainda não registrado — activate rodou?`);
+        await handle.open();
+      },
+    };
+  }
+}
+
+export interface SigilPanelHandle<M> {
+  /** true = painel aberto agora */
+  readonly isOpen: boolean;
+  /** envia se aberto (true); descarta se fechado (false) */
+  post(msg: M): boolean;
+  /** abre o painel / foca a view */
+  open(): Promise<void>;
 }
 
 export const registry = new Registry();
