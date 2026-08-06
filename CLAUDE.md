@@ -126,7 +126,16 @@ test; sigil init --template=react-webview (registry.instance + protocolo
 tipado no template). Princípio nomeado no CONTRIBUTING: resolução tardia
 de dependências externas (fetch/vscode.* lidos na chamada, nunca no load).
 
-Modo enxerto: "sigil": {"graft": true} no package.json do usuário →
+Hot reload de UI: WebviewHandle.refresh?() re-preenche html do painel
+aberto (fillWebview de novo; handshake ready→init da UI se repete; @Every/
+@OnOpen NÃO re-disparam — painel não fechou); wire exporta
+__sigilRefreshWebviews; sim/sandbox observam pastas de ui: (watchUiDirs em
+cli/src/ui-dev.ts — ignora sigil-env.d.ts e ui/src/** [fonte é insumo do
+uiDev; gatilho é o artefato]) e recarregam (sim: host.module.__sigilRefresh…
++ notifyChange; sandbox: op refresh-ui no companion, require CACHEADO do
+chunk). sigil.uiDev no package.json → spawnUiDev sobe junto (stdin PIPE
+aberto — esbuild --watch morre com stdin fechado; template usa
+--watch=forever). Modo enxerto: "sigil": {"graft": true} no package.json do usuário →
 mergePackageJson({graft}) troca substituição integral por merge POR
 IDENTIDADE (command/id; configuration por properties, aceita forma array
 de seções; menus/views por sub-chave). Trade documentado: entrada

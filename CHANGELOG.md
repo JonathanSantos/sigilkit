@@ -4,6 +4,17 @@ Os pacotes (`@sigilkit/*` e `create-sigil`) versionam em lockstep — cada
 entrada aqui vale para todos na mesma versão. Pré-1.0, mudanças de API podem
 acontecer entre versões minor; sempre listadas aqui.
 
+## Não publicado
+
+- **Hot reload de UI no `sim` e no `sandbox`** — `WebviewHandle.refresh()`
+  re-preenche o HTML do painel aberto (o wire exporta
+  `__sigilRefreshWebviews`); os modos de dev observam as pastas de `ui:` e
+  recarregam o painel quando o bundle/HTML/CSS muda. Com
+  `"sigil": { "uiDev": "..." }` no package.json, o watch da UI sobe junto —
+  host e UI num comando só. Template React já configurado (`npm run sim`).
+  Pegadinha real: esbuild `--watch` morre com stdin fechado — o spawn usa
+  stdin aberto e o template usa `--watch=forever`.
+
 ## 0.6.1 — 2026-08-06
 
 - **Template React estruturado** — `--template=react-webview` agora scaffolda

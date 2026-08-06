@@ -161,7 +161,13 @@ export function bindWebview(binding: WebviewBinding, ctx: vscode.ExtensionContex
     lifecycle.opened();
   };
 
-  registry.webviews.set(binding.key, { open, post });
+  registry.webviews.set(binding.key, {
+    open,
+    post,
+    refresh: async () => {
+      if (panel) await fillWebview(panel.webview, binding, ctx);
+    },
+  });
   return {
     dispose() {
       registry.webviews.delete(binding.key);
@@ -209,6 +215,9 @@ export function bindWebviewView(binding: WebviewBinding, ctx: vscode.ExtensionCo
       await vscode.commands.executeCommand(`${binding.id}.focus`);
     },
     post,
+    refresh: async () => {
+      if (current) await fillWebview(current.webview, binding, ctx);
+    },
   });
   const registration = vscode.window.registerWebviewViewProvider(binding.id, provider);
   return {

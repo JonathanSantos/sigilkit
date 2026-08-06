@@ -296,6 +296,12 @@ sandbox.
   <img src="assets/sim-ui.png" alt="workbench do sigil sim --ui com tree view, webview renderizada, command palette, configurações e status bar" width="900">
 </p>
 
+**Hot reload de UI nos dois modos**: com `"sigil": { "uiDev": "npm run
+dev:ui" }` no package.json (o template React já vem assim), o `sim` e o
+`sandbox` sobem o watch da sua UI junto e **recarregam o painel aberto**
+quando o bundle muda — editar um `.tsx` reflete no painel sem F5, sem reabrir,
+num comando só (`npm run sim`).
+
 **`sigil sandbox`** baixa um VSCode isolado (user-data e extensões próprios,
 zero poluição do seu) e conecta um companion por socket. A janela abre com a
 pasta do projeto e uma notificação confirma a extensão carregada, com botão

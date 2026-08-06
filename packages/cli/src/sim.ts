@@ -6,6 +6,7 @@ import { buildSync } from "esbuild";
 import { activateExtension, SigilTestHost } from "@sigilkit/test";
 import { computeProject, reportFailure, writeChanged, writeStoredHash } from "./pipeline";
 import { startSimUi, SimUiHandle } from "./sim-ui";
+import { spawnUiDev, watchUiDirs } from "./ui-dev";
 
 export interface SimOptions {
   /** sobe o workbench visual em http://127.0.0.1:<port> */
@@ -34,6 +35,19 @@ export function runSim(projectDir: string, options: SimOptions = {}): number {
   let lastCounts = { info: 0, warn: 0, error: 0, logs: 0 };
   let lastHash: string | undefined;
   let reloadTimer: NodeJS.Timeout | undefined;
+  let stopUiWatch: (() => void) | undefined;
+  let uiDirsAtuais = "";
+  const uiDev = spawnUiDev(projectDir);
+
+  // hot reload de UI: bundle/HTML/CSS mudou → re-preenche os painéis abertos
+  // no host simulado (o handshake da UI, ex. ready→init, se repete)
+  const refreshUi = (): void => {
+    const mod = host?.module as { __sigilRefreshWebviews?: () => void } | undefined;
+    mod?.__sigilRefreshWebviews?.();
+    ui?.notifyChange();
+    console.log("sim: 🎨 UI recarregada");
+    if (replOpen) rl.prompt();
+  };
 
   const printNewMessages = (): void => {
     if (!host) return;
@@ -113,6 +127,16 @@ export function runSim(projectDir: string, options: SimOptions = {}): number {
       writeStoredHash(projectDir, result.hash);
       lastHash = result.hash;
     }
+    // watch das pastas de ui: (recriado quando o conjunto muda)
+    const uiDirs = [...result.ir.webviews, ...result.ir.customEditors].map((w) =>
+      w.uiEntry.includes("/") ? w.uiEntry.slice(0, w.uiEntry.lastIndexOf("/")) : "."
+    );
+    const chave = uiDirs.sort().join("|");
+    if (chave !== uiDirsAtuais) {
+      uiDirsAtuais = chave;
+      stopUiWatch?.();
+      stopUiWatch = watchUiDirs(projectDir, uiDirs, refreshUi);
+    }
     // qualquer mudança de código pede reload (mesmo sem mudar o IR)
     scheduleReload();
   };
@@ -138,6 +162,7 @@ export function runSim(projectDir: string, options: SimOptions = {}): number {
     if (!cmd) return;
     if (cmd === "exit" || cmd === "quit") {
       rl.close();
+      uiDev?.kill();
       process.exit(0);
     }
     if (cmd === "help") {

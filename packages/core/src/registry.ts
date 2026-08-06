@@ -11,6 +11,9 @@ export interface WebviewHandle {
   open(): Promise<void>;
   /** Envia mensagem para o lado UI; descarta com warning se o alvo não estiver visível. */
   post(msg: unknown): void;
+  /** Re-preenche o HTML no painel ABERTO (hot reload de UI) — no-op se fechado.
+   *  A página recarrega e o handshake da UI (ex.: ready→init) se repete. */
+  refresh?(): Promise<void>;
 }
 
 export interface StatusBarItemLike {

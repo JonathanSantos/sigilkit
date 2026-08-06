@@ -63,6 +63,15 @@ describe("notes — webview de SIDEBAR com assets e config", () => {
     expect(view.posted.at(-1)).toMatchObject({ type: "__sigilRpcResult", id: 43, ok: false });
   });
 
+  it("__sigilRefreshWebviews re-preenche o HTML da view aberta (hot reload de UI)", async () => {
+    const view = await host.webviewView("notes.panel");
+    const antes = view.html;
+    (host.module as { __sigilRefreshWebviews?: () => void }).__sigilRefreshWebviews?.();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(view.html).not.toBe(antes); // nonce novo = página recarregada
+    expect(view.html).toMatch(/Content-Security-Policy/);
+  });
+
   it("estado sobrevive a fechar e reabrir a view", async () => {
     (await host.webviewView("notes.panel")).dispose();
     await host.executeCommand("notes.open");

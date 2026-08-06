@@ -215,6 +215,11 @@ export function __sigilHydrate() {
 ${hydrateLines}
 }
 
+/** Hot reload de UI: re-preenche o HTML dos webviews ABERTOS. */
+export function __sigilRefreshWebviews() {
+  for (const h of registry.webviews.values()) void h.refresh?.();
+}
+
 /** Roda o @Activate — na ativação e depois de cada hot swap. */
 export function __sigilActivateLifecycle() {
 ${ir.activateKey ? `  registry.lifecycle.get(${JSON.stringify(ir.activateKey)})?.(registry.context);\n` : ""}}

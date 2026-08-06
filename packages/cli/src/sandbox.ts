@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { spawnUiDev, watchUiDirs } from "./ui-dev";
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
@@ -188,6 +189,12 @@ async function handle(msg) {
       await vscode.commands.executeCommand("workbench.action.reloadWindow");
       return;
     }
+    if (msg.op === "refresh-ui") {
+      const mod = require(require.resolve(CHUNK)); // instância VIVA (cache)
+      if (typeof mod.__sigilRefreshWebviews === "function") mod.__sigilRefreshWebviews();
+      send({ op: "reply", id: msg.id, ok: true });
+      return;
+    }
     if (msg.op === "swap") {
       const started = Date.now();
       const resolved = require.resolve(CHUNK);
@@ -223,6 +230,18 @@ exports.deactivate = () => { try { sock.destroy(); } catch {} };
   // ── build inicial + watch ──────────────────────────────────────────────────
   let lastHash: string | undefined;
   let ready = false;
+  let stopUiWatch: (() => void) | undefined;
+  let uiDirsAtuais = "";
+  const uiDev = spawnUiDev(projectDir);
+
+  // hot reload de UI: o companion re-preenche o HTML dos painéis abertos
+  const refreshUi = (): void => {
+    void request({ op: "refresh-ui" }).then((reply) => {
+      if (reply.ok) console.log("sandbox: 🎨 UI recarregada na janela");
+      else console.error(`sandbox: refresh de UI falhou (${String(reply.error)})`);
+      if (replOpen) rl.prompt();
+    });
+  };
 
   const onBuild = (program: ts.Program): void => {
     const result = computeProject(projectDir, program);
@@ -234,6 +253,16 @@ exports.deactivate = () => { try { sock.destroy(); } catch {} };
     writeChanged(result.files);
     writeStoredHash(projectDir, result.hash);
     if (!bundleChunk()) return;
+
+    const uiDirs = [...result.ir.webviews, ...result.ir.customEditors].map((w) =>
+      w.uiEntry.includes("/") ? w.uiEntry.slice(0, w.uiEntry.lastIndexOf("/")) : "."
+    );
+    const chave = uiDirs.sort().join("|");
+    if (chave !== uiDirsAtuais) {
+      uiDirsAtuais = chave;
+      stopUiWatch?.();
+      stopUiWatch = watchUiDirs(projectDir, uiDirs, refreshUi);
+    }
 
     if (!ready) {
       lastHash = result.hash;
@@ -297,13 +326,17 @@ exports.deactivate = () => { try { sock.destroy(); } catch {} };
       });
       process.on("SIGINT", () => {
         child.kill();
+        uiDev?.kill();
         process.exit(0);
       });
       process.on("SIGTERM", () => {
         child.kill();
         process.exit(0);
       });
-      process.on("exit", () => child.kill());
+      process.on("exit", () => {
+        child.kill();
+        uiDev?.kill();
+      });
       console.log("sandbox: 🚀 VSCode standalone aberto (isolado do seu VSCode)");
     })().catch((e) => {
       console.error(`sandbox: falha ao lançar o VSCode — ${(e as Error).message}`);

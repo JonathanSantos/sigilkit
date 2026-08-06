@@ -44,6 +44,9 @@ function templateFiles(name: string, template: InitTemplate): TemplateFile[] {
     engines: { vscode: "^1.75.0" },
     categories: ["Other"],
     main: "./out/extension.js",
+    // uiDev: o sim/sandbox sobem o watch da UI junto — hot reload de host E
+    // de UI num comando só (npm run sim / npm run sandbox)
+    ...(react ? { sigil: { uiDev: "npm run dev:ui" } } : {}),
     scripts: {
       build: react ? "npm run build:ui && sigil build && npm run bundle" : "sigil build && npm run bundle",
       ...(react
@@ -56,6 +59,14 @@ function templateFiles(name: string, template: InitTemplate): TemplateFile[] {
         "esbuild src/.generated/wire.ts --bundle --platform=node --format=cjs --target=es2022 --external:vscode --sourcemap --outfile=out/extension.js",
       check: "sigil check",
       dev: "sigil dev",
+      sim: "sigil sim --ui .",
+      sandbox: "sigil sandbox .",
+      ...(react
+        ? {
+            "dev:ui":
+              "esbuild ui/src/main.tsx --bundle --format=iife --target=es2022 --jsx=automatic --outfile=ui/dist/main.js --watch=forever",
+          }
+        : {}),
       typecheck: react ? "tsc --noEmit && tsc -p ui --noEmit" : "tsc --noEmit",
       // o vsce roda vscode:prepublish sozinho; --no-dependencies porque o
       // esbuild já embute @sigilkit/core no bundle
