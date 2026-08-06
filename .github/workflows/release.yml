@@ -52,13 +52,14 @@ jobs:
 
       # cli por último: depende de @sigilkit/compiler e @sigilkit/test.
       # IDEMPOTENTE: versão já publicada é pulada — um release que falhou no
-      # meio (ex.: token sem permissão num dos pacotes) pode ser re-emitido
-      # sem briga com o "cannot publish over".
-      - name: Publicar no npm (com provenance)
+      # meio pode ser re-emitido sem briga com o "cannot publish over".
+      # Tokens separados: NPM_TOKEN é granular no escopo @sigilkit;
+      # create-sigil (sem escopo) usa o NPM_CREATE_SIGIL_TOKEN.
+      - name: Publicar @sigilkit/* no npm (com provenance)
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          for w in "@sigilkit/core:core" "@sigilkit/compiler:compiler" "@sigilkit/test:test" "@sigilkit/cli:cli" "create-sigil:create"; do
+          for w in "@sigilkit/core:core" "@sigilkit/compiler:compiler" "@sigilkit/test:test" "@sigilkit/cli:cli"; do
             name="${w%%:*}"; dir="${w##*:}"
             V=$(node -p "require('./packages/$dir/package.json').version")
             if npm view "$name@$V" version >/dev/null 2>&1; then
@@ -67,6 +68,17 @@ jobs:
               npm publish --workspace "$name" --provenance --access public
             fi
           done
+
+      - name: Publicar create-sigil no npm (com provenance)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_CREATE_SIGIL_TOKEN }}
+        run: |
+          V=$(node -p "require('./packages/create/package.json').version")
+          if npm view "create-sigil@$V" version >/dev/null 2>&1; then
+            echo "↷ create-sigil@$V já publicado — pulando"
+          else
+            npm publish --workspace create-sigil --provenance --access public
+          fi
 
       - name: GitHub Release
         env:
