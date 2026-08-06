@@ -4,7 +4,7 @@ Os pacotes (`@sigilkit/*` e `create-sigil`) versionam em lockstep — cada
 entrada aqui vale para todos na mesma versão. Pré-1.0, mudanças de API podem
 acontecer entre versões minor; sempre listadas aqui.
 
-## Não publicado
+## 0.6.0 — 2026-08-06
 
 - **Modo enxerto (adoção incremental)** — `"sigil": { "graft": true }` no
   package.json: o merge preserva o `contributes` manual entrada por entrada e
