@@ -4,7 +4,7 @@ Os pacotes (`@sigilkit/*` e `create-sigil`) versionam em lockstep — cada
 entrada aqui vale para todos na mesma versão. Pré-1.0, mudanças de API podem
 acontecer entre versões minor; sempre listadas aqui.
 
-## Não publicado
+## 0.6.2 — 2026-08-06
 
 - **Hot reload de UI no `sim` e no `sandbox`** — `WebviewHandle.refresh()`
   re-preenche o HTML do painel aberto (o wire exporta
