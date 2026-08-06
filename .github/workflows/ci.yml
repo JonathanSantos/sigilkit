@@ -1,12 +1,26 @@
 name: CI
 
+# push só na main — PRs cobrem as branches, e tags são cobertas pelo Release,
+# que roda a mesma bateria. Sem isso, um release custava 3 pipelines: CI do
+# push + CI da tag + Release.
 on:
   push:
+    branches: [main]
   pull_request:
+
+permissions:
+  contents: read
+
+# pushes em sequência cancelam o run anterior do mesmo ref
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    # sem timeout o default do GitHub é 6h — um run travado queima a cota
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,12 +41,20 @@ jobs:
 
   e2e-electron:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+      # o VSCode baixado pelo @vscode/test-electron (~150 MB) fica em cache;
+      # a chave segue o lock (bump do test-electron renova o cache)
+      - uses: actions/cache@v4
+        with:
+          path: .vscode-test
+          key: vscode-test-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: vscode-test-${{ runner.os }}-
       - run: npm ci
       # caminho feliz no extension host real (xvfb para o Electron headless)
       - run: xvfb-run -a npm run test:e2e

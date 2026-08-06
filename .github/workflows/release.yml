@@ -13,9 +13,15 @@ permissions:
   contents: write # criar o GitHub Release
   id-token: write # provenance do npm
 
+# releases nunca se cancelam no meio (publish parcial); enfileiram
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -80,7 +86,11 @@ jobs:
             npm publish --workspace create-sigil --provenance --access public
           fi
 
+      # idempotente como o publish: re-run de release parcial não briga
+      # com um GitHub Release que já existe
       - name: GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --generate-notes
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" --generate-notes
