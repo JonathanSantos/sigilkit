@@ -109,7 +109,41 @@
           "name": "Tasks"
         }
       ]
-    }
+    },
+    "languageModelTools": [
+      {
+        "name": "hello_saudacao",
+        "displayName": "hello_saudacao",
+        "modelDescription": "Monta a saudação do hello para alguém",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "saudacao",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "nome": {
+              "type": "string",
+              "description": "quem deve ser saudado"
+            },
+            "entusiasmo": {
+              "type": "string",
+              "enum": [
+                "baixo",
+                "alto"
+              ]
+            }
+          },
+          "required": [
+            "nome"
+          ]
+        }
+      }
+    ],
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "hello.servidores",
+        "label": "Servidores do Hello"
+      }
+    ]
   },
   "activationEvents": [
     "onLanguage:markdown"

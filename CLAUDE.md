@@ -45,7 +45,10 @@ diagnósticos SIGIL1000–1016 testados por fixture com asserção de linha,
 TreeView e Webview (§15). `npm test` = build + sigil build + bundle do exemplo
 + vitest (fronteira, merge, snapshots, diagnósticos, shell HTML, E2E de
 init/check, simulador). `npm run test:e2e` = extension host real via
-@vscode/test-electron (exige >=3.x — o binário do mac chama "Code" agora).
+@vscode/test-electron (exige >=3.x — o binário do mac chama "Code" agora);
+cobre também a fornada de IA: hello tem @LmTool/@McpServers e a suite invoca
+a tool via lm.invokeTool REAL (valida nome × contributes, RPC, token e
+LanguageModelToolResult) + confere as classes de parts que o llm.agent monta.
 O pipeline compartilhado de build/check/dev vive em packages/cli/src/pipeline.ts.
 
 Plataforma de runtime no core: log (LogOutputChannel + buffer pré-ativação),

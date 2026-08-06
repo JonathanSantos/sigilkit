@@ -18,7 +18,9 @@ ataquem qualquer item (ou tragam fricções novas) são bem-vindos.
 ## Em seguida
 
 - CI em matrix (Windows/macOS) — hoje só ubuntu.
-- E2E electron cobrindo as superfícies novas (language/chat/custom editor).
+- E2E electron cobrindo as superfícies novas (language/chat/custom editor) —
+  ✅ tools de IA e MCP já cobertos (`@LmTool` invocada via `lm.invokeTool`
+  real no `npm run test:e2e`); falta chat/custom editor.
 - Robustez do resolvedor de decorators com pnpm/Yarn PnP.
 - Uma classe `@Webview` servindo painel E sidebar (o vscode-pets alterna por
   config; hoje exigimos duas classes).

@@ -40,6 +40,11 @@ Revisão contra o host real (correções antes do release):
 - Simulador: `queueLlmResponse` aceita respostas roteirizadas com
   `toolCalls`, e `host.llmRequests` expõe as mensagens de cada rodada — o
   loop do `llm.agent` é testável de ponta a ponta.
+- **E2E no VSCode real cobre a fornada**: o exemplo `hello` ganhou `@LmTool`
+  e `@McpServers`, e o `npm run test:e2e` invoca a tool via
+  `vscode.lm.invokeTool` de verdade — o host valida nome × contributes,
+  token, RPC e o `LanguageModelToolResult`; o contrato de classes que o
+  `llm.agent` monta (ToolCallPart/ToolResultPart) é conferido contra o host.
 
 ## 0.6.2 — 2026-08-06
 

@@ -9,9 +9,17 @@ import {
   Language,
   Hover,
   Diagnostics,
+  LmTool,
+  McpServers,
   log,
   registry,
 } from "@sigilkit/core";
+
+interface SaudacaoInput {
+  /** quem deve ser saudado */
+  nome: string;
+  entusiasmo?: "baixo" | "alto";
+}
 
 // settings: true → comando hello.configure abre a aba de configurações
 // pronta do sigil, com formulário derivado do schema das @Config
@@ -42,6 +50,20 @@ export class HelloExtension {
   @Command({ title: "Open settings", category: "Hello" })
   openSettings() {
     return registry.webviews.get("SettingsPanel")!.open();
+  }
+
+  // Tool do agent mode: o Copilot decide chamar pela description e o
+  // inputSchema sai do tipo SaudacaoInput (JSDoc → description, união → enum)
+  @LmTool({ description: "Monta a saudação do hello para alguém", referenceName: "saudacao" })
+  saudacao(input: SaudacaoInput): string {
+    const fim = input.entusiasmo === "alto" ? "!!!" : "!";
+    return `${this.greeting}, ${input.nome}${fim}`;
+  }
+
+  // Provedor MCP: definições simples viram servidores stdio/http do host
+  @McpServers({ label: "Servidores do Hello" })
+  servidores() {
+    return [{ label: "docs", command: "npx", args: ["-y", "servidor-docs"], cwd: "./docs" }];
   }
 
   @Watch("greeting")

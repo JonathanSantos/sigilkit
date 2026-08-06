@@ -12,7 +12,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 3,
         "file": "src/extension.ts",
-        "line": 43,
+        "line": 51,
       },
       "menus": [],
       "title": "Open settings",
@@ -40,7 +40,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 3,
         "file": "src/extension.ts",
-        "line": 38,
+        "line": 46,
       },
       "menus": [
         {
@@ -61,7 +61,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 3,
         "file": "src/extension.ts",
-        "line": 31,
+        "line": 39,
       },
       "menus": [],
       "title": "Say hello",
@@ -77,7 +77,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 12,
         "file": "src/extension.ts",
-        "line": 21,
+        "line": 29,
       },
       "tsType": "string",
     },
@@ -90,7 +90,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 12,
         "file": "src/extension.ts",
-        "line": 24,
+        "line": 32,
       },
       "maximum": 10,
       "minimum": 1,
@@ -112,7 +112,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 14,
         "file": "src/extension.ts",
-        "line": 61,
+        "line": 83,
       },
       "selector": [
         "markdown",
@@ -120,8 +120,50 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "sourceFile": "src/extension.ts",
     },
   ],
-  "lmTools": [],
-  "mcpProviders": [],
+  "lmTools": [
+    {
+      "description": "Monta a saudação do hello para alguém",
+      "inputSchema": {
+        "properties": {
+          "entusiasmo": {
+            "enum": [
+              "baixo",
+              "alto",
+            ],
+            "type": "string",
+          },
+          "nome": {
+            "description": "quem deve ser saudado",
+            "type": "string",
+          },
+        },
+        "required": [
+          "nome",
+        ],
+        "type": "object",
+      },
+      "key": "HelloExtension.saudacao",
+      "loc": {
+        "character": 3,
+        "file": "src/extension.ts",
+        "line": 58,
+      },
+      "name": "hello_saudacao",
+      "referenceName": "saudacao",
+    },
+  ],
+  "mcpProviders": [
+    {
+      "id": "hello.servidores",
+      "key": "HelloExtension.servidores",
+      "label": "Servidores do Hello",
+      "loc": {
+        "character": 3,
+        "file": "src/extension.ts",
+        "line": 65,
+      },
+    },
+  ],
   "prefix": "hello",
   "secrets": [],
   "settingsPanel": {
@@ -130,7 +172,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
     "loc": {
       "character": 14,
       "file": "src/extension.ts",
-      "line": 19,
+      "line": 27,
     },
     "title": "hello — Configurações",
     "viewType": "hello.sigilSettings",
@@ -144,7 +186,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 12,
         "file": "src/extension.ts",
-        "line": 28,
+        "line": 36,
       },
       "priority": 100,
       "text": "$(megaphone) Olá",
@@ -176,7 +218,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "loc": {
         "character": 3,
         "file": "src/extension.ts",
-        "line": 48,
+        "line": 70,
       },
       "targetConfigId": "hello.greeting",
     },
@@ -260,6 +302,40 @@ exports[`coletor sobre examples/hello > snapshot do manifesto 1`] = `
       "key": "ctrl+alt+h",
     },
   ],
+  "languageModelTools": [
+    {
+      "canBeReferencedInPrompt": true,
+      "displayName": "hello_saudacao",
+      "inputSchema": {
+        "properties": {
+          "entusiasmo": {
+            "enum": [
+              "baixo",
+              "alto",
+            ],
+            "type": "string",
+          },
+          "nome": {
+            "description": "quem deve ser saudado",
+            "type": "string",
+          },
+        },
+        "required": [
+          "nome",
+        ],
+        "type": "object",
+      },
+      "modelDescription": "Monta a saudação do hello para alguém",
+      "name": "hello_saudacao",
+      "toolReferenceName": "saudacao",
+    },
+  ],
+  "mcpServerDefinitionProviders": [
+    {
+      "id": "hello.servidores",
+      "label": "Servidores do Hello",
+    },
+  ],
   "menus": {
     "editor/context": [
       {
@@ -288,7 +364,7 @@ exports[`coletor sobre examples/hello > snapshot do manifesto 1`] = `
 exports[`coletor sobre examples/hello > snapshot do wire 1`] = `
 "// GERADO POR sigil — NÃO EDITE
 import * as vscode from "vscode";
-import { registry, adoptRegistrations, bindConfigWatchers, bindLog, guard, bindTreeView, bindWebview, bindStatusBar, bindSettingsApp, bindLanguage, bindEvery } from "@sigilkit/core";
+import { registry, adoptRegistrations, bindConfigWatchers, bindLog, guard, bindTreeView, bindWebview, bindStatusBar, bindSettingsApp, bindLanguage, bindLmTools, bindMcpServers, bindEvery } from "@sigilkit/core";
 import { HelloExtension, MarkdownAssist } from "../extension";
 import { TasksView } from "../views/tasks";
 import { SettingsPanel } from "../panels/settings";
@@ -361,6 +437,8 @@ export async function activate(ctx: vscode.ExtensionContext) {
   ctx.subscriptions.push(bindTreeView({"key":"TasksView","id":"hello.tasks","rootsKey":"TasksView.roots","childrenKey":"TasksView.children","itemKey":"TasksView.render"}));
   ctx.subscriptions.push(bindWebview({"key":"SettingsPanel","id":"hello.settings","title":"Hello Settings","uiEntry":"ui/settings.html","handlers":[{"type":"reset","key":"SettingsPanel.onReset"},{"type":"save","key":"SettingsPanel.onSave"}],"requests":[]}, ctx));
   ctx.subscriptions.push(bindLanguage({"key":"MarkdownAssist","selector":["markdown"],"hoverKey":"MarkdownAssist.hover","diagnosticsKey":"MarkdownAssist.pendencias","diagnosticsOn":"change"}, ctx));
+  ctx.subscriptions.push(bindLmTools([{"key":"HelloExtension.saudacao","name":"hello_saudacao"}]));
+  ctx.subscriptions.push(bindMcpServers([{"key":"HelloExtension.servidores","id":"hello.servidores"}]));
   ctx.subscriptions.push(bindEvery("HelloExtension"));
   ctx.subscriptions.push(bindStatusBar({"key":"HelloExtension.status","alignment":"left","priority":100,"command":"hello.sayHello","tooltip":"Diga olá"}));
   const settingsApp = bindSettingsApp({"viewType":"hello.sigilSettings","title":"hello — Configurações","prefix":"hello","fields":[{"id":"hello.greeting","label":"greeting","type":"string","description":"Texto exibido na saudação","default":"Olá"},{"id":"hello.retries","label":"retries","type":"number","description":"Número de tentativas","minimum":1,"maximum":10,"default":3}]}, ctx);
