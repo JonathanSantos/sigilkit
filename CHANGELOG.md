@@ -23,6 +23,24 @@ A fornada de IA — as superfícies que o Copilot invoca:
 - Sondas novas no `@sigilkit/test`: `lmTools`, `invokeTool`, `mcpServers`,
   `provideInlineCompletions`, `chatRequest` com `command`.
 
+Revisão contra o host real (correções antes do release):
+
+- **Fix crítico**: `llm.ask/stream/agent` passavam um token de cancelamento
+  cru ao `sendRequest`; o host real embrulha o token e chama
+  `onCancellationRequested` — crash na primeira chamada fora do simulador.
+  Agora usa `CancellationTokenSource` de verdade, e `opts.token` propaga o
+  token do handler de chat.
+- **`llm.agent` fala o protocolo real**: os resultados de tool voltam como
+  `Assistant([ToolCallPart])` + `User([ToolResultPart])` pareados por
+  `callId` (antes: texto plano — modelos re-chamavam a mesma tool em loop);
+  `opts.toolInvocationToken` propaga a atribuição da sessão de chat.
+- `@McpServers`: `cwd` do stdio agora é aplicado (era prometido na doc e
+  descartado); `@LmTool` ganhou `userDescription` própria (antes duplicava a
+  `modelDescription` no picker).
+- Simulador: `queueLlmResponse` aceita respostas roteirizadas com
+  `toolCalls`, e `host.llmRequests` expõe as mensagens de cada rodada — o
+  loop do `llm.agent` é testável de ponta a ponta.
+
 ## 0.6.2 — 2026-08-06
 
 - **Hot reload de UI no `sim` e no `sandbox`** — `WebviewHandle.refresh()`

@@ -76,11 +76,20 @@ string→LanguageModelToolResult dinâmico); @ChatCommand (chatHandlers;
 manifesto chatParticipants[].commands; bindChatParticipant roteia por
 request.command com fallback no @ChatRequest); @InlineCompletion
 (languageHandlers; strings viram itens); @McpServers (bucket mcpServers;
-defs simples {label,command,args}/{label,uri} viram classes Mcp* do host
-dinamicamente); llm.agent() (loop invokeTool duck-typed sobre parts).
+defs simples {label,command,args,cwd?}/{label,uri} viram classes Mcp* do
+host dinamicamente — cwd é PROPRIEDADE da instância, não construtor);
+llm.agent() (loop invokeTool duck-typed sobre parts; resultados voltam como
+Assistant([ToolCallPart])+User([ToolResultPart]) pareados por callId quando
+as classes existem — texto plano é só fallback; opts.toolInvocationToken
+propaga a sessão de chat). llm.* passa CancellationTokenSource REAL ao
+sendRequest (objeto cru sem onCancellationRequested crasha no host real —
+o host embrulha o token); opts.token propaga o do handler. @LmTool tem
+userDescription própria (não duplica modelDescription).
 Tudo lm.* dinâmico (tools >=1.95, MCP >=1.101; host velho = erro alto).
 Sondas: lmTools/invokeTool/mcpServers/provideInlineCompletions/chatRequest
-com command. tests/ai-lab.test.ts exercita tudo do zero.
+com command; queueLlmResponse aceita {text?,toolCalls?} roteirizado e
+host.llmRequests expõe as mensagens de cada sendRequest (asserção do
+protocolo do agent). tests/ai-lab.test.ts exercita tudo do zero.
 
 Superfícies de linguagem/chat/editor: @Language({id}) com @Hover/@Completion/
 @CodeLens/@Diagnostics (bindLanguage; activationEvents onLanguage:* são

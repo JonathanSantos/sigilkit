@@ -130,7 +130,7 @@ export function emitManifest(ir: IR): Contributes {
         name: t.name,
         displayName: t.displayName ?? t.name,
         modelDescription: t.description,
-        userDescription: t.displayName ? t.description : undefined,
+        userDescription: t.userDescription,
         canBeReferencedInPrompt: t.referenceName ? true : undefined,
         toolReferenceName: t.referenceName,
         tags: t.tags,

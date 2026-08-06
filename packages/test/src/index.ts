@@ -38,7 +38,7 @@ export {
   createVscodeMock,
   resetState,
 } from "./vscode-mock";
-export type { DisposableLike, TreeDataProviderLike, UriMock, VscodeMockState } from "./vscode-mock";
+export type { DisposableLike, LlmScriptedReply, TreeDataProviderLike, UriMock, VscodeMockState } from "./vscode-mock";
 
 export interface ActivateOptions {
   /** Raiz do projeto da extensão (com package.json apontando `main` para o bundle). */
@@ -382,9 +382,14 @@ export class SigilTestHost {
     (this.vscode as { __fireDoc?: { save(d: TextDocumentMock): void } }).__fireDoc?.save(doc);
   }
 
-  /** Enfileira respostas para llm.ask/llm.stream. */
-  queueLlmResponse(...responses: string[]): void {
+  /** Enfileira respostas para llm.ask/stream/agent — a forma objeto roteiriza tool calls. */
+  queueLlmResponse(...responses: import("./vscode-mock").LlmScriptedReply[]): void {
     this.state.llmQueue.push(...responses);
+  }
+
+  /** As mensagens de cada sendRequest, na ordem — para asserir o protocolo do llm.agent. */
+  get llmRequests(): unknown[][] {
+    return this.state.llmRequests;
   }
 
   /** Abre um documento num @CustomEditor (resolve o provider com um painel fake). */

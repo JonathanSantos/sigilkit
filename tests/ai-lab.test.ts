@@ -22,6 +22,7 @@ import {
   ChatCommand,
   Language,
   InlineCompletion,
+  llm,
   log,
 } from "@sigilkit/core";
 
@@ -51,15 +52,22 @@ export class AiLab {
     return \`\${teto} issues sobre "\${input.consulta}" (\${input.estado ?? "todas"})\`;
   }
 
-  @LmTool({ description: "Diz a hora do host — tool sem input" })
+  @LmTool({ description: "Diz a hora do host — tool sem input", userDescription: "Mostra a hora atual" })
   hora(): string {
     return "12:34";
+  }
+
+  // o loop agêntico de verdade: o modelo pede a tool, o agent executa e devolve
+  @Command({ title: "Agente" })
+  async agente() {
+    const resposta = await llm.agent("que horas são?", { tools: ["ailab_hora"] });
+    log.info(\`agente disse: \${resposta}\`);
   }
 
   @McpServers({ label: "Servidores do AiLab" })
   servidores() {
     return [
-      { label: "docs", command: "npx", args: ["-y", "mcp-docs"] },
+      { label: "docs", command: "npx", args: ["-y", "mcp-docs"], cwd: "./ferramentas" },
       { label: "api", uri: "https://mcp.exemplo.dev/sse" },
     ];
   }
@@ -138,9 +146,10 @@ describe("ai-lab — tools do agent mode, slash commands, ghost text e MCP", () 
       },
       required: ["consulta"],
     });
-    // tool sem input não emite schema
+    // tool sem input não emite schema; userDescription é opção própria
     const hora = tools.find((t: any) => t.name === "ailab_hora");
     expect(hora.inputSchema).toBeUndefined();
+    expect(hora.userDescription).toBe("Mostra a hora atual");
   });
 
   it("manifesto: slash commands do participante e provedor MCP declarados", () => {
@@ -176,10 +185,29 @@ describe("ai-lab — tools do agent mode, slash commands, ghost text e MCP", () 
     expect(cheio[0]!.insertText).toBe("…continuação sugerida");
   });
 
-  it("@McpServers: definições simples viram stdio e http", async () => {
-    const defs = await host.mcpServers("ailab.servidores");
+  it("@McpServers: definições simples viram stdio (com cwd) e http", async () => {
+    const defs = (await host.mcpServers("ailab.servidores")) as any[];
     expect(defs).toHaveLength(2);
     expect(defs[0]).toMatchObject({ label: "docs", command: "npx" });
+    expect(String(defs[0].cwd?.fsPath ?? "")).toContain("ferramentas");
     expect(defs[1]).toMatchObject({ label: "api" });
+  });
+
+  it("llm.agent: executa a tool pedida e pareia call/resultado no protocolo real", async () => {
+    host.queueLlmResponse(
+      { toolCalls: [{ callId: "c1", name: "ailab_hora", input: {} }] },
+      "são 12:34 no host"
+    );
+    await host.executeCommand("ailab.agente");
+    expect(host.logText()).toContain("agente disse: são 12:34 no host");
+
+    // a 2ª rodada precisa levar o par Assistant(tool call) + User(tool result)
+    const rodada2 = host.llmRequests.at(-1) as any[];
+    expect(rodada2).toHaveLength(3);
+    expect(rodada2[1].role).toBe("assistant");
+    expect(rodada2[1].content[0]).toMatchObject({ callId: "c1", name: "ailab_hora" });
+    expect(rodada2[2].role).toBe("user");
+    expect(rodada2[2].content[0].callId).toBe("c1");
+    expect(rodada2[2].content[0].content[0].value).toBe("12:34");
   });
 });

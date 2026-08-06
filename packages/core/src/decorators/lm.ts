@@ -18,6 +18,8 @@ export interface LmToolOptions {
   name?: string;
   /** Nome exibido ao usuário (confirmações, listas). */
   displayName?: string;
+  /** Descrição voltada ao USUÁRIO (picker de tools); default: nenhuma. */
+  userDescription?: string;
   /** Habilita `#nome` no prompt do usuário (canBeReferencedInPrompt). */
   referenceName?: string;
   /** Mensagem exibida enquanto a tool roda ("Buscando issues…"). */
@@ -158,12 +160,15 @@ function toMcpDefinition(def: Record<string, unknown>): unknown {
     return new api.McpHttpServerDefinition(String(def.label), vscode.Uri.parse(def.uri), def.headers as Record<string, string> | undefined);
   }
   if (api.McpStdioServerDefinition) {
-    return new api.McpStdioServerDefinition(
+    const stdio = new api.McpStdioServerDefinition(
       String(def.label),
       String(def.command),
       (def.args as string[] | undefined) ?? [],
       def.env as Record<string, string | number | null> | undefined
     );
+    // cwd não entra no construtor — é propriedade da instância
+    if (typeof def.cwd === "string") (stdio as { cwd?: unknown }).cwd = vscode.Uri.file(def.cwd);
+    return stdio;
   }
-  return def; // host sem as classes: entrega cru (mocks de teste caem aqui)
+  return def; // host sem as classes: entrega cru
 }

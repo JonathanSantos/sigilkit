@@ -488,6 +488,14 @@ export class WebviewPanelMock {
   }
 }
 
+/**
+ * Resposta roteirizada do modelo: string = só texto; a forma objeto inclui
+ * tool calls, que o llm.agent executa e devolve pareadas por callId.
+ */
+export type LlmScriptedReply =
+  | string
+  | { text?: string; toolCalls?: { callId: string; name: string; input?: unknown }[] };
+
 export interface VscodeMockState {
   /** valores "escritos" (usuário ou extensão); ausência → default do manifesto */
   values: Map<string, unknown>;
@@ -534,8 +542,10 @@ export interface VscodeMockState {
   fileWatchers: FileWatcherMock[];
   uriHandler?: { handleUri(uri: unknown): unknown };
   progressRuns: { title?: string; location?: unknown }[];
-  /** respostas enfileiradas para llm.ask/stream (fila vazia → "resposta simulada") */
-  llmQueue: string[];
+  /** respostas enfileiradas para llm.ask/stream/agent (fila vazia → "resposta simulada") */
+  llmQueue: LlmScriptedReply[];
+  /** mensagens de cada sendRequest, na ordem — para asserir o protocolo do llm.agent */
+  llmRequests: unknown[][];
   lmTools: { name: string; tool: { invoke(options: { input?: unknown }, token?: unknown): unknown; prepareInvocation?(): unknown } }[];
   mcpProviders: { id: string; provider: { provideMcpServerDefinitions(): unknown } }[];
   inlineProviders: { selector: unknown; provider: { provideInlineCompletionItems(...args: unknown[]): unknown } }[];
@@ -576,6 +586,7 @@ export function createState(): VscodeMockState {
     uriHandler: undefined,
     progressRuns: [],
     llmQueue: [],
+    llmRequests: [],
     lmTools: [],
     mcpProviders: [],
     inlineProviders: [],
@@ -626,6 +637,7 @@ export function resetState(state: VscodeMockState): void {
   state.uriHandler = undefined;
   state.progressRuns.length = 0;
   state.llmQueue.length = 0;
+  state.llmRequests.length = 0;
   state.lmTools.length = 0;
   state.mcpProviders.length = 0;
   state.inlineProviders.length = 0;
@@ -736,14 +748,37 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
     },
     ProgressLocation: { SourceControl: 1, Window: 10, Notification: 15 },
     LanguageModelChatMessage: {
-      User: (content: string) => ({ role: "user", content }),
-      Assistant: (content: string) => ({ role: "assistant", content }),
+      User: (content: unknown) => ({ role: "user", content }),
+      Assistant: (content: unknown) => ({ role: "assistant", content }),
     },
     LanguageModelToolResult: class {
       constructor(public content: unknown[]) {}
     },
     LanguageModelTextPart: class {
       constructor(public value: string) {}
+    },
+    LanguageModelToolCallPart: class {
+      constructor(public callId: string, public name: string, public input: object) {}
+    },
+    LanguageModelToolResultPart: class {
+      constructor(public callId: string, public content: unknown[]) {}
+    },
+    CancellationTokenSource: class {
+      token = { isCancellationRequested: false, onCancellationRequested: () => ({ dispose() {} }) };
+      cancel() {}
+      dispose() {}
+    },
+    McpStdioServerDefinition: class {
+      cwd?: unknown;
+      constructor(
+        public label: string,
+        public command: string,
+        public args: string[] = [],
+        public env?: Record<string, string | number | null>
+      ) {}
+    },
+    McpHttpServerDefinition: class {
+      constructor(public label: string, public uri: unknown, public headers?: Record<string, string>) {}
     },
     lm: {
       registerTool: (name: string, tool: (typeof state.lmTools)[number]["tool"]) => {
@@ -771,11 +806,17 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
         Promise.resolve([
           {
             family: "mock-model",
-            sendRequest: (_messages: unknown[], _opts: unknown, _token: unknown) => {
-              const reply = state.llmQueue.shift() ?? "resposta simulada";
+            sendRequest: (messages: unknown[], _opts: unknown, _token: unknown) => {
+              state.llmRequests.push([...messages]);
+              const raw = state.llmQueue.shift() ?? "resposta simulada";
+              const reply = typeof raw === "string" ? { text: raw, toolCalls: [] } : { text: raw.text ?? "", toolCalls: raw.toolCalls ?? [] };
               return Promise.resolve({
                 text: (async function* () {
-                  yield reply;
+                  if (reply.text) yield reply.text;
+                })(),
+                stream: (async function* () {
+                  if (reply.text) yield { value: reply.text };
+                  for (const c of reply.toolCalls) yield { callId: c.callId, name: c.name, input: c.input };
                 })(),
               });
             },
@@ -796,6 +837,7 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
     },
     Uri: {
       file: uriFile,
+      parse: (value: string): UriMock => ({ fsPath: value, path: value, toString: () => value }),
       joinPath: (base: UriMock, ...parts: string[]) => uriFile(path.join(base.fsPath, ...parts)),
     },
     window: {

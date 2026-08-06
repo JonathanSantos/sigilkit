@@ -139,6 +139,8 @@ export interface IRLmTool {
   name: string; // nome público da tool (<prefix>_<membro> por default)
   description: string; // modelDescription
   displayName?: string;
+  /** descrição voltada ao usuário (picker de tools) */
+  userDescription?: string;
   /** habilita #referencia no prompt do usuário */
   referenceName?: string;
   invocationMessage?: string;

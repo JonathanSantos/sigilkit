@@ -517,6 +517,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
           name: toolName,
           description: o.description,
           displayName: o.displayName as string | undefined,
+          userDescription: o.userDescription as string | undefined,
           referenceName: o.referenceName as string | undefined,
           invocationMessage: o.invocationMessage as string | undefined,
           tags: Array.isArray(o.tags) ? (o.tags as string[]) : undefined,
