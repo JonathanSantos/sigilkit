@@ -4,9 +4,11 @@ Os pacotes (`@sigilkit/*` e `create-sigil`) versionam em lockstep — cada
 entrada aqui vale para todos na mesma versão. Pré-1.0, mudanças de API podem
 acontecer entre versões minor; sempre listadas aqui.
 
-## 0.7.0 — 2026-08-06
+## 0.7.1 — 2026-08-06
 
-A fornada de IA — as superfícies que o Copilot invoca:
+A fornada de IA — as superfícies que o Copilot invoca. (Publicada como
+0.7.1: a tag v0.7.0 nunca chegou ao npm — o Actions estava bloqueado por
+billing no momento do release.)
 
 - **`@LmTool`** — tools do agent mode com `inputSchema` **derivado do tipo do
   parâmetro** (JSDoc → description, uniões → enum, opcionais → não-required,
