@@ -1,6 +1,6 @@
 {
   "name": "@sigilkit/compiler",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Build time do sigil — AST → IR → manifesto/wire/tipos. Nunca entra no bundle da extensão; nunca importa vscode (R2).",
   "license": "MIT",
   "publishConfig": {

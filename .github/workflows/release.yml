@@ -5,9 +5,13 @@ name: Release
 # GitHub Release. Exige o secret NPM_TOKEN (token granular com permissão de
 # publish no escopo @sigilkit).
 
+# Além do push da tag, aceita disparo manual: Actions → Release →
+# "Run workflow" → escolha a TAG (não a branch) no dropdown "Use workflow
+# from" — o GITHUB_REF_NAME vira a tag e o resto funciona igual.
 on:
   push:
     tags: ["v*.*.*"]
+  workflow_dispatch:
 
 permissions:
   contents: write # criar o GitHub Release

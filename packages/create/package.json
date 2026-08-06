@@ -1,6 +1,6 @@
 {
   "name": "create-sigil",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "npm create sigil — sua extensão do VSCode com manifesto derivado do TypeScript",
   "license": "MIT",
   "publishConfig": {
@@ -22,6 +22,6 @@
     "bin"
   ],
   "dependencies": {
-    "@sigilkit/cli": "0.7.1"
+    "@sigilkit/cli": "0.7.2"
   }
 }
