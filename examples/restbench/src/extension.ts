@@ -4,6 +4,7 @@ import {
   Config,
   ContextKey,
   Extension,
+  LmTool,
   OnMessage,
   OnRequest,
   Secret,
@@ -50,6 +51,21 @@ export interface HistoryItem {
 }
 
 type HostToUi = { type: "history"; value: HistoryItem[] };
+
+/** Input da tool `restbench_request` — o inputSchema sai DAQUI, deste tipo. */
+export interface LmRequestInput {
+  /** URL absoluta, ou caminho relativo à baseUrl configurada */
+  url: string;
+  /** método HTTP (default: GET) */
+  method?: "GET" | "POST" | "PUT" | "DELETE";
+  /** corpo JSON, como texto */
+  body?: string;
+}
+
+export interface LmHistoryInput {
+  /** quantas entradas recentes retornar (default: 5) */
+  max?: number;
+}
 
 @Extension({ prefix: "restbench", settings: true })
 export class RestBench {
@@ -106,6 +122,44 @@ export class RestBench {
   aoMudarBase(nova: string) {
     log.info(`baseUrl agora é ${nova || "(vazia)"}`);
   }
+
+  // ── tools do agent mode: o Copilot chama a sua API pelo REST Bench ────────
+  // O agent mode pede confirmação do usuário antes de invocar (e a
+  // invocationMessage diz o que está acontecendo); a requisição usa a
+  // baseUrl, o token e o timeout já configurados, e entra no histórico.
+
+  @LmTool({
+    name: "request",
+    description:
+      "Executa uma requisição HTTP pelo REST Bench, usando a baseUrl, o token de autorização e o timeout configurados pelo usuário. Retorna status, tempo e corpo da resposta.",
+    referenceName: "request",
+    invocationMessage: "Executando requisição pelo REST Bench…",
+  })
+  async requisitar(input: LmRequestInput): Promise<string> {
+    const spec: RequestSpec = { method: input.method ?? "GET", url: input.url, body: input.body };
+    const result = await executar(spec);
+    this.registrar({ spec, result, at: new Date().toISOString() });
+    registry.webviewPosts.get("RestBenchPanel")?.({ type: "history", value: this.historico } satisfies HostToUi);
+    return toolText(spec, result);
+  }
+
+  @LmTool({
+    name: "history",
+    description:
+      "Retorna as requisições recentes do histórico do REST Bench, com método, URL, status e corpo das respostas — útil para inspecionar o que a API devolveu.",
+  })
+  historicoRecente(input: LmHistoryInput): string {
+    const itens = this.historico.slice(0, input?.max ?? 5);
+    if (itens.length === 0) return "histórico vazio — nenhuma requisição feita ainda";
+    return itens.map((i) => toolText(i.spec, i.result)).join("\n---\n");
+  }
+}
+
+/** Resumo de uma requisição para o MODELO ler — corpo truncado para não estourar contexto. */
+function toolText(spec: RequestSpec, r: RequestResult): string {
+  const head = `${spec.method} ${spec.url} → ${r.status || "erro"} em ${r.ms}ms${r.error ? ` (${r.error})` : ""}`;
+  const corpo = r.body.length > 4000 ? `${r.body.slice(0, 4000)}\n… (truncado; ${r.size} bytes no total)` : r.body;
+  return corpo ? `${head}\n${corpo}` : head;
 }
 
 @Webview({ id: "panel", title: "REST Bench", ui: "./ui/index.html" })

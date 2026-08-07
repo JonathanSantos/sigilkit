@@ -4,6 +4,17 @@ Os pacotes (`@sigilkit/*` e `create-sigil`) versionam em lockstep — cada
 entrada aqui vale para todos na mesma versão. Pré-1.0, mudanças de API podem
 acontecer entre versões minor; sempre listadas aqui.
 
+## Não publicado
+
+- **REST Bench rumo ao Marketplace** — o examples/restbench virou produto
+  publicável: tools de agent mode (`restbench_request` executa requisições
+  com a baseUrl/token/timeout do usuário; `restbench_history` deixa o modelo
+  inspecionar as respostas — schemas derivados dos tipos, claro), metadata
+  completa, ícone, README de página de produto e `.vsix` de 138 KB com
+  bundles minificados (a minification-safety do sigil em produção).
+- **README.en.md** — documentação em inglês com seletor de idioma; o pt-BR
+  segue como principal.
+
 ## 0.7.2 — 2026-08-06
 
 A fornada de IA — as superfícies que o Copilot invoca. (Release consolidado

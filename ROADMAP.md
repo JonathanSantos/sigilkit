@@ -12,7 +12,10 @@ ataquem qualquer item (ou tragam fricções novas) são bem-vindos.
 
 - **Estabilizar o modo enxerto** com casos reais: adotar o sigil em extensões
   existentes sem reescrever nada (`"sigil": { "graft": true }` — ver README).
-- **Publicar uma extensão real no Marketplace** construída com sigil.
+- **Publicar uma extensão real no Marketplace** construída com sigil —
+  em andamento: o REST Bench está preparado (tools de agent mode, ícone,
+  metadata, `.vsix` validado); falta criar o publisher e rodar
+  `vsce publish`.
 - ~~**README.en.md** — versão em inglês mantendo o pt-BR como principal.~~ ✅
   Feito: [README.en.md](README.en.md) com seletor de idioma nos dois.
 

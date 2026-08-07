@@ -1,21 +1,44 @@
 {
   "name": "restbench",
-  "displayName": "REST Bench (exemplo sigil)",
-  "description": "Cliente REST dentro do VSCode — UI em React sobre o protocolo tipado do sigil.",
-  "version": "0.0.1",
-  "publisher": "sigil-example",
+  "displayName": "REST Bench",
+  "description": "A REST client inside VS Code — send requests, inspect responses in real editors, and let Copilot call your API. Built with the sigil framework.",
+  "version": "0.1.0",
+  "publisher": "sigilkit",
+  "icon": "media/icon.png",
   "license": "MIT",
+  "categories": [
+    "Other",
+    "AI"
+  ],
+  "keywords": [
+    "rest",
+    "http",
+    "api",
+    "client",
+    "copilot",
+    "agent mode",
+    "sigil"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JonathanSantos/sigilkit"
+  },
+  "homepage": "https://github.com/JonathanSantos/sigilkit/tree/main/examples/restbench",
+  "bugs": {
+    "url": "https://github.com/JonathanSantos/sigilkit/issues"
+  },
+  "galleryBanner": {
+    "color": "#1e1b2e",
+    "theme": "dark"
+  },
   "engines": {
     "vscode": "^1.75.0"
   },
-  "categories": [
-    "Other"
-  ],
   "main": "./out/extension.js",
   "scripts": {
     "build": "npm run build:ui && sigil build && npm run bundle",
-    "build:ui": "esbuild ui/src/main.tsx --bundle --format=iife --target=es2022 --jsx=automatic --outfile=ui/dist/main.js",
-    "bundle": "esbuild src/.generated/wire.ts --bundle --platform=node --format=cjs --target=es2022 --external:vscode --sourcemap --outfile=out/extension.js",
+    "build:ui": "esbuild ui/src/main.tsx --bundle --format=iife --target=es2022 --jsx=automatic --outfile=ui/dist/main.js --minify",
+    "bundle": "esbuild src/.generated/wire.ts --bundle --platform=node --format=cjs --target=es2022 --external:vscode --sourcemap --minify --outfile=out/extension.js",
     "typecheck": "tsc --noEmit && tsc -p ui --noEmit",
     "vscode:prepublish": "npm run build",
     "package": "vsce package --no-dependencies",
@@ -81,6 +104,55 @@
           "maximum": 120000
         }
       }
-    }
+    },
+    "languageModelTools": [
+      {
+        "name": "restbench_history",
+        "displayName": "restbench_history",
+        "modelDescription": "Retorna as requisições recentes do histórico do REST Bench, com método, URL, status e corpo das respostas — útil para inspecionar o que a API devolveu.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "max": {
+              "type": "number",
+              "description": "quantas entradas recentes retornar (default: 5)"
+            }
+          }
+        }
+      },
+      {
+        "name": "restbench_request",
+        "displayName": "restbench_request",
+        "modelDescription": "Executa uma requisição HTTP pelo REST Bench, usando a baseUrl, o token de autorização e o timeout configurados pelo usuário. Retorna status, tempo e corpo da resposta.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "request",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "URL absoluta, ou caminho relativo à baseUrl configurada"
+            },
+            "method": {
+              "type": "string",
+              "enum": [
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE"
+              ],
+              "description": "método HTTP (default: GET)"
+            },
+            "body": {
+              "type": "string",
+              "description": "corpo JSON, como texto"
+            }
+          },
+          "required": [
+            "url"
+          ]
+        }
+      }
+    ]
   }
 }

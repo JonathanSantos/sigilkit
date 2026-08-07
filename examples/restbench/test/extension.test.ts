@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { activateExtension, SigilTestHost, WebviewPanelMock } from "@sigilkit/test";
@@ -140,5 +141,33 @@ describe("restbench — React na UI, http/estado/secret no host", () => {
     expect((await rpc(panel, "history")) as unknown[]).toHaveLength(0);
     expect(host.contextKey("restbench.temHistorico")).toBe(false);
     expect(host.statusBarItems[0]?.text).toBe("$(radio-tower) REST Bench");
+  });
+
+  it("@LmTool: manifesto com inputSchema DERIVADO do tipo LmRequestInput", () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(projectDir, "package.json"), "utf8"));
+    const req = pkg.contributes.languageModelTools.find((t: { name: string }) => t.name === "restbench_request");
+    expect(req.inputSchema).toEqual({
+      type: "object",
+      properties: {
+        url: { type: "string", description: "URL absoluta, ou caminho relativo à baseUrl configurada" },
+        method: { type: "string", enum: ["GET", "POST", "PUT", "DELETE"], description: "método HTTP (default: GET)" },
+        body: { type: "string", description: "corpo JSON, como texto" },
+      },
+      required: ["url"],
+    });
+    expect(host.lmTools).toContain("restbench_request");
+    expect(host.lmTools).toContain("restbench_history");
+  });
+
+  it("@LmTool request/history: o agent mode chama a API e consulta o histórico", async () => {
+    nextResponse = () => okJson({ usuarios: 3 });
+    const texto = await host.invokeTool("restbench_request", { url: "https://ex.dev/usuarios" });
+    expect(texto).toContain("GET https://ex.dev/usuarios → 200");
+    expect(texto).toContain('"usuarios": 3');
+    // a requisição do agente entra no MESMO histórico da UI…
+    expect(((await rpc(panel, "history")) as unknown[]).length).toBe(1);
+    // …e a tool de histórico devolve o resumo para o modelo
+    const resumo = await host.invokeTool("restbench_history", { max: 3 });
+    expect(resumo).toContain("usuarios");
   });
 });

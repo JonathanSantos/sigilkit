@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- REST Bench — família visual do sigil: roxo profundo + fagulha dourada -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2d2650"/>
+      <stop offset="1" stop-color="#1e1b2e"/>
+    </linearGradient>
+    <linearGradient id="tower" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a78bfa"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+
+  <!-- ondas irradiando (o "REST" no ar) -->
+  <g fill="none" stroke="#8b5cf6" stroke-width="10" stroke-linecap="round" opacity="0.55">
+    <path d="M 83 96 A 64 64 0 0 1 83 160" transform="rotate(180 83 128)"/>
+    <path d="M 173 96 A 64 64 0 0 1 173 160"/>
+  </g>
+  <g fill="none" stroke="#a78bfa" stroke-width="10" stroke-linecap="round" opacity="0.85">
+    <path d="M 100 108 A 36 36 0 0 1 100 148" transform="rotate(180 100 128)"/>
+    <path d="M 156 108 A 36 36 0 0 1 156 148"/>
+  </g>
+
+  <!-- a antena -->
+  <g stroke="url(#tower)" stroke-width="12" stroke-linecap="round" fill="none">
+    <path d="M 128 96 L 128 196"/>
+    <path d="M 106 196 L 128 150 L 150 196"/>
+  </g>
+
+  <!-- a fagulha dourada do sigil no topo -->
+  <circle cx="128" cy="84" r="17" fill="#fbbf24"/>
+</svg>
