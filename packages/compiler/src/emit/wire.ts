@@ -160,7 +160,14 @@ export function emitWire(ir: IR): string {
 
   const chatSetup = ir.chatParticipants
     .map((c) => {
-      const binding = compactEntry({ key: c.key, id: c.id, requestKey: c.requestKey, followupsKey: c.followupsKey, commands: c.commands });
+      // description é assunto do MANIFESTO — o runtime só roteia por name→key
+      const binding = compactEntry({
+        key: c.key,
+        id: c.id,
+        requestKey: c.requestKey,
+        followupsKey: c.followupsKey,
+        commands: c.commands?.map((cmd) => ({ name: cmd.name, key: cmd.key })),
+      });
       return `  ctx.subscriptions.push(bindChatParticipant(${JSON.stringify(binding)}, ctx));\n`;
     })
     .join("");

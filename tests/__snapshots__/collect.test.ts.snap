@@ -514,7 +514,7 @@ export async function activate(ctx: vscode.ExtensionContext) {
   ctx.subscriptions.push(bindTreeView({"key":"TasksView","id":"hello.tasks","rootsKey":"TasksView.roots","childrenKey":"TasksView.children","itemKey":"TasksView.render"}));
   ctx.subscriptions.push(bindWebview({"key":"SettingsPanel","id":"hello.settings","title":"Hello Settings","uiEntry":"ui/settings.html","handlers":[{"type":"reset","key":"SettingsPanel.onReset"},{"type":"save","key":"SettingsPanel.onSave"}],"requests":[]}, ctx));
   ctx.subscriptions.push(bindLanguage({"key":"MarkdownAssist","selector":["markdown"],"hoverKey":"MarkdownAssist.hover","diagnosticsKey":"MarkdownAssist.pendencias","diagnosticsOn":"change"}, ctx));
-  ctx.subscriptions.push(bindChatParticipant({"key":"HelloAssistant","id":"hello.hello","requestKey":"HelloAssistant.responder","commands":[{"name":"greet","description":"Manda a saudação configurada","key":"HelloAssistant.greet"}]}, ctx));
+  ctx.subscriptions.push(bindChatParticipant({"key":"HelloAssistant","id":"hello.hello","requestKey":"HelloAssistant.responder","commands":[{"name":"greet","key":"HelloAssistant.greet"}]}, ctx));
   ctx.subscriptions.push(bindCustomEditor({"key":"CapsEditor","viewType":"hello.caps","uiEntry":"ui/caps.html","handlers":[{"type":"gritar","key":"CapsEditor.gritar"}],"requests":[]}, ctx));
   ctx.subscriptions.push(bindLmTools([{"key":"HelloExtension.saudacao","name":"hello_saudacao"}]));
   ctx.subscriptions.push(bindMcpServers([{"key":"HelloExtension.servidores","id":"hello.servidores"}]));
