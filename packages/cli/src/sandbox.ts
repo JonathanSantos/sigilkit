@@ -205,7 +205,7 @@ async function handle(msg) {
         return;
       }
       fresh.__sigilHydrate();
-      if (typeof fresh.__sigilActivateLifecycle === "function") fresh.__sigilActivateLifecycle();
+      if (typeof fresh.__sigilActivateLifecycle === "function") void fresh.__sigilActivateLifecycle();
       send({ op: "reply", id: msg.id, ok: true, ms: Date.now() - started });
       return;
     }

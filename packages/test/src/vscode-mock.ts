@@ -130,8 +130,11 @@ export class TextDocumentMock {
     readonly uri: UriMock
   ) {}
 
-  getText(): string {
-    return this.text;
+  /** F10 do dogfood: com range, FATIA como o VSCode real (via offsets) —
+   *  aceitar o argumento e ignorá-lo era divergência silenciosa. */
+  getText(range?: { start: { line: number; character: number }; end: { line: number; character: number } }): string {
+    if (!range) return this.text;
+    return this.text.slice(this.offsetAt(range.start), this.offsetAt(range.end));
   }
 
   get lineCount(): number {

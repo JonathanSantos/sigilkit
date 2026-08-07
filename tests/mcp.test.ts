@@ -166,6 +166,19 @@ describe("sigil mcp — o loop de verificação como servidor MCP", () => {
     expect(String(doc)).toContain("DERIVADO");
   });
 
+  it("F8: toda resposta JSON declara a versão do servidor; sigil --version existe", async () => {
+    const cliVersion = JSON.parse(
+      fs.readFileSync(path.join(ROOT, "packages/cli/package.json"), "utf8")
+    ).version as string;
+    const check = await client.call("sigil_check");
+    expect(check.version).toBe(cliVersion);
+    const probe = await client.call("sigil_probe", { kind: "logs" });
+    expect(probe.version).toBe(cliVersion);
+    // e o comando que faltava (F8): sigil --version
+    const v = spawnSync(process.execPath, [BIN, "--version"], { encoding: "utf8" });
+    expect(v.stdout.trim()).toBe(cliVersion);
+  });
+
   it("método desconhecido → erro JSON-RPC; tool desconhecida → -32602", async () => {
     const bad = await client.request("nao/existe");
     expect(bad.error?.code).toBe(-32601);

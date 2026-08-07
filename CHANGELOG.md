@@ -4,6 +4,27 @@ Os pacotes (`@sigilkit/*` e `create-sigil`) versionam em lockstep — cada
 entrada aqui vale para todos na mesma versão. Pré-1.0, mudanças de API podem
 acontecer entre versões minor; sempre listadas aqui.
 
+## 0.10.1 — 2026-08-07
+
+A rodada 2 do dogfood externo (F8–F10 do diário do Mockeasy):
+
+- **Fix de produção: `@Activate`/`@Deactivate` async agora são AGUARDADOS**
+  (F9) — o wire fazia fire-and-forget: no VSCode real, um comando disparado
+  logo após a ativação rodava com a extensão pela metade (corrida
+  intermitente); e a rejeição virava Unhandled Rejection crua. Agora o
+  `activate()` espera (com guard — erro alto no log, ativação segue), o
+  harness herda a espera, e o `activateExtension` só resolve com o estado
+  inteiro.
+- **`sigil --version`** existe (F8 — não existia). E o **servidor MCP ficou
+  consciente da própria versão**: toda resposta JSON traz `version`, e se o
+  código carregado divergir do disco (upgrade com o servidor vivo), um
+  `aviso` alto pede o reinício da sessão — o "tudo em dia" falso de código
+  velho era o pior modo de falha possível para uma ferramenta de
+  verificação.
+- **`getText(range)` fatia de verdade** no mock (F10) — aceitar o range e
+  ignorá-lo era divergência silenciosa (princípio "R6 v2" do diário: membro
+  existente que ignora argumento também merece comportamento fiel).
+
 ## 0.10.0 — 2026-08-07
 
 A release do primeiro usuário — todas as fricções (F2–F7) do diário do

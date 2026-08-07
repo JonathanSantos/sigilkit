@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { runBuild } from "./build";
 import { runCheck } from "./check";
@@ -6,6 +7,15 @@ import { runInit } from "./init";
 import { runSim } from "./sim";
 import { runSandbox } from "./sandbox";
 import { runMcp } from "./mcp";
+
+export function cliVersion(): string {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8")) as { version?: string };
+    return pkg.version ?? "desconhecida";
+  } catch {
+    return "desconhecida";
+  }
+}
 
 const USAGE = `sigil — framework declarativo para extensões do VSCode
 
@@ -24,6 +34,11 @@ Uso:
 
 export function main(argv: string[] = process.argv.slice(2)): void {
   const [cmd, ...rest] = argv;
+  if (cmd === "--version" || cmd === "-v" || cmd === "version") {
+    // F8 do dogfood externo: não dava para perguntar a versão ao sigil
+    console.log(cliVersion());
+    return;
+  }
   const dirArg = rest.find((a) => !a.startsWith("-")) ?? ".";
   const projectDir = path.resolve(dirArg);
   const flags = rest.filter((a) => a.startsWith("-"));

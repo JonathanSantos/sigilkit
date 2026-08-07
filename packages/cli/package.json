@@ -1,6 +1,6 @@
 {
   "name": "@sigilkit/cli",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "CLI do sigil — orquestração e IO. build/check/dev.",
   "license": "MIT",
   "publishConfig": {
@@ -29,8 +29,8 @@
     "build": "tsc -b ."
   },
   "dependencies": {
-    "@sigilkit/compiler": "0.10.0",
-    "@sigilkit/test": "0.10.0",
+    "@sigilkit/compiler": "0.10.1",
+    "@sigilkit/test": "0.10.1",
     "@vscode/test-electron": "^3.1.0",
     "esbuild": "^0.24.2",
     "typescript": "^5.7.3"

@@ -88,26 +88,26 @@ class SigilMcpSession {
   constructor(private readonly projectDir: string) {}
 
   /** check sem escrever nada: diagnósticos + arquivos gerenciados stale. */
-  check(): string {
+  check(): Record<string, unknown> {
     const result = computeProject(this.projectDir);
     if (!result.ok) {
-      return safeJson({ ok: false, message: result.message, diagnostics: toStructured(result.diagnostics) });
+      return { ok: false, message: result.message, diagnostics: toStructured(result.diagnostics) };
     }
     const stale = result.files
       .filter((f) => !fs.existsSync(f.path) || fs.readFileSync(f.path, "utf8") !== f.content)
       .map((f) => f.label);
-    return safeJson({ ok: stale.length === 0, staleFiles: stale, hash: result.hash });
+    return { ok: stale.length === 0, staleFiles: stale, hash: result.hash };
   }
 
   /** build de verdade: escreve manifesto/wire/tipos. */
-  build(): string {
+  build(): Record<string, unknown> {
     const result = computeProject(this.projectDir);
     if (!result.ok) {
-      return safeJson({ ok: false, message: result.message, diagnostics: toStructured(result.diagnostics) });
+      return { ok: false, message: result.message, diagnostics: toStructured(result.diagnostics) };
     }
     const written = writeChanged(result.files);
     writeStoredHash(this.projectDir, result.hash);
-    return safeJson({ ok: true, written, hash: result.hash });
+    return { ok: true, written, hash: result.hash };
   }
 
   /** garante host vivo refletindo o código ATUAL (rebuilda se algo mudou). */
@@ -162,9 +162,9 @@ class SigilMcpSession {
     return out;
   }
 
-  async probe(args: Record<string, unknown>): Promise<string> {
+  async probe(args: Record<string, unknown>): Promise<Record<string, unknown>> {
     const fresh = await this.ensureFresh();
-    if ("error" in fresh) return safeJson({ ok: false, ...fresh });
+    if ("error" in fresh) return { ok: false, ...fresh };
     const host = this.host!;
     const kind = String(args.kind ?? "");
 
@@ -202,13 +202,13 @@ class SigilMcpSession {
         result = "ver delta";
         break;
       default:
-        return safeJson({
+        return {
           ok: false,
           error: `kind desconhecido: '${kind}' — use command | config | tree | panelRequest | invokeTool | chatRequest | runTests | logs`,
-        });
+        };
     }
 
-    return safeJson({ ok: true, rebuilt: fresh.rebuilt, result, ...this.delta() });
+    return { ok: true, rebuilt: fresh.rebuilt, result, ...this.delta() };
   }
 
   docs(query: string): string {
@@ -218,7 +218,7 @@ class SigilMcpSession {
       path.join(__dirname, "..", "..", "..", "docs", "reference.md"),
     ];
     const refPath = candidates.find((p) => fs.existsSync(p));
-    if (!refPath) return safeJson({ ok: false, error: "reference.md não encontrado no pacote" });
+    if (!refPath) return "erro: reference.md não encontrado no pacote";
     const texto = fs.readFileSync(refPath, "utf8");
     const secoes = texto.split(/^## /m).map((s, i) => (i === 0 ? s : `## ${s}`));
     const termos = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -299,16 +299,20 @@ const TOOLS = [
   },
 ];
 
+/** versão do pacote no DISCO — relida a cada chamada (detecta upgrade). */
+function diskVersion(): string | undefined {
+  try {
+    return (JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8")) as { version?: string })
+      .version;
+  } catch {
+    return undefined;
+  }
+}
+
 export function runMcp(projectDir: string): number {
   const session = new SigilMcpSession(path.resolve(projectDir));
-  const version = (() => {
-    try {
-      return (JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8")) as { version?: string })
-        .version;
-    } catch {
-      return undefined;
-    }
-  })();
+  // capturada UMA vez no boot: é a versão do código em RAM
+  const version = diskVersion();
 
   const send = (msg: Record<string, unknown>): void => {
     process.stdout.write(JSON.stringify(msg) + "\n");
@@ -360,15 +364,29 @@ export function runMcp(projectDir: string): number {
         const name = String(params?.name ?? "");
         const args = (params?.arguments as Record<string, unknown>) ?? {};
         try {
-          let text: string;
-          if (name === "sigil_check") text = session.check();
-          else if (name === "sigil_build") text = session.build();
-          else if (name === "sigil_probe") text = await session.probe(args);
-          else if (name === "sigil_docs") text = session.docs(String(args.query ?? ""));
+          let payload: Record<string, unknown> | string;
+          if (name === "sigil_check") payload = session.check();
+          else if (name === "sigil_build") payload = session.build();
+          else if (name === "sigil_probe") payload = await session.probe(args);
+          else if (name === "sigil_docs") payload = session.docs(String(args.query ?? ""));
           else {
             send({ jsonrpc: "2.0", id, error: { code: -32602, message: `tool desconhecida: ${name}` } });
             return;
           }
+          // F8 do dogfood externo: toda resposta declara a versão CARREGADA;
+          // se o disco divergir (upgrade com o servidor vivo), avisa alto —
+          // um "tudo em dia" de código velho é o pior modo de falha possível
+          const disco = diskVersion();
+          const aviso =
+            disco && version && disco !== version
+              ? `este servidor MCP carregou o sigil ${version}, mas o disco tem ${disco} — reinicie a sessão MCP para usar a versão nova`
+              : undefined;
+          const text =
+            typeof payload === "string"
+              ? aviso
+                ? `> ⚠️ ${aviso}\n\n${payload}`
+                : payload
+              : safeJson({ ...payload, version, ...(aviso ? { aviso } : {}) });
           send({ jsonrpc: "2.0", id, result: { content: [{ type: "text", text }] } });
         } catch (e) {
           // R6 até aqui: o erro volta DESCRITIVO para o agente, nunca silêncio

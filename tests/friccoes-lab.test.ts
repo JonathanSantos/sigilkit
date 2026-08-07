@@ -28,6 +28,10 @@ export class FricLab {
     const bytes = await vscode.workspace.fs.readFile(uris[0] as never);
     log.info(\`achados: \${this.arquivos.join(", ")} | primeiro: \${new TextDecoder().decode(bytes).trim()}\`);
     log.info(\`pasta: \${vscode.workspace.workspaceFolders?.[0]?.name}\`);
+    // F9: atraso REAL — sem o await do @Activate no wire, a ativação
+    // "terminaria" antes desta linha e o teste veria estado pela metade
+    await new Promise((r) => setTimeout(r, 30));
+    log.info("ativação completa");
   }
 
   @Command({ title: "Ping" })
@@ -53,7 +57,8 @@ export class NotasLanguage {
   hover(doc: vscode.TextDocument, pos: vscode.Position) {
     const range = doc.getWordRangeAtPosition(pos, /\\d{3}/);
     if (!range) return undefined;
-    const status = doc.getText().split("\\n")[range.start.line]!.slice(range.start.character, range.end.character);
+    // F10: o caminho CANÔNICO — getText(range) fatiando de verdade
+    const status = doc.getText(range);
     if (status === "500") throw new Error("hover explodiu de propósito");
     return new vscode.Hover(new vscode.MarkdownString(\`**status \${status}**\`), range);
   }
@@ -94,6 +99,11 @@ describe("friccoes-lab — as correções do primeiro dogfood externo", () => {
   it("F5: findFiles + asRelativePath + workspace.fs + workspaceFolders funcionam sobre o projectDir", () => {
     expect(host.logText()).toContain("achados: docs/a.txt, docs/b.txt | primeiro: alfa");
     expect(host.logText()).toContain("pasta: friclab");
+  });
+
+  it("F9: @Activate async é AGUARDADO — a ativação só completa com o estado inteiro", () => {
+    // sem await no wire, o setTimeout de 30ms ainda estaria pendente aqui
+    expect(host.logText()).toContain("ativação completa");
   });
 
   it("F5: membro DESCONHECIDO de namespace lança o erro R6 descritivo (Proxy)", () => {

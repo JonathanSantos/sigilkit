@@ -252,9 +252,12 @@ export function __sigilRefreshWebviews() {
   for (const h of registry.webviews.values()) void h.refresh?.();
 }
 
-/** Roda o @Activate — na ativação e depois de cada hot swap. */
-export function __sigilActivateLifecycle() {
-${ir.activateKey ? `  registry.lifecycle.get(${JSON.stringify(ir.activateKey)})?.(registry.context);\n` : ""}}
+/** Roda o @Activate — na ativação e depois de cada hot swap. AGUARDADO:
+ *  @Activate async segura a ativação até terminar (F9 do dogfood externo —
+ *  fire-and-forget deixava comandos rodarem com a extensão pela metade);
+ *  o guard mantém a rejeição alta no log sem matar a ativação. */
+export async function __sigilActivateLifecycle() {
+${ir.activateKey ? `  await guard("@Activate", () => registry.lifecycle.get(${JSON.stringify(ir.activateKey)})?.(registry.context))();\n` : ""}}
 
 export async function activate(ctx: vscode.ExtensionContext) {
   registry.context = ctx;
@@ -271,11 +274,11 @@ ${
 }    ctx.subscriptions.push(vscode.commands.registerCommand(c.id, guard(\`comando \${c.id}\`, handler, { notify: true })));
   }
   ctx.subscriptions.push(bindConfigWatchers(WATCHES));
-  __sigilActivateLifecycle();
+  await __sigilActivateLifecycle();
 }
 
-export function deactivate() {
-${ir.deactivateKey ? `  registry.lifecycle.get(${JSON.stringify(ir.deactivateKey)})?.();\n` : ""}  instance = undefined;
+export async function deactivate() {
+${ir.deactivateKey ? `  await guard("@Deactivate", () => registry.lifecycle.get(${JSON.stringify(ir.deactivateKey)})?.())();\n` : ""}  instance = undefined;
 }
 `;
 }
