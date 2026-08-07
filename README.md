@@ -17,6 +17,10 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/licen%C3%A7a-MIT-8b5cf6" alt="Licença MIT"></a>
 </p>
 
+<p align="center">
+  Português | <a href="README.en.md">English</a>
+</p>
+
 ---
 
 ```ts
