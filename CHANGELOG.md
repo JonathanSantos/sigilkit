@@ -4,6 +4,16 @@ Os pacotes (`@sigilkit/*` e `create-sigil`) versionam em lockstep — cada
 entrada aqui vale para todos na mesma versão. Pré-1.0, mudanças de API podem
 acontecer entre versões minor; sempre listadas aqui.
 
+## 0.9.1 — 2026-08-07
+
+- **Fix crítico do funil (F1 do primeiro dogfood externo)**: o template do
+  `sigil init`/`npm create sigil` pinava `@sigilkit/*` em `^0.6.0`
+  hardcoded — todo projeto novo instalava **0.6.2** em silêncio (sem a
+  fornada de IA, linguagem, Testing e MCP das três releases seguintes).
+  Agora o template interpola a versão do próprio CLI em runtime, com teste
+  travando template ↔ versão do pacote. Achado do diário de fricção do
+  projeto Mockeasy — o ciclo de dogfood externo funcionando.
+
 ## 0.9.0 — 2026-08-07
 
 A release da era dos agentes — o sigil apostando que o valor de um

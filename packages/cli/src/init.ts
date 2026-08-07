@@ -31,9 +31,27 @@ interface TemplateFile {
  */
 export type InitTemplate = "basic" | "react-webview";
 
+/**
+ * A versão dos @sigilkit/* no template é a DO PRÓPRIO CLI, lida em runtime —
+ * a lição da F1 do primeiro dogfood externo: a string hardcoded ficou em
+ * ^0.6.0 por três releases e todo `npm create sigil` instalava 0.6.2 em
+ * silêncio. Interpolar a própria versão elimina a classe do bug.
+ */
+function sigilDepRange(): string {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "package.json"), "utf8")) as {
+      version?: string;
+    };
+    return pkg.version ? `^${pkg.version}` : "latest";
+  } catch {
+    return "latest";
+  }
+}
+
 function templateFiles(name: string, template: InitTemplate): TemplateFile[] {
   const className = `${pascalCase(name)}Extension`;
   const react = template === "react-webview";
+  const sigilRange = sigilDepRange();
 
   const pkg = {
     name,
@@ -75,11 +93,11 @@ function templateFiles(name: string, template: InitTemplate): TemplateFile[] {
       "vscode:prepublish": "npm run build",
     },
     dependencies: {
-      "@sigilkit/core": "^0.6.0",
+      "@sigilkit/core": sigilRange,
       ...(react ? { react: "^19.0.0", "react-dom": "^19.0.0" } : {}),
     },
     devDependencies: {
-      "@sigilkit/cli": "^0.6.0",
+      "@sigilkit/cli": sigilRange,
       ...(react ? { "@types/react": "^19.0.0", "@types/react-dom": "^19.0.0" } : {}),
       "@types/vscode": "^1.75.0",
       "@vscode/vsce": "^3.2.1",

@@ -56,6 +56,11 @@ describe("sigil init", () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(TMP, "package.json"), "utf8"));
     expect(pkg.name).toBe("init-target");
     expect(pkg.engines.vscode).toBe("^1.75.0");
+    // F1 do dogfood externo: as deps @sigilkit/* seguem a versão DO CLI —
+    // template hardcoded dessincroniza em silêncio (ficou ^0.6.0 até a 0.9.0)
+    const cliVersion = JSON.parse(fs.readFileSync(path.join(ROOT, "packages/cli/package.json"), "utf8")).version;
+    expect(pkg.dependencies["@sigilkit/core"]).toBe(`^${cliVersion}`);
+    expect(pkg.devDependencies["@sigilkit/cli"]).toBe(`^${cliVersion}`);
     // --keep-names deixou de ser necessário: o join usa Symbol.metadata,
     // não nomes de função em runtime (item 9 do roadmap)
     expect(pkg.scripts.bundle).not.toContain("--keep-names");
