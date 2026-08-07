@@ -118,7 +118,7 @@ describe("ai-lab — tools do agent mode, slash commands, ghost text e MCP", () 
     const bundle = spawnSync(
       "npx",
       ["esbuild", "src/.generated/wire.ts", "--bundle", "--platform=node", "--format=cjs", "--target=es2022", "--external:vscode", "--outfile=out/extension.js"],
-      { cwd: TMP, encoding: "utf8" }
+      { cwd: TMP, encoding: "utf8", shell: process.platform === "win32" }
     );
     expect(bundle.status, bundle.stderr).toBe(0);
     pkg = JSON.parse(fs.readFileSync(path.join(TMP, "package.json"), "utf8"));

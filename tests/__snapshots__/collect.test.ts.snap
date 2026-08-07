@@ -3,7 +3,28 @@
 exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
 {
   "activateKey": "HelloExtension.onActivate",
-  "chatParticipants": [],
+  "chatParticipants": [
+    {
+      "commands": [
+        {
+          "description": "Manda a saudação configurada",
+          "key": "HelloAssistant.greet",
+          "name": "greet",
+        },
+      ],
+      "description": "o assistente do hello",
+      "id": "hello.hello",
+      "key": "HelloAssistant",
+      "loc": {
+        "character": 14,
+        "file": "src/assistant.ts",
+        "line": 7,
+      },
+      "name": "hello",
+      "requestKey": "HelloAssistant.responder",
+      "sourceFile": "src/assistant.ts",
+    },
+  ],
   "commands": [
     {
       "category": "Hello",
@@ -98,7 +119,30 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
     },
   ],
   "contextKeys": [],
-  "customEditors": [],
+  "customEditors": [
+    {
+      "displayName": "Editor CAPS",
+      "key": "CapsEditor",
+      "loc": {
+        "character": 14,
+        "file": "src/caps.ts",
+        "line": 6,
+      },
+      "messageHandlers": [
+        {
+          "key": "CapsEditor.gritar",
+          "type": "gritar",
+        },
+      ],
+      "patterns": [
+        "*.caps",
+      ],
+      "requestHandlers": [],
+      "sourceFile": "src/caps.ts",
+      "uiEntry": "ui/caps.html",
+      "viewType": "hello.caps",
+    },
+  ],
   "displayName": "hello",
   "events": [],
   "extensionClass": "HelloExtension",
@@ -193,6 +237,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "tooltip": "Diga olá",
     },
   ],
+  "testControllers": [],
   "treeViews": [
     {
       "childrenKey": "TasksView.children",
@@ -210,7 +255,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "sourceFile": "src/views/tasks.ts",
     },
   ],
-  "version": 8,
+  "version": 9,
   "viewContainers": [],
   "watches": [
     {
@@ -254,6 +299,19 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
 
 exports[`coletor sobre examples/hello > snapshot do manifesto 1`] = `
 {
+  "chatParticipants": [
+    {
+      "commands": [
+        {
+          "description": "Manda a saudação configurada",
+          "name": "greet",
+        },
+      ],
+      "description": "o assistente do hello",
+      "id": "hello.hello",
+      "name": "hello",
+    },
+  ],
   "commands": [
     {
       "command": "hello.configure",
@@ -296,6 +354,17 @@ exports[`coletor sobre examples/hello > snapshot do manifesto 1`] = `
     },
     "title": "Hello",
   },
+  "customEditors": [
+    {
+      "displayName": "Editor CAPS",
+      "selector": [
+        {
+          "filenamePattern": "*.caps",
+        },
+      ],
+      "viewType": "hello.caps",
+    },
+  ],
   "keybindings": [
     {
       "command": "hello.sayHello",
@@ -364,10 +433,12 @@ exports[`coletor sobre examples/hello > snapshot do manifesto 1`] = `
 exports[`coletor sobre examples/hello > snapshot do wire 1`] = `
 "// GERADO POR sigil — NÃO EDITE
 import * as vscode from "vscode";
-import { registry, adoptRegistrations, bindConfigWatchers, bindLog, guard, bindTreeView, bindWebview, bindStatusBar, bindSettingsApp, bindLanguage, bindLmTools, bindMcpServers, bindEvery } from "@sigilkit/core";
+import { registry, adoptRegistrations, bindConfigWatchers, bindLog, guard, bindTreeView, bindWebview, bindStatusBar, bindSettingsApp, bindLanguage, bindChatParticipant, bindCustomEditor, bindLmTools, bindMcpServers, bindEvery } from "@sigilkit/core";
 import { HelloExtension, MarkdownAssist } from "../extension";
 import { TasksView } from "../views/tasks";
 import { SettingsPanel } from "../panels/settings";
+import { HelloAssistant } from "../assistant";
+import { CapsEditor } from "../caps";
 
 const COMMANDS = [
   {
@@ -417,6 +488,12 @@ export function __sigilHydrate() {
   const i_MarkdownAssist = new MarkdownAssist();
   adoptRegistrations("MarkdownAssist", MarkdownAssist);
   registry.instances.set(MarkdownAssist, i_MarkdownAssist);
+  const i_HelloAssistant = new HelloAssistant();
+  adoptRegistrations("HelloAssistant", HelloAssistant);
+  registry.instances.set(HelloAssistant, i_HelloAssistant);
+  const i_CapsEditor = new CapsEditor();
+  adoptRegistrations("CapsEditor", CapsEditor);
+  registry.instances.set(CapsEditor, i_CapsEditor);
 }
 
 /** Hot reload de UI: re-preenche o HTML dos webviews ABERTOS. */
@@ -437,6 +514,8 @@ export async function activate(ctx: vscode.ExtensionContext) {
   ctx.subscriptions.push(bindTreeView({"key":"TasksView","id":"hello.tasks","rootsKey":"TasksView.roots","childrenKey":"TasksView.children","itemKey":"TasksView.render"}));
   ctx.subscriptions.push(bindWebview({"key":"SettingsPanel","id":"hello.settings","title":"Hello Settings","uiEntry":"ui/settings.html","handlers":[{"type":"reset","key":"SettingsPanel.onReset"},{"type":"save","key":"SettingsPanel.onSave"}],"requests":[]}, ctx));
   ctx.subscriptions.push(bindLanguage({"key":"MarkdownAssist","selector":["markdown"],"hoverKey":"MarkdownAssist.hover","diagnosticsKey":"MarkdownAssist.pendencias","diagnosticsOn":"change"}, ctx));
+  ctx.subscriptions.push(bindChatParticipant({"key":"HelloAssistant","id":"hello.hello","requestKey":"HelloAssistant.responder","commands":[{"name":"greet","description":"Manda a saudação configurada","key":"HelloAssistant.greet"}]}, ctx));
+  ctx.subscriptions.push(bindCustomEditor({"key":"CapsEditor","viewType":"hello.caps","uiEntry":"ui/caps.html","handlers":[{"type":"gritar","key":"CapsEditor.gritar"}],"requests":[]}, ctx));
   ctx.subscriptions.push(bindLmTools([{"key":"HelloExtension.saudacao","name":"hello_saudacao"}]));
   ctx.subscriptions.push(bindMcpServers([{"key":"HelloExtension.servidores","id":"hello.servidores"}]));
   ctx.subscriptions.push(bindEvery("HelloExtension"));

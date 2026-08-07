@@ -34,6 +34,7 @@ export function emitWire(ir: IR): string {
   if (ir.treeViews.length > 0) coreImports.push("bindTreeView");
   if (ir.webviews.some((w) => w.location === "panel")) coreImports.push("bindWebview");
   if (ir.webviews.some((w) => w.location === "sidebar")) coreImports.push("bindWebviewView");
+  if (ir.webviews.some((w) => w.location === "dual")) coreImports.push("bindWebviewDual");
   if (ir.statusBars.length > 0) coreImports.push("bindStatusBar");
   if (ir.settingsPanel) coreImports.push("bindSettingsApp");
   if (ir.languages.length > 0) coreImports.push("bindLanguage");
@@ -46,6 +47,7 @@ export function emitWire(ir: IR): string {
   if (ir.uriHandlerKey) coreImports.push("bindUriHandler");
   if (ir.lmTools.length > 0) coreImports.push("bindLmTools");
   if (ir.mcpProviders.length > 0) coreImports.push("bindMcpServers");
+  if ((ir.testControllers ?? []).length > 0) coreImports.push("bindTestController");
   if (ir.commands.some((c) => c.progress)) coreImports.push("withCommandProgress");
   coreImports.push("bindEvery"); // @Every da classe @Extension (no-op sem timers)
 
@@ -61,6 +63,7 @@ export function emitWire(ir: IR): string {
   for (const l of ir.languages) addImport(l.sourceFile, l.key);
   for (const c of ir.chatParticipants) addImport(c.sourceFile, c.key);
   for (const e of ir.customEditors) addImport(e.sourceFile, e.key);
+  for (const t of ir.testControllers ?? []) addImport(t.sourceFile, t.key);
   const userImports = [...byFile.entries()]
     .map(([file, names]) => `import { ${[...names].sort().join(", ")} } from "${relativeImport(file)}";`)
     .join("\n");
@@ -87,6 +90,7 @@ export function emitWire(ir: IR): string {
     ...ir.languages.flatMap((l) => hydrate(l.key)),
     ...ir.chatParticipants.flatMap((c) => hydrate(c.key)),
     ...ir.customEditors.flatMap((e) => hydrate(e.key)),
+    ...(ir.testControllers ?? []).flatMap((t) => hydrate(t.key)),
   ].join("\n");
 
   const treeSetup = ir.treeViews
@@ -106,7 +110,7 @@ export function emitWire(ir: IR): string {
         handlers: w.messageHandlers,
         requests: w.requestHandlers,
       };
-      const bindFn = w.location === "sidebar" ? "bindWebviewView" : "bindWebview";
+      const bindFn = w.location === "sidebar" ? "bindWebviewView" : w.location === "dual" ? "bindWebviewDual" : "bindWebview";
       return `  ctx.subscriptions.push(${bindFn}(${JSON.stringify(binding)}, ctx));\n`;
     })
     .join("");
@@ -141,6 +145,14 @@ export function emitWire(ir: IR): string {
         codeLensKey: l.codeLensKey,
         diagnosticsKey: l.diagnosticsKey,
         diagnosticsOn: l.diagnosticsOn,
+        codeActionKey: l.codeActionKey,
+        codeActionKinds: l.codeActionKinds,
+        definitionKey: l.definitionKey,
+        referencesKey: l.referencesKey,
+        renameKey: l.renameKey,
+        formattingKey: l.formattingKey,
+        symbolsKey: l.symbolsKey,
+        inlayHintsKey: l.inlayHintsKey,
       };
       return `  ctx.subscriptions.push(bindLanguage(${JSON.stringify(binding)}, ctx));\n`;
     })
@@ -186,6 +198,10 @@ export function emitWire(ir: IR): string {
     ir.mcpProviders.length > 0
       ? `  ctx.subscriptions.push(bindMcpServers(${JSON.stringify(ir.mcpProviders.map((m) => ({ key: m.key, id: m.id })))}));\n`
       : "",
+    ...(ir.testControllers ?? []).map(
+      (t) =>
+        `  ctx.subscriptions.push(bindTestController(${JSON.stringify(compactEntry({ key: t.key, id: t.id, label: t.label, discoverKey: t.discoverKey, runKey: t.runKey }))}));\n`
+    ),
     // timers @Every da classe @Extension (os de @Webview vivem no ciclo do painel)
     `  ctx.subscriptions.push(bindEvery(${JSON.stringify(ir.extensionClass)}));\n`,
   ].join("");

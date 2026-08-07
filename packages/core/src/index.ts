@@ -30,7 +30,13 @@ export type { WebviewOptions } from "./decorators/webview";
 export { StatusBar, bindStatusBar } from "./decorators/status-bar";
 export type { StatusBarOptions, StatusBarBinding } from "./decorators/status-bar";
 
-export { Language, Hover, Completion, CodeLens, Diagnostics, InlineCompletion, bindLanguage } from "./decorators/language";
+export {
+  Language, Hover, Completion, CodeLens, Diagnostics, InlineCompletion,
+  CodeAction, Definition, References, Rename, Formatting, Symbols, InlayHints,
+  bindLanguage,
+} from "./decorators/language";
+export { TestController, TestDiscover, TestRun, bindTestController } from "./decorators/testing";
+export type { TestNode, TestOutcome, TestControllerOptions } from "./decorators/testing";
 export type { LanguageOptions, CompletionOptions, DiagnosticsOptions, LanguageBinding } from "./decorators/language";
 
 export { ChatParticipant, ChatRequest, ChatFollowups, ChatCommand, bindChatParticipant } from "./decorators/chat";
@@ -69,7 +75,7 @@ export { editor } from "./editor";
 export { bindSettingsApp } from "./settings-app";
 export type { SettingsAppBinding, SettingsAppHandle, SettingsField } from "./settings-app";
 
-export { bindWebview, bindWebviewView } from "./webview-host";
+export { bindWebview, bindWebviewView, bindWebviewDual } from "./webview-host";
 export type { WebviewBinding } from "./webview-host";
 
 export { renderWebviewHtml } from "./webview-html";

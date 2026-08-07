@@ -6,6 +6,38 @@ acontecer entre versões minor; sempre listadas aqui.
 
 ## Não publicado
 
+A fornada de linguagem — os providers que faltavam para extensões de
+linguagem sérias:
+
+- **`@CodeAction`** (com `kinds` → `providedCodeActionKinds`),
+  **`@Definition`**, **`@References`**, **`@Rename`**, **`@Formatting`**,
+  **`@Symbols`** e **`@InlayHints`** — mesmo padrão dos demais: dispatch
+  dinâmico (hot-swap safe), guard em tudo, handler ausente lança no bind.
+  Açúcar do `@Formatting`: retorne o documento inteiro formatado como
+  **string** e o sigil constrói o `TextEdit` de range completo.
+- **Testing API declarativa** — `@TestController({ label })` +
+  `@TestDiscover` (a árvore de testes como nós `{id, label, children}`) +
+  `@TestRun` (um outcome por folha: `true`/`false`/`{passed, message}`;
+  exceção = falha com a mensagem). O sigil cuida de `TestItem`, run profile,
+  refresh e `onStartupFinished` no manifesto.
+- **`@Webview({ location: "dual" })`** — UMA classe serve painel E sidebar
+  (o caso vscode-pets): a view entra no `contributes.views`, `open()` abre o
+  painel, o post é broadcast para as superfícies vivas e o RPC responde a
+  quem perguntou; `@OnOpen` dispara na primeira superfície e `@OnDispose`
+  na última.
+- **`SIGIL1022`** — `@OnOpen`/`@OnDispose`/`@Every` em classe que os ignora
+  silenciosamente (ex.: `@OnOpen` numa `@Extension`) agora é erro de build
+  com caret.
+- **CI em matrix** — ubuntu + macOS obrigatórios; Windows experimental
+  (`continue-on-error`) enquanto medimos a portabilidade.
+- **E2E no host real cobre chat e custom editor** — participante + slash
+  command validados contra o `contributes`, e `vscode.openWith` resolvendo o
+  `@CustomEditor` de verdade (aba `TabInputCustom` verificada).
+- Sondas novas no `@sigilkit/test`: `provideCodeActions`/`provideDefinition`/
+  `provideReferences`/`provideRenameEdits`/`provideFormattingEdits`/
+  `provideDocumentSymbols`/`provideInlayHints`, e `testItems`/`runTests`
+  para a Testing API.
+
 - **REST Bench rumo ao Marketplace** — o examples/restbench virou produto
   publicável: tools de agent mode (`restbench_request` executa requisições
   com a baseUrl/token/timeout do usuário; `restbench_history` deixa o modelo

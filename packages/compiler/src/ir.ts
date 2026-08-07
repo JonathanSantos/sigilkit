@@ -1,4 +1,4 @@
-export const IR_VERSION = 8;
+export const IR_VERSION = 9;
 
 export interface SourceLoc {
   file: string;
@@ -86,7 +86,7 @@ export interface IRWebview {
   title: string;
   uiEntry: string; // caminho relativo do HTML (à raiz da extensão)
   /** "panel" = WebviewPanel sob demanda; "sidebar" = WebviewViewProvider em contributes.views. */
-  location: "panel" | "sidebar";
+  location: "panel" | "sidebar" | "dual";
   /** sidebar: nome exibido na view (default = title). */
   name?: string;
   /** sidebar: container da view (builtin ou id de container inline). */
@@ -113,6 +113,15 @@ export interface IRLanguage {
   codeLensKey?: string;
   diagnosticsKey?: string;
   diagnosticsOn?: "change" | "save";
+  codeActionKey?: string;
+  /** kinds do provider (metadata providedCodeActionKinds) */
+  codeActionKinds?: string[];
+  definitionKey?: string;
+  referencesKey?: string;
+  renameKey?: string;
+  formattingKey?: string;
+  symbolsKey?: string;
+  inlayHintsKey?: string;
   sourceFile: string;
   loc: SourceLoc;
 }
@@ -151,6 +160,17 @@ export interface IRLmTool {
 }
 
 /** Provedor de servidores MCP (@McpServers). */
+/** Controller da Testing API (@TestController) — runtime-only, sem contributes. */
+export interface IRTestController {
+  key: string; // nome da classe
+  id: string; // <prefix>.<id|classe> (id do createTestController)
+  label: string;
+  discoverKey: string;
+  runKey?: string;
+  sourceFile: string;
+  loc: SourceLoc;
+}
+
 export interface IRMcpProvider {
   key: string;
   id: string; // id do contributes.mcpServerDefinitionProviders
@@ -235,6 +255,7 @@ export interface IR {
   customEditors: IRCustomEditor[];
   lmTools: IRLmTool[];
   mcpProviders: IRMcpProvider[];
+  testControllers: IRTestController[];
   events: IREventHandler[];
   fileWatchers: IRFileWatcher[];
   secrets: IRSecret[];

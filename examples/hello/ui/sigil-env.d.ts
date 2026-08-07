@@ -19,6 +19,15 @@ declare global {
   // idem para o post: checagem estrutural, sem indexar chave que pode não existir
   type __SigilHostOf<I> = I extends { post: (msg: infer M) => unknown } ? M : never;
 
+  type __Sigil_CapsEditor = InstanceType<typeof import("../src/caps")["CapsEditor"]>;
+
+  /** Mensagens aceitas pelos @OnMessage de CapsEditor. */
+  type CapsEditorMessage =
+    | __SigilMsg<"gritar", __SigilValueOf<__Sigil_CapsEditor["gritar"]>>;
+
+  /** Mensagens que o host envia para esta UI (tipo do 'post' de CapsEditor). */
+  type CapsEditorHostMessage = __SigilHostOf<__Sigil_CapsEditor>;
+
   type __Sigil_SettingsPanel = InstanceType<typeof import("../src/panels/settings")["SettingsPanel"]>;
 
   /** Mensagens aceitas pelos @OnMessage de SettingsPanel. */
@@ -30,7 +39,7 @@ declare global {
   type SettingsPanelHostMessage = __SigilHostOf<__Sigil_SettingsPanel>;
 
   function acquireVsCodeApi(): {
-    postMessage(message: SettingsPanelMessage): void;
+    postMessage(message: CapsEditorMessage | SettingsPanelMessage): void;
     getState(): unknown;
     setState(state: unknown): void;
   };
@@ -38,10 +47,11 @@ declare global {
 
 declare module "@sigilkit/core/ui" {
   interface SigilUiMessages {
+    "gritar": __SigilValueOf<__Sigil_CapsEditor["gritar"]>;
     "reset": __SigilValueOf<__Sigil_SettingsPanel["onReset"]>;
     "save": __SigilValueOf<__Sigil_SettingsPanel["onSave"]>;
   }
   interface SigilUiFromHost {
-    message: SettingsPanelHostMessage;
+    message: CapsEditorHostMessage | SettingsPanelHostMessage;
   }
 }

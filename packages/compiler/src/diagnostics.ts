@@ -46,6 +46,7 @@ export const SIGIL = {
   InvalidWhenExpression: 1019,
   UnknownNlsKey: 1020,
   UnsupportedToolInput: 1021,
+  MisplacedLifecycle: 1022,
 } as const;
 
 export function diagAt(node: ts.Node, code: number, message: string): ts.Diagnostic {

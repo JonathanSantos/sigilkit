@@ -12,24 +12,25 @@ ataquem qualquer item (ou tragam fricções novas) são bem-vindos.
 
 - **Estabilizar o modo enxerto** com casos reais: adotar o sigil em extensões
   existentes sem reescrever nada (`"sigil": { "graft": true }` — ver README).
-- **Publicar uma extensão real no Marketplace** construída com sigil —
-  em andamento: o REST Bench está preparado (tools de agent mode, ícone,
-  metadata, `.vsix` validado); falta criar o publisher e rodar
-  `vsce publish`.
+- ~~**Publicar uma extensão real no Marketplace** construída com sigil~~ ✅
+  [REST Bench no Marketplace](https://marketplace.visualstudio.com/items?itemName=sigilkit.restbench)
+  (2026-08-07) — com tools de agent mode.
 - ~~**README.en.md** — versão em inglês mantendo o pt-BR como principal.~~ ✅
   Feito: [README.en.md](README.en.md) com seletor de idioma nos dois.
 
 ## Em seguida
 
-- CI em matrix (Windows/macOS) — hoje só ubuntu.
-- E2E electron cobrindo as superfícies novas (language/chat/custom editor) —
-  ✅ tools de IA e MCP já cobertos (`@LmTool` invocada via `lm.invokeTool`
-  real no `npm run test:e2e`); falta chat/custom editor.
+- ~~CI em matrix (Windows/macOS)~~ ✅ ubuntu + macOS obrigatórios; Windows
+  experimental (`continue-on-error`) até a suíte ser 100% portável.
+- ~~E2E electron cobrindo as superfícies novas (language/chat/custom
+  editor)~~ ✅ tools de IA, MCP, chat (participante + slash command) e
+  custom editor (`vscode.openWith` real) cobertos no `npm run test:e2e`.
 - Robustez do resolvedor de decorators com pnpm/Yarn PnP.
-- Uma classe `@Webview` servindo painel E sidebar (o vscode-pets alterna por
-  config; hoje exigimos duas classes).
-- Diagnóstico para `@OnOpen`/`@OnDispose`/`@Every` em classe errada (hoje são
-  runtime-only e silenciosos fora do lugar).
+- ~~Uma classe `@Webview` servindo painel E sidebar~~ ✅
+  `location: "dual"` — post em broadcast, RPC por superfície, @OnOpen na
+  primeira/@OnDispose na última.
+- ~~Diagnóstico para `@OnOpen`/`@OnDispose`/`@Every` em classe errada~~ ✅
+  `SIGIL1022` com caret.
 
 ## Sob demanda (sinalize numa issue se precisa)
 

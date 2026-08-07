@@ -231,10 +231,89 @@ export class DiagnosticCollectionMock {
 }
 
 export interface LanguageProviderEntry {
-  kind: "hover" | "completion" | "codeLens";
+  kind:
+    | "hover" | "completion" | "codeLens"
+    | "codeAction" | "definition" | "references" | "rename" | "formatting" | "symbols" | "inlayHints";
   selector: string[];
   provider: Record<string, (...args: unknown[]) => unknown>;
   triggers?: string[];
+  metadata?: unknown;
+}
+
+// ── Testing API ──────────────────────────────────────────────────────────────
+
+export class TestItemCollectionMock {
+  private map = new Map<string, TestItemMock>();
+  replace(items: TestItemMock[]): void {
+    this.map.clear();
+    for (const item of items) this.map.set(item.id, item);
+  }
+  add(item: TestItemMock): void {
+    this.map.set(item.id, item);
+  }
+  get(id: string): TestItemMock | undefined {
+    return this.map.get(id);
+  }
+  get size(): number {
+    return this.map.size;
+  }
+  forEach(cb: (item: TestItemMock) => void): void {
+    for (const item of this.map.values()) cb(item);
+  }
+}
+
+export class TestItemMock {
+  readonly children = new TestItemCollectionMock();
+  range?: unknown;
+  constructor(
+    readonly id: string,
+    public label: string,
+    readonly uri?: unknown
+  ) {}
+}
+
+export class TestRunMock {
+  readonly results: { id: string; status: "passed" | "failed" | "skipped"; message?: string; duration?: number }[] = [];
+  ended = false;
+  started(_item: TestItemMock): void {}
+  passed(item: TestItemMock, duration?: number): void {
+    this.results.push({ id: item.id, status: "passed", duration });
+  }
+  failed(item: TestItemMock, message: unknown, duration?: number): void {
+    const text = typeof message === "string" ? message : ((message as { message?: string })?.message ?? String(message));
+    this.results.push({ id: item.id, status: "failed", message: text, duration });
+  }
+  skipped(item: TestItemMock): void {
+    this.results.push({ id: item.id, status: "skipped" });
+  }
+  end(): void {
+    this.ended = true;
+  }
+}
+
+export class TestControllerMock {
+  readonly items = new TestItemCollectionMock();
+  readonly profiles: { label: string; kind: unknown; handler: (request: unknown, token: unknown) => unknown; isDefault?: boolean }[] = [];
+  readonly runs: TestRunMock[] = [];
+  refreshHandler?: () => unknown;
+  constructor(
+    readonly id: string,
+    readonly label: string
+  ) {}
+  createTestItem(id: string, label: string, uri?: unknown): TestItemMock {
+    return new TestItemMock(id, label, uri);
+  }
+  createRunProfile(label: string, kind: unknown, handler: (request: unknown, token: unknown) => unknown, isDefault?: boolean) {
+    const profile = { label, kind, handler, isDefault };
+    this.profiles.push(profile);
+    return { dispose: () => void this.profiles.splice(this.profiles.indexOf(profile), 1) };
+  }
+  createTestRun(_request: unknown): TestRunMock {
+    const run = new TestRunMock();
+    this.runs.push(run);
+    return run;
+  }
+  dispose(): void {}
 }
 
 export class MementoMock {
@@ -546,6 +625,7 @@ export interface VscodeMockState {
   llmQueue: LlmScriptedReply[];
   /** mensagens de cada sendRequest, na ordem — para asserir o protocolo do llm.agent */
   llmRequests: unknown[][];
+  testControllers: TestControllerMock[];
   lmTools: { name: string; tool: { invoke(options: { input?: unknown }, token?: unknown): unknown; prepareInvocation?(): unknown } }[];
   mcpProviders: { id: string; provider: { provideMcpServerDefinitions(): unknown } }[];
   inlineProviders: { selector: unknown; provider: { provideInlineCompletionItems(...args: unknown[]): unknown } }[];
@@ -587,6 +667,7 @@ export function createState(): VscodeMockState {
     progressRuns: [],
     llmQueue: [],
     llmRequests: [],
+    testControllers: [],
     lmTools: [],
     mcpProviders: [],
     inlineProviders: [],
@@ -638,6 +719,7 @@ export function resetState(state: VscodeMockState): void {
   state.progressRuns.length = 0;
   state.llmQueue.length = 0;
   state.llmRequests.length = 0;
+  state.testControllers.length = 0;
   state.lmTools.length = 0;
   state.mcpProviders.length = 0;
   state.inlineProviders.length = 0;
@@ -707,6 +789,15 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
     CompletionItemKind: { Text: 0, Method: 1, Function: 2, Keyword: 13, Snippet: 14 },
     Position: PositionMock,
     Range: RangeMock,
+    TextEdit: class {
+      constructor(public range: RangeMock, public newText: string) {}
+      static replace(range: RangeMock, newText: string) {
+        return { range, newText };
+      }
+    },
+    CodeActionKind: {
+      Empty: { append: (value: string) => ({ value }) },
+    },
     Selection: SelectionMock,
     Hover: HoverMock,
     CompletionItem: CompletionItemMock,
@@ -740,6 +831,41 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
         state.languageProviders.push(entry);
         return { dispose: () => void state.languageProviders.splice(state.languageProviders.indexOf(entry), 1) };
       },
+      registerCodeActionsProvider: (selector: unknown, provider: Record<string, (...args: unknown[]) => unknown>, metadata?: unknown) => {
+        const entry: LanguageProviderEntry = { kind: "codeAction", selector: toSelectorArray(selector), provider, metadata };
+        state.languageProviders.push(entry);
+        return { dispose: () => void state.languageProviders.splice(state.languageProviders.indexOf(entry), 1) };
+      },
+      registerDefinitionProvider: (selector: unknown, provider: Record<string, (...args: unknown[]) => unknown>) => {
+        const entry: LanguageProviderEntry = { kind: "definition", selector: toSelectorArray(selector), provider };
+        state.languageProviders.push(entry);
+        return { dispose: () => void state.languageProviders.splice(state.languageProviders.indexOf(entry), 1) };
+      },
+      registerReferenceProvider: (selector: unknown, provider: Record<string, (...args: unknown[]) => unknown>) => {
+        const entry: LanguageProviderEntry = { kind: "references", selector: toSelectorArray(selector), provider };
+        state.languageProviders.push(entry);
+        return { dispose: () => void state.languageProviders.splice(state.languageProviders.indexOf(entry), 1) };
+      },
+      registerRenameProvider: (selector: unknown, provider: Record<string, (...args: unknown[]) => unknown>) => {
+        const entry: LanguageProviderEntry = { kind: "rename", selector: toSelectorArray(selector), provider };
+        state.languageProviders.push(entry);
+        return { dispose: () => void state.languageProviders.splice(state.languageProviders.indexOf(entry), 1) };
+      },
+      registerDocumentFormattingEditProvider: (selector: unknown, provider: Record<string, (...args: unknown[]) => unknown>) => {
+        const entry: LanguageProviderEntry = { kind: "formatting", selector: toSelectorArray(selector), provider };
+        state.languageProviders.push(entry);
+        return { dispose: () => void state.languageProviders.splice(state.languageProviders.indexOf(entry), 1) };
+      },
+      registerDocumentSymbolProvider: (selector: unknown, provider: Record<string, (...args: unknown[]) => unknown>) => {
+        const entry: LanguageProviderEntry = { kind: "symbols", selector: toSelectorArray(selector), provider };
+        state.languageProviders.push(entry);
+        return { dispose: () => void state.languageProviders.splice(state.languageProviders.indexOf(entry), 1) };
+      },
+      registerInlayHintsProvider: (selector: unknown, provider: Record<string, (...args: unknown[]) => unknown>) => {
+        const entry: LanguageProviderEntry = { kind: "inlayHints", selector: toSelectorArray(selector), provider };
+        state.languageProviders.push(entry);
+        return { dispose: () => void state.languageProviders.splice(state.languageProviders.indexOf(entry), 1) };
+      },
       createDiagnosticCollection: (name: string) => {
         const collection = new DiagnosticCollectionMock(name);
         state.diagnosticCollections.push(collection);
@@ -747,6 +873,20 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
       },
     },
     ProgressLocation: { SourceControl: 1, Window: 10, Notification: 15 },
+    TestRunProfileKind: { Run: 1, Debug: 2, Coverage: 3 },
+    TestMessage: class {
+      constructor(public message: string) {}
+    },
+    tests: {
+      createTestController: (id: string, label: string) => {
+        if (state.testControllers.some((c) => c.id === id)) {
+          throw new Error(`sigil-test: test controller '${id}' criado duas vezes`);
+        }
+        const controller = new TestControllerMock(id, label);
+        state.testControllers.push(controller);
+        return controller;
+      },
+    },
     LanguageModelChatMessage: {
       User: (content: unknown) => ({ role: "user", content }),
       Assistant: (content: unknown) => ({ role: "assistant", content }),

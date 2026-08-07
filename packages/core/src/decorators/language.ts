@@ -56,6 +56,38 @@ export function Diagnostics(_opts: DiagnosticsOptions = {}) {
   return registerBoundMember("languageHandlers");
 }
 
+export interface CodeActionOptions {
+  /** kinds oferecidos (ex.: ["quickfix", "refactor.extract"]) — vira providedCodeActionKinds */
+  kinds?: string[];
+}
+
+/** provideCodeActions(document, range, context, token) → CodeAction[]. */
+export function CodeAction(_opts: CodeActionOptions = {}) {
+  return registerBoundMember("languageHandlers");
+}
+
+/** provideDefinition(document, position, token) → Location | Location[]. */
+export const Definition = dual(() => registerBoundMember("languageHandlers"));
+
+/** provideReferences(document, position, context, token) → Location[]. */
+export const References = dual(() => registerBoundMember("languageHandlers"));
+
+/** provideRenameEdits(document, position, newName, token) → WorkspaceEdit. */
+export const Rename = dual(() => registerBoundMember("languageHandlers"));
+
+/**
+ * Formatação: handler(document, options, token). Retorne TextEdit[] — ou uma
+ * STRING com o documento inteiro formatado, que o sigil converte no TextEdit
+ * de range completo (`@Formatting() format(doc) { return prettier(...); }`).
+ */
+export const Formatting = dual(() => registerBoundMember("languageHandlers"));
+
+/** provideDocumentSymbols(document, token) → DocumentSymbol[]. */
+export const Symbols = dual(() => registerBoundMember("languageHandlers"));
+
+/** provideInlayHints(document, range, token) → InlayHint[] (objetos {position, label} servem). */
+export const InlayHints = dual(() => registerBoundMember("languageHandlers"));
+
 export interface LanguageBinding {
   readonly key: string;
   readonly selector: readonly string[];
@@ -66,6 +98,14 @@ export interface LanguageBinding {
   readonly codeLensKey?: string;
   readonly diagnosticsKey?: string;
   readonly diagnosticsOn?: "change" | "save";
+  readonly codeActionKey?: string;
+  readonly codeActionKinds?: readonly string[];
+  readonly definitionKey?: string;
+  readonly referencesKey?: string;
+  readonly renameKey?: string;
+  readonly formattingKey?: string;
+  readonly symbolsKey?: string;
+  readonly inlayHintsKey?: string;
 }
 
 /**
@@ -73,7 +113,12 @@ export interface LanguageBinding {
  * cada chamada — hot swap troca os providers por baixo) e guard em tudo.
  */
 export function bindLanguage(binding: LanguageBinding, ctx: vscode.ExtensionContext): vscode.Disposable {
-  for (const key of [binding.hoverKey, binding.inlineKey, binding.completionKey, binding.codeLensKey, binding.diagnosticsKey]) {
+  const allKeys = [
+    binding.hoverKey, binding.inlineKey, binding.completionKey, binding.codeLensKey, binding.diagnosticsKey,
+    binding.codeActionKey, binding.definitionKey, binding.referencesKey, binding.renameKey,
+    binding.formattingKey, binding.symbolsKey, binding.inlayHintsKey,
+  ];
+  for (const key of allKeys) {
     if (key && !registry.languageHandlers.has(key)) {
       throw new Error(`sigil: handler de linguagem ausente para ${key}. Rode 'sigil build'.`);
     }
@@ -136,6 +181,95 @@ export function bindLanguage(binding: LanguageBinding, ctx: vscode.ExtensionCont
       vscode.languages.registerCodeLensProvider(selector, {
         provideCodeLenses: (doc, token) =>
           call(`@CodeLens de ${binding.key}`, key, [doc, token]) as vscode.ProviderResult<vscode.CodeLens[]>,
+      })
+    );
+  }
+  if (binding.codeActionKey) {
+    const key = binding.codeActionKey;
+    // metadata só quando há kinds — e CodeActionKind resolvido dinamicamente
+    // (Empty.append é a forma pública de construir um kind a partir de string)
+    const CAK = (vscode as unknown as { CodeActionKind?: { Empty: { append(v: string): unknown } } }).CodeActionKind;
+    const metadata =
+      binding.codeActionKinds && binding.codeActionKinds.length > 0 && CAK
+        ? { providedCodeActionKinds: binding.codeActionKinds.map((k) => CAK.Empty.append(k)) }
+        : undefined;
+    disposables.push(
+      vscode.languages.registerCodeActionsProvider(
+        selector,
+        {
+          provideCodeActions: (doc, range, context, token) =>
+            call(`@CodeAction de ${binding.key}`, key, [doc, range, context, token]) as vscode.ProviderResult<
+              vscode.CodeAction[]
+            >,
+        },
+        metadata as vscode.CodeActionProviderMetadata | undefined
+      )
+    );
+  }
+  if (binding.definitionKey) {
+    const key = binding.definitionKey;
+    disposables.push(
+      vscode.languages.registerDefinitionProvider(selector, {
+        provideDefinition: (doc, pos, token) =>
+          call(`@Definition de ${binding.key}`, key, [doc, pos, token]) as vscode.ProviderResult<vscode.Definition>,
+      })
+    );
+  }
+  if (binding.referencesKey) {
+    const key = binding.referencesKey;
+    disposables.push(
+      vscode.languages.registerReferenceProvider(selector, {
+        provideReferences: (doc, pos, context, token) =>
+          call(`@References de ${binding.key}`, key, [doc, pos, context, token]) as vscode.ProviderResult<
+            vscode.Location[]
+          >,
+      })
+    );
+  }
+  if (binding.renameKey) {
+    const key = binding.renameKey;
+    disposables.push(
+      vscode.languages.registerRenameProvider(selector, {
+        provideRenameEdits: (doc, pos, newName, token) =>
+          call(`@Rename de ${binding.key}`, key, [doc, pos, newName, token]) as vscode.ProviderResult<
+            vscode.WorkspaceEdit
+          >,
+      })
+    );
+  }
+  if (binding.formattingKey) {
+    const key = binding.formattingKey;
+    disposables.push(
+      vscode.languages.registerDocumentFormattingEditProvider(selector, {
+        provideDocumentFormattingEdits: async (doc, options, token) => {
+          const result = await call(`@Formatting de ${binding.key}`, key, [doc, options, token]);
+          if (result == null) return [];
+          if (typeof result !== "string") return result as vscode.TextEdit[];
+          // string = documento inteiro formatado → TextEdit de range completo
+          const range = new vscode.Range(doc.positionAt(0), doc.positionAt(doc.getText().length));
+          const TE = (vscode as unknown as { TextEdit?: { replace(r: vscode.Range, t: string): vscode.TextEdit } }).TextEdit;
+          return TE ? [TE.replace(range, result)] : ([{ range, newText: result }] as unknown as vscode.TextEdit[]);
+        },
+      })
+    );
+  }
+  if (binding.symbolsKey) {
+    const key = binding.symbolsKey;
+    disposables.push(
+      vscode.languages.registerDocumentSymbolProvider(selector, {
+        provideDocumentSymbols: (doc, token) =>
+          call(`@Symbols de ${binding.key}`, key, [doc, token]) as vscode.ProviderResult<vscode.DocumentSymbol[]>,
+      })
+    );
+  }
+  if (binding.inlayHintsKey) {
+    const key = binding.inlayHintsKey;
+    disposables.push(
+      vscode.languages.registerInlayHintsProvider(selector, {
+        provideInlayHints: (doc, range, token) =>
+          call(`@InlayHints de ${binding.key}`, key, [doc, range, token]) as vscode.ProviderResult<
+            vscode.InlayHint[]
+          >,
       })
     );
   }

@@ -56,6 +56,7 @@ export class Registry {
   readonly webviews = new Map<string, WebviewHandle>();
   readonly webviewHandlers = new Map<string, (...args: unknown[]) => unknown>();
   readonly languageHandlers = new Map<string, (...args: unknown[]) => unknown>();
+  readonly testHandlers = new Map<string, (...args: unknown[]) => unknown>();
   readonly chatHandlers = new Map<string, (...args: unknown[]) => unknown>();
   readonly events = new Map<string, (...args: unknown[]) => unknown>();
   /** valores vivos de @ContextKey (id completo → valor) */

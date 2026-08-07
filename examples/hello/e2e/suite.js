@@ -65,5 +65,32 @@ exports.run = async function run() {
     "provedor MCP declarado e aceito"
   );
 
-  console.log("E2E: caminho feliz OK no extension host real (comandos, config, tools de IA e MCP)");
+  // ── chat no host real: participante + slash command declarados e registrados
+  const chatPart = ext.packageJSON.contributes.chatParticipants.find((c) => c.id === "hello.hello");
+  assert.ok(chatPart, "participante hello.hello no contributes");
+  assert.deepStrictEqual(
+    chatPart.commands.map((c) => c.name),
+    ["greet"],
+    "slash command /greet declarado"
+  );
+  // a API de chat existe e o bind registrou sem lançar (a ativação passou);
+  // não há API pública para DISPARAR uma chat request — cobertura de
+  // comportamento fica no simulador (host.chatRequest)
+  assert.ok(typeof vscode.chat?.createChatParticipant === "function", "API de chat presente no host");
+
+  // ── custom editor no host real: openWith resolve o provider registrado
+  const os = require("node:os");
+  const fsMod = require("node:fs");
+  const caps = require("node:path").join(os.tmpdir(), `sigil-e2e-${Date.now()}.caps`);
+  fsMod.writeFileSync(caps, "grite comigo");
+  const capsUri = vscode.Uri.file(caps);
+  await vscode.commands.executeCommand("vscode.openWith", capsUri, "hello.caps");
+  const tabs = vscode.window.tabGroups.all.flatMap((g) => g.tabs);
+  const capsTab = tabs.find(
+    (t) => t.input instanceof vscode.TabInputCustom && t.input.viewType === "hello.caps"
+  );
+  assert.ok(capsTab, "aba do custom editor hello.caps aberta com o documento");
+  fsMod.rmSync(caps, { force: true });
+
+  console.log("E2E: caminho feliz OK no extension host real (comandos, config, tools de IA, MCP, chat e custom editor)");
 };

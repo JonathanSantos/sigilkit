@@ -11,6 +11,7 @@ import {
   IRFileWatcher,
   IRLanguage,
   IRLmTool,
+  IRTestController,
   IRMcpProvider,
   IRSecret,
   IRSettingsPanel,
@@ -90,12 +91,16 @@ const EXTENSION_MEMBERS = [
 ] as const;
 const TREE_MEMBERS = ["TreeRoot", "TreeChildren", "TreeItem", "Command"] as const;
 const WEBVIEW_MEMBERS = ["OnMessage", "OnRequest"] as const;
-const LANGUAGE_MEMBERS = ["Hover", "Completion", "CodeLens", "Diagnostics", "InlineCompletion"] as const;
+const LANGUAGE_MEMBERS = [
+  "Hover", "Completion", "CodeLens", "Diagnostics", "InlineCompletion",
+  "CodeAction", "Definition", "References", "Rename", "Formatting", "Symbols", "InlayHints",
+] as const;
 const CHAT_MEMBERS = ["ChatRequest", "ChatFollowups", "ChatCommand"] as const;
+const TESTING_MEMBERS = ["TestDiscover", "TestRun"] as const;
 const ALL_MEMBERS = [
-  ...new Set([...EXTENSION_MEMBERS, ...TREE_MEMBERS, ...WEBVIEW_MEMBERS, ...LANGUAGE_MEMBERS, ...CHAT_MEMBERS]),
+  ...new Set([...EXTENSION_MEMBERS, ...TREE_MEMBERS, ...WEBVIEW_MEMBERS, ...LANGUAGE_MEMBERS, ...CHAT_MEMBERS, ...TESTING_MEMBERS]),
 ];
-const CLASS_MARKS = ["Extension", "TreeView", "Webview", "Language", "ChatParticipant", "CustomEditor"] as const;
+const CLASS_MARKS = ["Extension", "TreeView", "Webview", "Language", "ChatParticipant", "CustomEditor", "TestController"] as const;
 
 export function collect(program: ts.Program, opts: CollectOptions): CollectResult {
   const checker = program.getTypeChecker();
@@ -155,10 +160,41 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
   const languageClasses: ts.ClassDeclaration[] = [];
   const chatClasses: ts.ClassDeclaration[] = [];
   const customEditorClasses: ts.ClassDeclaration[] = [];
+  const testControllerClasses: ts.ClassDeclaration[] = [];
+
+  // @OnOpen/@OnDispose vivem em @Webview/@CustomEditor; @Every também na
+  // @Extension. Em qualquer outra classe eram IGNORADOS em silêncio — SIGIL1022.
+  const MISPLACED_LIFECYCLE: Record<string, readonly string[]> = {
+    Extension: ["OnOpen", "OnDispose"],
+    TreeView: ["OnOpen", "OnDispose", "Every"],
+    Language: ["OnOpen", "OnDispose", "Every"],
+    ChatParticipant: ["OnOpen", "OnDispose", "Every"],
+    TestController: ["OnOpen", "OnDispose", "Every"],
+  };
+  const flagMisplacedLifecycle = (cls: ts.ClassDeclaration, mark: string): void => {
+    const banned = MISPLACED_LIFECYCLE[mark];
+    if (!banned) return;
+    for (const member of cls.members) {
+      if (!ts.isMethodDeclaration(member)) continue;
+      for (const decName of banned) {
+        const dec = getDecorator(member, checker, decName);
+        if (dec) {
+          const onde =
+            decName === "Every"
+              ? "@Every vive na @Extension (ativação↔desativação) ou num @Webview/@CustomEditor (painel aberto)"
+              : `@${decName} vive num @Webview/@CustomEditor`;
+          diagnostics.push(
+            diagAt(dec, SIGIL.MisplacedLifecycle, `@${decName} numa classe @${mark} é ignorado em runtime — ${onde}`)
+          );
+        }
+      }
+    }
+  };
 
   const visit = (node: ts.Node): void => {
     if (ts.isClassDeclaration(node)) {
       const marks = CLASS_MARKS.filter((n) => getDecorator(node, checker, n));
+      if (marks.length === 1) flagMisplacedLifecycle(node, marks[0]!);
       if (marks.length > 1) {
         diagnostics.push(
           diagAt(node.name ?? node, SIGIL.WrongClassForMember, `uma classe não pode ser ${marks.map((m) => `@${m}`).join(" e ")} ao mesmo tempo`)
@@ -175,6 +211,8 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
         chatClasses.push(node);
       } else if (marks[0] === "CustomEditor") {
         customEditorClasses.push(node);
+      } else if (marks[0] === "TestController") {
+        testControllerClasses.push(node);
       } else {
         // SIGIL1008: decorator do sigil em classe sem marcador nunca seria
         // registrado — falhar alto (R6) em vez de membro fantasma.
@@ -264,6 +302,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
   const customEditors: IRCustomEditor[] = [];
   const events: IREventHandler[] = [];
   const lmTools: IRLmTool[] = [];
+  const testControllers: IRTestController[] = [];
   const mcpProviders: IRMcpProvider[] = [];
   const fileWatchers: IRFileWatcher[] = [];
   const secrets: IRSecret[] = [];
@@ -881,20 +920,20 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     }
     if (o.when !== undefined && (typeof o.when !== "string" || (o.location ?? "panel") === "panel")) {
       diagnostics.push(
-        diagAt(optsNode, SIGIL.MissingRequiredOption, "o 'when' de @Webview só existe para location \"sidebar\" (painéis não têm entrada em contributes.views)")
+        diagAt(optsNode, SIGIL.MissingRequiredOption, "o 'when' de @Webview só existe para location \"sidebar\"/\"dual\" (painéis não têm entrada em contributes.views)")
       );
       return;
     }
     const location = o.location ?? "panel";
-    if (location !== "panel" && location !== "sidebar") {
-      diagnostics.push(diagAt(optsNode, SIGIL.MissingRequiredOption, `location de @Webview precisa ser "panel" ou "sidebar"`));
+    if (location !== "panel" && location !== "sidebar" && location !== "dual") {
+      diagnostics.push(diagAt(optsNode, SIGIL.MissingRequiredOption, `location de @Webview precisa ser "panel", "sidebar" ou "dual"`));
       return;
     }
     let container: string | undefined;
-    if (location === "sidebar") {
+    if (location === "sidebar" || location === "dual") {
       container = collectContainer(o.container, optsNode, wv.name) ?? "explorer";
     } else if (o.container !== undefined) {
-      diagnostics.push(diagAt(optsNode, SIGIL.MissingRequiredOption, `'container' só vale para @Webview com location: "sidebar"`));
+      diagnostics.push(diagAt(optsNode, SIGIL.MissingRequiredOption, `'container' só vale para @Webview com location: "sidebar" ou "dual"`));
       return;
     }
 
@@ -907,7 +946,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
         title: o.title as string,
         uiEntry: toPosix(o.ui as string).replace(/^\.\//, ""),
         location,
-        name: location === "sidebar" ? ((o.name as string | undefined) ?? (o.title as string)) : undefined,
+        name: location === "sidebar" || location === "dual" ? ((o.name as string | undefined) ?? (o.title as string)) : undefined,
         when: o.when as string | undefined,
         container,
         messageHandlers: handlers,
@@ -947,6 +986,14 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     let codeLensKey: string | undefined;
     let diagnosticsKey: string | undefined;
     let diagnosticsOn: "change" | "save" | undefined;
+    let codeActionKey: string | undefined;
+    let codeActionKinds: string[] | undefined;
+    let definitionKey: string | undefined;
+    let referencesKey: string | undefined;
+    let renameKey: string | undefined;
+    let formattingKey: string | undefined;
+    let symbolsKey: string | undefined;
+    let inlayHintsKey: string | undefined;
 
     const single = (current: string | undefined, name: string, node: ts.Node): boolean => {
       if (current) {
@@ -989,11 +1036,36 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
         const on = (dOpts as { on?: unknown } | null)?.on;
         if (on === "save" || on === "change") diagnosticsOn = on;
       }
+
+      const actionDec = getDecorator(member, checker, "CodeAction");
+      if (actionDec && single(codeActionKey, "CodeAction", member.name)) {
+        codeActionKey = key;
+        const aOpts = optionsNodeOf(actionDec) ? tryEval(optionsNodeOf(actionDec)!) : {};
+        if (aOpts === EVAL_FAILED) return;
+        const kinds = (aOpts as { kinds?: unknown } | null)?.kinds;
+        if (Array.isArray(kinds)) codeActionKinds = kinds.map(String);
+      }
+      const defDec = getDecorator(member, checker, "Definition");
+      if (defDec && single(definitionKey, "Definition", member.name)) definitionKey = key;
+      const refDec = getDecorator(member, checker, "References");
+      if (refDec && single(referencesKey, "References", member.name)) referencesKey = key;
+      const renDec = getDecorator(member, checker, "Rename");
+      if (renDec && single(renameKey, "Rename", member.name)) renameKey = key;
+      const fmtDec = getDecorator(member, checker, "Formatting");
+      if (fmtDec && single(formattingKey, "Formatting", member.name)) formattingKey = key;
+      const symDec = getDecorator(member, checker, "Symbols");
+      if (symDec && single(symbolsKey, "Symbols", member.name)) symbolsKey = key;
+      const hintDec = getDecorator(member, checker, "InlayHints");
+      if (hintDec && single(inlayHintsKey, "InlayHints", member.name)) inlayHintsKey = key;
     }
 
-    if (!hoverKey && !inlineKey && !completionKey && !codeLensKey && !diagnosticsKey) {
+    const anyProvider =
+      hoverKey || inlineKey || completionKey || codeLensKey || diagnosticsKey ||
+      codeActionKey || definitionKey || referencesKey || renameKey ||
+      formattingKey || symbolsKey || inlayHintsKey;
+    if (!anyProvider) {
       diagnostics.push(
-        diagAt(lang.name, SIGIL.TreeViewIncomplete, `@Language '${langClassName}' precisa de ao menos um provider (@Hover, @Completion, @CodeLens ou @Diagnostics)`)
+        diagAt(lang.name, SIGIL.TreeViewIncomplete, `@Language '${langClassName}' precisa de ao menos um provider (@Hover, @Completion, @CodeAction, @Definition, …)`)
       );
       return;
     }
@@ -1009,6 +1081,14 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
         codeLensKey,
         diagnosticsKey,
         diagnosticsOn,
+        codeActionKey,
+        codeActionKinds,
+        definitionKey,
+        referencesKey,
+        renameKey,
+        formattingKey,
+        symbolsKey,
+        inlayHintsKey,
         sourceFile: sourceFileOf(lang),
         loc: locOf(lang.name),
       }) as IRLanguage
@@ -1163,11 +1243,62 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     );
   }
 
+  // ── classes @TestController ────────────────────────────────────────────────
+  function collectTestControllerClass(tc: ts.ClassDeclaration): void {
+    if (!tc.name) {
+      diagnostics.push(diagAt(tc, SIGIL.MissingRequiredOption, "a classe @TestController precisa de um nome"));
+      return;
+    }
+    const tcClassName = tc.name.text;
+    const dec = getDecorator(tc, checker, "TestController")!;
+    const optsNode = optionsNodeOf(dec);
+    const raw = optsNode ? tryEval(optsNode) : undefined;
+    if (raw === EVAL_FAILED) return;
+    const o = (raw ?? {}) as Record<string, unknown>;
+    if (typeof o.label !== "string" || o.label.length === 0) {
+      diagnostics.push(diagAt(optsNode ?? tc.name, SIGIL.MissingRequiredOption, "@TestController exige 'label' (o nome exibido no Test Explorer)"));
+      return;
+    }
+    let discoverKey: string | undefined;
+    let runKey: string | undefined;
+    const single = (current: string | undefined, name: string, node: ts.Node): boolean => {
+      if (current) {
+        diagnostics.push(diagAt(node, SIGIL.TreeViewIncomplete, `apenas um @${name} por @TestController`));
+        return false;
+      }
+      return true;
+    };
+    for (const member of tc.members) {
+      if (!ts.isMethodDeclaration(member)) continue;
+      const key = `${tcClassName}.${memberNameOf(member.name)}`;
+      if (getDecorator(member, checker, "TestDiscover") && single(discoverKey, "TestDiscover", member.name)) discoverKey = key;
+      if (getDecorator(member, checker, "TestRun") && single(runKey, "TestRun", member.name)) runKey = key;
+    }
+    if (!discoverKey) {
+      diagnostics.push(
+        diagAt(tc.name, SIGIL.TreeViewIncomplete, `@TestController '${tcClassName}' precisa de um método @TestDiscover`)
+      );
+      return;
+    }
+    testControllers.push(
+      compact({
+        key: tcClassName,
+        id: `${prefix}.${(o.id as string | undefined) ?? tcClassName.charAt(0).toLowerCase() + tcClassName.slice(1)}`,
+        label: o.label,
+        discoverKey,
+        runKey,
+        sourceFile: sourceFileOf(tc),
+        loc: locOf(tc.name),
+      }) as IRTestController
+    );
+  }
+
   for (const tree of treeClasses) collectTreeClass(tree);
   for (const wv of webviewClasses) collectWebviewClass(wv);
   for (const lang of languageClasses) collectLanguageClass(lang);
   for (const chat of chatClasses) collectChatClass(chat);
   for (const ce of customEditorClasses) collectCustomEditorClass(ce);
+  for (const tc of testControllerClasses) collectTestControllerClass(tc);
 
   // ── §8.5: ordem determinística é requisito do `sigil check`, não polimento ─
   const byId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
@@ -1183,6 +1314,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
   chatParticipants.sort(byId);
   lmTools.sort((a, b) => (a.name < b.name ? -1 : 1));
   mcpProviders.sort(byId);
+  testControllers.sort(byId);
   customEditors.sort((a, b) => (a.viewType < b.viewType ? -1 : a.viewType > b.viewType ? 1 : 0));
   events.sort(byKey);
   fileWatchers.sort(byKey);
@@ -1210,6 +1342,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     customEditors,
     lmTools,
     mcpProviders,
+    testControllers,
     events,
     fileWatchers,
     secrets,

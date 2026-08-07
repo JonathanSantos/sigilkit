@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+  <body>
+    <h3>Editor CAPS</h3>
+    <pre id="conteudo"></pre>
+    <button id="gritar">GRITAR</button>
+    <script>
+      const vscode = acquireVsCodeApi();
+      window.addEventListener("message", (e) => {
+        if (e.data?.type === "__sigilDocument") {
+          document.getElementById("conteudo").textContent = e.data.value;
+        }
+      });
+      document.getElementById("gritar").addEventListener("click", () => {
+        vscode.postMessage({ type: "gritar" });
+      });
+    </script>
+  </body>
+</html>

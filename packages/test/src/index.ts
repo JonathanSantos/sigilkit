@@ -235,7 +235,7 @@ export class SigilTestHost {
     return [...this.state.webviewViewProviders.keys()].sort();
   }
 
-  private languageProvider(kind: "hover" | "completion" | "codeLens", doc: TextDocumentMock) {
+  private languageProvider(kind: import("./vscode-mock").LanguageProviderEntry["kind"], doc: TextDocumentMock) {
     const entry = this.state.languageProviders.find(
       (p) => p.kind === kind && p.selector.includes(doc.languageId)
     );
@@ -265,6 +265,41 @@ export class SigilTestHost {
   /** Diagnostics correntes do documento (todas as collections). */
   diagnosticsFor(doc: TextDocumentMock): DiagnosticMock[] {
     return this.state.diagnosticCollections.flatMap((c) => c.byUri.get(doc.uri.toString()) ?? []);
+  }
+
+  /** Invoca o @CodeAction registrado (range/context opcionais). */
+  async provideCodeActions(doc: TextDocumentMock, range?: unknown, context?: unknown) {
+    return this.languageProvider("codeAction", doc).provideCodeActions!(doc, range ?? {}, context ?? { diagnostics: [] }, {});
+  }
+
+  /** Invoca o @Definition registrado. */
+  async provideDefinition(doc: TextDocumentMock, position: { line: number; character: number }) {
+    return this.languageProvider("definition", doc).provideDefinition!(doc, position, {});
+  }
+
+  /** Invoca o @References registrado. */
+  async provideReferences(doc: TextDocumentMock, position: { line: number; character: number }) {
+    return this.languageProvider("references", doc).provideReferences!(doc, position, { includeDeclaration: true }, {});
+  }
+
+  /** Invoca o @Rename registrado com o nome novo. */
+  async provideRenameEdits(doc: TextDocumentMock, position: { line: number; character: number }, newName: string) {
+    return this.languageProvider("rename", doc).provideRenameEdits!(doc, position, newName, {});
+  }
+
+  /** Invoca o @Formatting registrado (string do handler já vem como TextEdit de range completo). */
+  async provideFormattingEdits(doc: TextDocumentMock) {
+    return this.languageProvider("formatting", doc).provideDocumentFormattingEdits!(doc, { tabSize: 2, insertSpaces: true }, {});
+  }
+
+  /** Invoca o @Symbols registrado. */
+  async provideDocumentSymbols(doc: TextDocumentMock) {
+    return this.languageProvider("symbols", doc).provideDocumentSymbols!(doc, {});
+  }
+
+  /** Invoca o @InlayHints registrado no range dado (default: doc inteiro). */
+  async provideInlayHints(doc: TextDocumentMock, range?: unknown) {
+    return this.languageProvider("inlayHints", doc).provideInlayHints!(doc, range ?? {}, {});
   }
 
   /** Envia um request de chat ao participante; retorna o stream gravado. */
@@ -390,6 +425,60 @@ export class SigilTestHost {
   /** As mensagens de cada sendRequest, na ordem — para asserir o protocolo do llm.agent. */
   get llmRequests(): unknown[][] {
     return this.state.llmRequests;
+  }
+
+  private testController(id: string) {
+    const c = this.state.testControllers.find((tc) => tc.id === id);
+    if (!c) {
+      throw new Error(
+        `sigil-test: test controller '${id}' não registrado (registrados: ${this.state.testControllers.map((tc) => tc.id).join(", ") || "nenhum"})`
+      );
+    }
+    return c;
+  }
+
+  /** Árvore de testes do @TestDiscover (re-executa o discover antes, determinístico). */
+  async testItems(controllerId: string): Promise<{ id: string; label: string; children: unknown[] }[]> {
+    const c = this.testController(controllerId);
+    await c.refreshHandler?.();
+    const collect = (col: { forEach(cb: (i: { id: string; label: string; children: unknown }) => void): void }): { id: string; label: string; children: unknown[] }[] => {
+      const out: { id: string; label: string; children: unknown[] }[] = [];
+      col.forEach((i) => out.push({ id: i.id, label: i.label, children: collect(i.children as never) }));
+      return out;
+    };
+    return collect(c.items);
+  }
+
+  /** Roda o profile do @TestRun (todos os testes, ou só os ids dados). */
+  async runTests(
+    controllerId: string,
+    ids?: string[]
+  ): Promise<{ id: string; status: "passed" | "failed" | "skipped"; message?: string }[]> {
+    const c = this.testController(controllerId);
+    await c.refreshHandler?.();
+    const profile = c.profiles.find((p) => p.isDefault) ?? c.profiles[0];
+    if (!profile) {
+      throw new Error(`sigil-test: controller '${controllerId}' não tem run profile — a classe tem @TestRun?`);
+    }
+    let include: unknown[] | undefined;
+    if (ids) {
+      type Item = { id: string; children: { forEach(cb: (i: Item) => void): void } };
+      const find = (col: Item["children"], id: string): Item | undefined => {
+        let hit: Item | undefined;
+        col.forEach((i) => {
+          if (i.id === id) hit = i;
+          hit ??= find(i.children, id);
+        });
+        return hit;
+      };
+      include = ids.map((id) => {
+        const item = find(c.items as never, id);
+        if (!item) throw new Error(`sigil-test: teste '${id}' não encontrado no controller '${controllerId}'`);
+        return item;
+      });
+    }
+    await profile.handler({ include }, { isCancellationRequested: false, onCancellationRequested: () => ({ dispose() {} }) });
+    return c.runs.at(-1)?.results ?? [];
   }
 
   /** Abre um documento num @CustomEditor (resolve o provider com um painel fake). */

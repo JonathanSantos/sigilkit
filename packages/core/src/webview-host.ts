@@ -178,6 +178,88 @@ export function bindWebview(binding: WebviewBinding, ctx: vscode.ExtensionContex
 }
 
 /**
+ * @Webview com location "dual": UMA classe serve painel E sidebar (o caso
+ * vscode-pets — o upstream alterna por config). A view entra em
+ * contributes.views; `open()` abre o painel; o post é broadcast para as
+ * superfícies vivas; cada superfície tem o próprio roteador (a resposta de
+ * um @OnRequest volta só para quem perguntou). @OnOpen dispara quando a
+ * PRIMEIRA superfície abre e @OnDispose quando a ÚLTIMA fecha.
+ */
+export function bindWebviewDual(binding: WebviewBinding, ctx: vscode.ExtensionContext): vscode.Disposable {
+  let panel: vscode.WebviewPanel | undefined;
+  let view: vscode.WebviewView | undefined;
+
+  const post = (msg: unknown): void => {
+    if (!panel && !view) {
+      console.warn(`sigil: post em '${binding.key}' sem painel nem view abertos — mensagem descartada`);
+      return;
+    }
+    void panel?.webview.postMessage(msg);
+    void view?.webview.postMessage(msg);
+  };
+  registry.webviewPosts.set(binding.key, post);
+  const lifecycle = lifecycleFor(binding.key);
+  let vivos = 0;
+  const opened = (): void => {
+    if (++vivos === 1) lifecycle.opened();
+  };
+  const closed = (): void => {
+    if (--vivos === 0) lifecycle.closed();
+  };
+
+  const openPanel = async (): Promise<void> => {
+    if (panel) {
+      panel.reveal();
+      return;
+    }
+    panel = vscode.window.createWebviewPanel(binding.id, binding.title, vscode.ViewColumn.One, {
+      enableScripts: true,
+      retainContextWhenHidden: true,
+      localResourceRoots: [ctx.extensionUri],
+    });
+    panel.webview.onDidReceiveMessage(makeRouter(binding, (msg) => void panel?.webview.postMessage(msg)));
+    panel.onDidDispose(() => {
+      panel = undefined;
+      closed();
+    });
+    await fillWebview(panel.webview, binding, ctx);
+    opened();
+  };
+
+  const provider: vscode.WebviewViewProvider = {
+    resolveWebviewView: async (v) => {
+      view = v;
+      v.webview.options = { enableScripts: true, localResourceRoots: [ctx.extensionUri] };
+      v.webview.onDidReceiveMessage(makeRouter(binding, (msg) => void view?.webview.postMessage(msg)));
+      v.onDidDispose(() => {
+        view = undefined;
+        closed();
+      });
+      await fillWebview(v.webview, binding, ctx);
+      opened();
+    },
+  };
+
+  registry.webviews.set(binding.key, {
+    open: openPanel,
+    post,
+    refresh: async () => {
+      if (panel) await fillWebview(panel.webview, binding, ctx);
+      if (view) await fillWebview(view.webview, binding, ctx);
+    },
+  });
+  const registration = vscode.window.registerWebviewViewProvider(binding.id, provider);
+  return {
+    dispose() {
+      registry.webviews.delete(binding.key);
+      registry.webviewPosts.delete(binding.key);
+      panel?.dispose();
+      registration.dispose();
+    },
+  };
+}
+
+/**
  * @Webview com location "sidebar": a view entra em contributes.views (com
  * type "webview") e o host registra um WebviewViewProvider. `open()` foca a
  * view via o comando "<viewId>.focus" que o VSCode gera para toda view.

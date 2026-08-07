@@ -24,6 +24,7 @@ export interface Bucket {
   webviewDispose: Map<string, (...args: unknown[]) => unknown>;
   lmTools: Map<string, (...args: unknown[]) => unknown>;
   mcpServers: Map<string, (...args: unknown[]) => unknown>;
+  testHandlers: Map<string, (...args: unknown[]) => unknown>;
   every: Map<string, { ms: number; fn: () => unknown }>;
   configDefaults: Map<string, unknown>;
   statusBarText: Map<string, string>;
@@ -53,6 +54,7 @@ export function bucketOf(metadata: object | undefined): Bucket {
       webviewDispose: new Map(),
       lmTools: new Map(),
       mcpServers: new Map(),
+      testHandlers: new Map(),
       every: new Map(),
       configDefaults: new Map(),
       statusBarText: new Map(),
@@ -75,7 +77,8 @@ type BoundMemberKind =
   | "webviewOpen"
   | "webviewDispose"
   | "lmTools"
-  | "mcpServers";
+  | "mcpServers"
+  | "testHandlers";
 
 /** @Every(ms): método (bound) + intervalo no bucket — quem agenda é o bind. */
 export function registerEveryMember(ms: number) {
@@ -167,6 +170,9 @@ export function adoptRegistrations(
   }
   for (const [member, fn] of bucket.mcpServers) {
     registry.mcpServerHandlers.set(`${className}.${member}`, fn);
+  }
+  for (const [member, fn] of bucket.testHandlers) {
+    registry.testHandlers.set(`${className}.${member}`, fn);
   }
   for (const [member, spec] of bucket.every) {
     registry.everyHandlers.set(`${className}.${member}`, spec);

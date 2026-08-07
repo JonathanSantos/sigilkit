@@ -41,7 +41,7 @@ docs/spec.md):
   decorators ficam crus no bundle e o Node não os executa.
 
 Status: Fases 1, 2 e 3 completas — build/check/dev/init, cache por hash de IR,
-diagnósticos SIGIL1000–1016 testados por fixture com asserção de linha,
+diagnósticos SIGIL1000–1022 testados por fixture com asserção de linha,
 TreeView e Webview (§15). `npm test` = build + sigil build + bundle do exemplo
 + vitest (fronteira, merge, snapshots, diagnósticos, shell HTML, E2E de
 init/check, simulador). `npm run test:e2e` = extension host real via
@@ -93,6 +93,27 @@ Sondas: lmTools/invokeTool/mcpServers/provideInlineCompletions/chatRequest
 com command; queueLlmResponse aceita {text?,toolCalls?} roteirizado e
 host.llmRequests expõe as mensagens de cada sendRequest (asserção do
 protocolo do agent). tests/ai-lab.test.ts exercita tudo do zero.
+
+Fornada de linguagem + Testing (IR v9): @CodeAction({kinds}→
+providedCodeActionKinds via CodeActionKind.Empty.append)/@Definition/
+@References/@Rename/@Formatting/@Symbols/@InlayHints — mesmos
+languageHandlers/bindLanguage; @Formatting aceita STRING (TextEdit de range
+completo via doc.positionAt). @TestController({label})+@TestDiscover
+(nós {id,label,children}→TestItems, refreshHandler re-descobre)+@TestRun
+(outcome por FOLHA; include com grupo expande; exceção=falha) — bucket
+testHandlers, bindTestController, tests.createTestController dinâmico,
+manifesto ganha onStartupFinished (aditivo — merge deduplica por Set).
+@Webview location:"dual" = painel E sidebar numa classe (bindWebviewDual:
+view no contributes, open() abre painel, post broadcast, roteador POR
+superfície — RPC responde a quem perguntou; @OnOpen na 1ª superfície,
+@OnDispose na última, por contagem). SIGIL1022 = @OnOpen/@OnDispose/@Every
+em classe que os ignora (central no scan de classes; @Every válido em
+Extension/Webview/CustomEditor; OnOpen/Dispose só Webview/CustomEditor).
+CI matrix ubuntu+macos (Windows continue-on-error; spawnSync npx nos testes
+leva shell:win32). E2E cobre chat (manifesto+registro) e custom editor
+(vscode.openWith + TabInputCustom). Sondas: provideCodeActions/Definition/
+References/RenameEdits/FormattingEdits/DocumentSymbols/InlayHints +
+testItems/runTests. Labs: language-lab/testing-lab/dual-webview.
 
 Superfícies de linguagem/chat/editor: @Language({id}) com @Hover/@Completion/
 @CodeLens/@Diagnostics (bindLanguage; activationEvents onLanguage:* são

@@ -77,7 +77,7 @@ describe("tutorial — primeira extensão em 5 minutos", () => {
         "--external:vscode",
         "--outfile=out/extension.js",
       ],
-      { cwd: TMP, encoding: "utf8" }
+      { cwd: TMP, encoding: "utf8", shell: process.platform === "win32" }
     );
     expect(bundle.status, bundle.stderr).toBe(0);
     host = await activateExtension({ projectDir: TMP });

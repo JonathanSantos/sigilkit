@@ -151,6 +151,13 @@ describe("diagnósticos (§9)", () => {
     const { diags } = collectFixture("when-bad-syntax.ts");
     expect(lineOf(only(diags, SIGIL.InvalidWhenExpression))).toBe(9);
   });
+
+  it("SIGIL1022 — @OnOpen/@Every em classe que os ignora silenciosamente", () => {
+    const { diags } = collectFixture("lifecycle-wrong-class.ts");
+    const misplaced = diags.filter((d) => d.code === SIGIL.MisplacedLifecycle);
+    expect(misplaced.map((d) => lineOf(d)).sort()).toEqual([10, 21]);
+    expect(String(misplaced[0]!.messageText)).toContain("ignorado em runtime");
+  });
 });
 
 describe("avaliador estático seguindo consts (item 8)", () => {

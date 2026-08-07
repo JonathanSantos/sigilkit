@@ -14,6 +14,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/org/sigilkit"><img src="https://img.shields.io/npm/v/%40sigilkit%2Fcore?label=npm%20%40sigilkit&color=cb3837" alt="npm @sigilkit"></a>
   <a href="https://github.com/JonathanSantos/sigilkit/actions/workflows/ci.yml"><img src="https://github.com/JonathanSantos/sigilkit/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=sigilkit.restbench"><img src="https://img.shields.io/visual-studio-marketplace/v/sigilkit.restbench?label=REST%20Bench%20on%20Marketplace&color=007acc" alt="REST Bench on the Marketplace"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-8b5cf6" alt="MIT License"></a>
 </p>
 
@@ -137,10 +138,11 @@ npm test                         # unit + simulator + CLI E2E
 | `@Secret()` | accessor | `SecretStorage` with a synchronous cache |
 | `@ContextKey()` | accessor | `setContext` on assignment — and enables `when` validation |
 | `@TreeView({ name, container?, when? })` + `@TreeRoot`/`@TreeChildren`/`@TreeItem` | class | sidebar view with an adapted `TreeDataProvider`; `when` validated |
-| `@Webview({ title, ui, location?, when? })` + `@OnMessage`/`@OnRequest` | class | panel or sidebar with an HTML shell (CSP + nonce) and typed RPC; `when` (sidebar) validated |
+| `@Webview({ title, ui, location?, when? })` + `@OnMessage`/`@OnRequest` | class | panel, sidebar, or **`location: "dual"`** (one class serves both — broadcast posts, RPC answers whoever asked); HTML shell (CSP + nonce) and typed RPC; `when` validated |
 | `@OnOpen` / `@OnDispose` | method | panel/view lifecycle — open/close |
 | `@Every(ms)` | method | a timer with the right lifecycle: on the `@Extension` it lives from activation to deactivation; on a `@Webview`, only while the panel is open |
-| `@Language({ id })` + `@Hover`/`@Completion`/`@CodeLens`/`@Diagnostics` | class | language providers (+ automatic `onLanguage:*`) |
+| `@Language({ id })` + `@Hover`/`@Completion`/`@CodeLens`/`@Diagnostics`/`@CodeAction`/`@Definition`/`@References`/`@Rename`/`@Formatting`/`@Symbols`/`@InlayHints` | class | language providers (+ automatic `onLanguage:*`); `@Formatting` accepts returning the formatted document as a **string** |
+| `@TestController({ label })` + `@TestDiscover`/`@TestRun` | class | declarative Testing API: discover tests as plain nodes and return one outcome per test — a full Test Explorer without touching `TestItem`/`TestRun` |
 | `@ChatParticipant({ id, name })` + `@ChatRequest`/`@ChatFollowups` | class | chat participant (`@name` in Copilot Chat) |
 | `@ChatCommand("fix", { description? })` | method | the participant's slash command — declared in the manifest and routed by `request.command` |
 | `@LmTool({ description, referenceName? })` | method | **agent mode tool** — `inputSchema` DERIVED from the parameter's type; Copilot invokes it |
@@ -187,6 +189,9 @@ export class MarkdownAssist {
   @Hover()                                   hover(doc, pos) { return new vscode.Hover("…"); }
   @Completion({ triggerCharacters: ["("] })  complete(doc, pos) { /* … */ }
   @Diagnostics({ on: "change" })             validate(doc) { return [/* Diagnostic[] */]; }
+  @CodeAction({ kinds: ["quickfix"] })       fixes(doc, range, ctx) { /* CodeAction[] */ }
+  @Formatting()                              format(doc) { return prettify(doc.getText()); } // a string is enough
+  @Definition()                              def(doc, pos) { /* Location */ }
 }
 ```
 
@@ -435,7 +440,7 @@ the same pattern a real extension would use:
 | [examples/todos](examples/todos) | interactive TreeView | own container in the activity bar, state + refresh via `@Watch`, `view/item/context` menu, auto-scoped `when` |
 | [examples/notes](examples/notes) | sidebar webview | assets via `asWebviewUri`, typed RPC with `@OnRequest`, state that survives close/reopen |
 | [examples/hello](examples/hello) | kitchen sink | everything together — including `@Language` and `@LmTool` — + E2E on the real extension host |
-| [examples/restbench](examples/restbench) | **React UI** — a full REST client | typed protocol consumed by React, `@OnRequest` RPC, the `http` platform with stubbed fetch in tests, `@State`/`@Secret`/`@ContextKey` + `enablement`, zero `import vscode` |
+| [examples/restbench](examples/restbench) | **React UI** — a full REST client, [published on the Marketplace](https://marketplace.visualstudio.com/items?itemName=sigilkit.restbench) | typed protocol consumed by React, `@OnRequest` RPC, `@LmTool` (Copilot calls your API), the `http` platform with stubbed fetch in tests, `@State`/`@Secret`/`@ContextKey` + `enablement`, zero `import vscode` |
 | [examples/pets](examples/pets) | **rewrite case** — the [vscode-pets](https://github.com/tonybaloney/vscode-pets) host | 1,347 host lines become ~260; 293 lines of `contributes` become 0; the pets UI stays byte-identical (35 lines of glue) |
 
 ## Tests

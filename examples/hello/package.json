@@ -143,6 +143,30 @@
         "id": "hello.servidores",
         "label": "Servidores do Hello"
       }
+    ],
+    "chatParticipants": [
+      {
+        "id": "hello.hello",
+        "name": "hello",
+        "description": "o assistente do hello",
+        "commands": [
+          {
+            "name": "greet",
+            "description": "Manda a saudação configurada"
+          }
+        ]
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "hello.caps",
+        "displayName": "Editor CAPS",
+        "selector": [
+          {
+            "filenamePattern": "*.caps"
+          }
+        ]
+      }
     ]
   },
   "activationEvents": [

@@ -93,9 +93,9 @@ export function emitManifest(ir: IR): Contributes {
   for (const t of ir.treeViews) {
     (views[t.container] ??= []).push(compactView({ id: t.id, name: t.name, when: t.when }));
   }
-  // webviews de sidebar são views com type "webview"; painéis não contribuem nada
+  // webviews de sidebar/dual são views com type "webview"; painéis não contribuem nada
   for (const w of ir.webviews) {
-    if (w.location !== "sidebar") continue;
+    if (w.location !== "sidebar" && w.location !== "dual") continue;
     (views[w.container ?? "explorer"] ??= []).push(compactView({ id: w.id, name: w.name ?? w.title, type: "webview", when: w.when }));
   }
   if (Object.keys(views).length > 0) out.views = views;
@@ -167,5 +167,8 @@ export function emitActivationEvents(ir: IR): string[] {
   for (const lang of ir.languages) {
     for (const id of lang.selector) events.add(`onLanguage:${id}`);
   }
+  // Testing API não tem activation event próprio — o Test Explorer só vê o
+  // controller se a extensão ativar; onStartupFinished é a ponte padrão.
+  if ((ir.testControllers ?? []).length > 0) events.add("onStartupFinished");
   return [...events].sort();
 }
