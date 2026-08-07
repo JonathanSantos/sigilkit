@@ -4,7 +4,7 @@ Os pacotes (`@sigilkit/*` e `create-sigil`) versionam em lockstep — cada
 entrada aqui vale para todos na mesma versão. Pré-1.0, mudanças de API podem
 acontecer entre versões minor; sempre listadas aqui.
 
-## Não publicado
+## 0.11.0 — 2026-08-07
 
 A rodada 3 do dogfood externo (F11–F14 — incluindo o primeiro bug percebido
 em USO REAL, não pelas sondas):
