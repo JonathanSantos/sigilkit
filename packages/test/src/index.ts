@@ -81,6 +81,7 @@ export async function activateExtension(opts: ActivateOptions): Promise<SigilTes
   }
 
   const state = createState();
+  state.projectDir = projectDir;
   const properties = pkg.contributes?.configuration?.properties ?? {};
   for (const [id, schema] of Object.entries(properties)) {
     if (schema && "default" in schema) state.defaults.set(id, schema.default);
@@ -235,6 +236,11 @@ export class SigilTestHost {
     return [...this.state.webviewViewProviders.keys()].sort();
   }
 
+  /** As sondas aceitam o DOCUMENTO ou o EDITOR (F6 do dogfood externo). */
+  private docOf(d: TextDocumentMock | TextEditorMock): TextDocumentMock {
+    return (d as TextEditorMock).document ?? (d as TextDocumentMock);
+  }
+
   private languageProvider(kind: import("./vscode-mock").LanguageProviderEntry["kind"], doc: TextDocumentMock) {
     const entry = this.state.languageProviders.find(
       (p) => p.kind === kind && p.selector.includes(doc.languageId)
@@ -247,59 +253,98 @@ export class SigilTestHost {
     return entry.provider;
   }
 
+  /**
+   * Em produção o guard engole erro de handler (vira log) — resiliência
+   * certa para o usuário final, veneno para teste (F7: sonda resolvia
+   * undefined sem pista). Aqui, erro capturado pelo guard durante a sonda
+   * vira exceção ALTA com a mensagem original.
+   */
+  private async guardedProbe<T>(fn: () => T | Promise<T>): Promise<T> {
+    const before = this.logs.length;
+    const result = await fn();
+    const swallowed = this.logs.slice(before).filter((l) => l.level === "error");
+    if (swallowed.length > 0 && result === undefined) {
+      throw new Error(
+        `sigil-test: o handler lançou durante a sonda (capturado pelo guard):\n${swallowed.map((l) => l.message).join("\n")}`
+      );
+    }
+    return result;
+  }
+
   /** Invoca o @Hover registrado para a linguagem do documento. */
-  async provideHover(doc: TextDocumentMock, position: { line: number; character: number }) {
-    return this.languageProvider("hover", doc).provideHover!(doc, position, {});
+  async provideHover(doc: TextDocumentMock | TextEditorMock, position: { line: number; character: number }) {
+    const d = this.docOf(doc);
+    return this.guardedProbe(() => this.languageProvider("hover", d).provideHover!(d, position, {}));
   }
 
   /** Invoca o @Completion registrado para a linguagem do documento. */
-  async provideCompletions(doc: TextDocumentMock, position: { line: number; character: number }) {
-    return this.languageProvider("completion", doc).provideCompletionItems!(doc, position, {}, {});
+  async provideCompletions(doc: TextDocumentMock | TextEditorMock, position: { line: number; character: number }) {
+    const d = this.docOf(doc);
+    return this.guardedProbe(() => this.languageProvider("completion", d).provideCompletionItems!(d, position, {}, {}));
   }
 
   /** Invoca o @CodeLens registrado para a linguagem do documento. */
-  async provideCodeLenses(doc: TextDocumentMock) {
-    return this.languageProvider("codeLens", doc).provideCodeLenses!(doc, {});
+  async provideCodeLenses(doc: TextDocumentMock | TextEditorMock) {
+    const d = this.docOf(doc);
+    return this.guardedProbe(() => this.languageProvider("codeLens", d).provideCodeLenses!(d, {}));
   }
 
   /** Diagnostics correntes do documento (todas as collections). */
-  diagnosticsFor(doc: TextDocumentMock): DiagnosticMock[] {
-    return this.state.diagnosticCollections.flatMap((c) => c.byUri.get(doc.uri.toString()) ?? []);
+  diagnosticsFor(doc: TextDocumentMock | TextEditorMock): DiagnosticMock[] {
+    const d = this.docOf(doc);
+    return this.state.diagnosticCollections.flatMap((c) => c.byUri.get(d.uri.toString()) ?? []);
   }
 
   /** Invoca o @CodeAction registrado (range/context opcionais). */
-  async provideCodeActions(doc: TextDocumentMock, range?: unknown, context?: unknown) {
-    return this.languageProvider("codeAction", doc).provideCodeActions!(doc, range ?? {}, context ?? { diagnostics: [] }, {});
+  async provideCodeActions(doc: TextDocumentMock | TextEditorMock, range?: unknown, context?: unknown) {
+    const d = this.docOf(doc);
+    return this.guardedProbe(() =>
+      this.languageProvider("codeAction", d).provideCodeActions!(d, range ?? {}, context ?? { diagnostics: [] }, {})
+    );
   }
 
   /** Invoca o @Definition registrado. */
-  async provideDefinition(doc: TextDocumentMock, position: { line: number; character: number }) {
-    return this.languageProvider("definition", doc).provideDefinition!(doc, position, {});
+  async provideDefinition(doc: TextDocumentMock | TextEditorMock, position: { line: number; character: number }) {
+    const d = this.docOf(doc);
+    return this.guardedProbe(() => this.languageProvider("definition", d).provideDefinition!(d, position, {}));
   }
 
   /** Invoca o @References registrado. */
-  async provideReferences(doc: TextDocumentMock, position: { line: number; character: number }) {
-    return this.languageProvider("references", doc).provideReferences!(doc, position, { includeDeclaration: true }, {});
+  async provideReferences(doc: TextDocumentMock | TextEditorMock, position: { line: number; character: number }) {
+    const d = this.docOf(doc);
+    return this.guardedProbe(() =>
+      this.languageProvider("references", d).provideReferences!(d, position, { includeDeclaration: true }, {})
+    );
   }
 
   /** Invoca o @Rename registrado com o nome novo. */
-  async provideRenameEdits(doc: TextDocumentMock, position: { line: number; character: number }, newName: string) {
-    return this.languageProvider("rename", doc).provideRenameEdits!(doc, position, newName, {});
+  async provideRenameEdits(
+    doc: TextDocumentMock | TextEditorMock,
+    position: { line: number; character: number },
+    newName: string
+  ) {
+    const d = this.docOf(doc);
+    return this.guardedProbe(() => this.languageProvider("rename", d).provideRenameEdits!(d, position, newName, {}));
   }
 
   /** Invoca o @Formatting registrado (string do handler já vem como TextEdit de range completo). */
-  async provideFormattingEdits(doc: TextDocumentMock) {
-    return this.languageProvider("formatting", doc).provideDocumentFormattingEdits!(doc, { tabSize: 2, insertSpaces: true }, {});
+  async provideFormattingEdits(doc: TextDocumentMock | TextEditorMock) {
+    const d = this.docOf(doc);
+    return this.guardedProbe(() =>
+      this.languageProvider("formatting", d).provideDocumentFormattingEdits!(d, { tabSize: 2, insertSpaces: true }, {})
+    );
   }
 
   /** Invoca o @Symbols registrado. */
-  async provideDocumentSymbols(doc: TextDocumentMock) {
-    return this.languageProvider("symbols", doc).provideDocumentSymbols!(doc, {});
+  async provideDocumentSymbols(doc: TextDocumentMock | TextEditorMock) {
+    const d = this.docOf(doc);
+    return this.guardedProbe(() => this.languageProvider("symbols", d).provideDocumentSymbols!(d, {}));
   }
 
   /** Invoca o @InlayHints registrado no range dado (default: doc inteiro). */
-  async provideInlayHints(doc: TextDocumentMock, range?: unknown) {
-    return this.languageProvider("inlayHints", doc).provideInlayHints!(doc, range ?? {}, {});
+  async provideInlayHints(doc: TextDocumentMock | TextEditorMock, range?: unknown) {
+    const d = this.docOf(doc);
+    return this.guardedProbe(() => this.languageProvider("inlayHints", d).provideInlayHints!(d, range ?? {}, {}));
   }
 
   /** Envia um request de chat ao participante; retorna o stream gravado. */
@@ -495,13 +540,15 @@ export class SigilTestHost {
   }
 
   /** Abre um documento fake e o torna o activeTextEditor. */
-  async openTextDocument(content: string, languageId = "plaintext") {
+  /** Abre e MOSTRA um documento; retorna o EDITOR (o documento fica em `.document`).
+   *  As sondas de linguagem aceitam o editor direto — passe o retorno como está. */
+  async openTextDocument(content: string, languageId = "plaintext"): Promise<TextEditorMock> {
     const workspace = this.vscode.workspace as {
       openTextDocument(o: { content: string; language: string }): Promise<unknown>;
     };
     const window = this.vscode.window as { showTextDocument(doc: unknown): Promise<unknown> };
     const doc = await workspace.openTextDocument({ content, language: languageId });
-    return window.showTextDocument(doc);
+    return (await window.showTextDocument(doc)) as TextEditorMock;
   }
 
   /** O editor ativo (o último showTextDocument) — sonda para editor.openText do core. */

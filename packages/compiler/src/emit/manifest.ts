@@ -17,7 +17,7 @@ export type OwnedContributeKey = (typeof OWNED_CONTRIBUTES)[number];
  * sigil as emite, mas NUNCA removidas quando ausentes — o usuário pode
  * mantê-las à mão enquanto não usar a forma declarativa (container inline).
  */
-export const CONDITIONAL_CONTRIBUTES = ["viewsContainers", "chatParticipants", "customEditors", "languageModelTools", "mcpServerDefinitionProviders"] as const;
+export const CONDITIONAL_CONTRIBUTES = ["viewsContainers", "chatParticipants", "customEditors", "languageModelTools", "mcpServerDefinitionProviders", "languages"] as const;
 export type ConditionalContributeKey = (typeof CONDITIONAL_CONTRIBUTES)[number];
 
 export type Contributes = Partial<Record<OwnedContributeKey | ConditionalContributeKey, unknown>>;
@@ -106,6 +106,20 @@ export function emitManifest(ir: IR): Contributes {
       (grouped[c.location] ??= []).push({ id: c.id, title: c.title, icon: c.icon });
     }
     out.viewsContainers = grouped;
+  }
+
+  // DSL própria: só entra em contributes.languages quem declara
+  // extensions/aliases/configuration — linguagem builtin (markdown…) não
+  const ownLanguages = ir.languages.filter((l) => l.extensions || l.aliases || l.configuration);
+  if (ownLanguages.length > 0) {
+    out.languages = ownLanguages.map((l) =>
+      compact({
+        id: l.selector[0],
+        extensions: l.extensions,
+        aliases: l.aliases,
+        configuration: l.configuration ? `./${l.configuration}` : undefined,
+      })
+    );
   }
 
   if (ir.chatParticipants.length > 0) {

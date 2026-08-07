@@ -979,6 +979,41 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     }
     selector.sort();
 
+    // DSL própria (F4 do dogfood): extensions/aliases/configuration viram
+    // contributes.languages — e aí o id precisa ser ÚNICO (a entrada é por id)
+    let langExtensions: string[] | undefined;
+    let langAliases: string[] | undefined;
+    let langConfiguration: string | undefined;
+    if (o.extensions !== undefined || o.aliases !== undefined || o.configuration !== undefined) {
+      if (selector.length > 1) {
+        diagnostics.push(
+          diagAt(optsNode ?? lang.name, SIGIL.MissingRequiredOption, "extensions/aliases/configuration de @Language exigem um ÚNICO id (a entrada de contributes.languages é por id)")
+        );
+        return;
+      }
+      if (o.extensions !== undefined) {
+        if (!Array.isArray(o.extensions) || o.extensions.some((e) => typeof e !== "string" || e.length === 0)) {
+          diagnostics.push(diagAt(optsNode ?? lang.name, SIGIL.MissingRequiredOption, "'extensions' de @Language precisa ser string[] (ex.: [\".mock\"])"));
+          return;
+        }
+        langExtensions = (o.extensions as string[]).map((e) => (e.startsWith(".") ? e : `.${e}`));
+      }
+      if (o.aliases !== undefined) {
+        if (!Array.isArray(o.aliases) || o.aliases.some((a) => typeof a !== "string")) {
+          diagnostics.push(diagAt(optsNode ?? lang.name, SIGIL.MissingRequiredOption, "'aliases' de @Language precisa ser string[]"));
+          return;
+        }
+        langAliases = o.aliases as string[];
+      }
+      if (o.configuration !== undefined) {
+        if (typeof o.configuration !== "string" || o.configuration.length === 0) {
+          diagnostics.push(diagAt(optsNode ?? lang.name, SIGIL.MissingRequiredOption, "'configuration' de @Language precisa ser um caminho (string)"));
+          return;
+        }
+        langConfiguration = toPosix(o.configuration).replace(/^\.\//, "");
+      }
+    }
+
     let hoverKey: string | undefined;
     let inlineKey: string | undefined;
     let completionKey: string | undefined;
@@ -1074,6 +1109,9 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
       compact({
         key: langClassName,
         selector,
+        extensions: langExtensions,
+        aliases: langAliases,
+        configuration: langConfiguration,
         hoverKey,
         inlineKey,
         completionKey,

@@ -82,7 +82,7 @@ exports[`inferência de schema (§8.3) > snapshot do IR 1`] = `
   "statusBars": [],
   "testControllers": [],
   "treeViews": [],
-  "version": 9,
+  "version": 10,
   "viewContainers": [],
   "watches": [],
   "webviews": [],

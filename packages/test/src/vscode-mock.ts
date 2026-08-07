@@ -78,10 +78,40 @@ export class PositionMock {
 }
 
 export class RangeMock {
-  constructor(
-    readonly start: PositionMock,
-    readonly end: PositionMock
-  ) {}
+  readonly start: PositionMock;
+  readonly end: PositionMock;
+  /** aceita (start, end) com Positions OU o overload numérico (l1, c1, l2, c2) do vscode real */
+  constructor(start: PositionMock | number, end: PositionMock | number, endLine?: number, endCharacter?: number) {
+    if (typeof start === "number") {
+      this.start = new PositionMock(start, (end as number) ?? 0);
+      this.end = new PositionMock(endLine ?? (start as number), endCharacter ?? 0);
+    } else {
+      this.start = start;
+      this.end = end as PositionMock;
+    }
+  }
+}
+
+/** MarkdownString real o suficiente para hovers clássicos. */
+export class MarkdownStringMock {
+  isTrusted = false;
+  supportHtml = false;
+  constructor(public value: string = "") {}
+  appendMarkdown(s: string): this {
+    this.value += s;
+    return this;
+  }
+  appendText(s: string): this {
+    this.value += s.replace(/[\\`*_{}[\]()#+\-.!]/g, "\\$&");
+    return this;
+  }
+  appendCodeblock(code: string, language = ""): this {
+    this.value += `\n\`\`\`${language}\n${code}\n\`\`\`\n`;
+    return this;
+  }
+  toString(): string {
+    return this.value;
+  }
 }
 
 export class SelectionMock extends RangeMock {
@@ -122,6 +152,21 @@ export class TextDocumentMock {
     let offset = 0;
     for (let i = 0; i < pos.line && i < lines.length; i++) offset += lines[i]!.length + 1;
     return Math.min(offset + pos.character, this.text.length);
+  }
+
+  /** a forma canônica de hover: a palavra sob o cursor (regex custom opcional). */
+  getWordRangeAtPosition(pos: { line: number; character: number }, regex?: RegExp): RangeMock | undefined {
+    const line = this.text.split("\n")[pos.line] ?? "";
+    const re = new RegExp((regex ?? /[\wÀ-ɏ]+/).source, `${(regex?.flags ?? "").replace(/g/g, "")}g`);
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(line))) {
+      if (m.index <= pos.character && pos.character <= m.index + m[0].length && m[0].length > 0) {
+        return new RangeMock(new PositionMock(pos.line, m.index), new PositionMock(pos.line, m.index + m[0].length));
+      }
+      if (m.index > pos.character) break;
+      if (m[0].length === 0) re.lastIndex++;
+    }
+    return undefined;
   }
 
   positionAt(offset: number): PositionMock {
@@ -576,6 +621,8 @@ export type LlmScriptedReply =
   | { text?: string; toolCalls?: { callId: string; name: string; input?: unknown }[] };
 
 export interface VscodeMockState {
+  /** raiz do projeto sob teste — alimenta workspaceFolders/findFiles/asRelativePath */
+  projectDir?: string;
   /** valores "escritos" (usuário ou extensão); ausência → default do manifesto */
   values: Map<string, unknown>;
   /** defaults semeados de contributes.configuration.properties */
@@ -778,11 +825,14 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
   const toSelectorArray = (selector: unknown): string[] =>
     typeof selector === "string" ? [selector] : Array.isArray(selector) ? selector.map(String) : [];
 
-  return {
+  const api: Record<string, unknown> = {
     EventEmitter: EventEmitterMock,
     TreeItem: TreeItemMock,
     TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
     ViewColumn: { Active: -1, Beside: -2, One: 1, Two: 2, Three: 3 },
+    MarkdownString: MarkdownStringMock,
+    FileType: { Unknown: 0, File: 1, Directory: 2, SymbolicLink: 64 },
+    ColorThemeKind: { Light: 1, Dark: 2, HighContrast: 3, HighContrastLight: 4 },
     ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
     StatusBarAlignment: { Left: 1, Right: 2 },
     DiagnosticSeverity: { Error: 0, Warning: 1, Information: 2, Hint: 3 },
@@ -981,6 +1031,9 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
       joinPath: (base: UriMock, ...parts: string[]) => uriFile(path.join(base.fsPath, ...parts)),
     },
     window: {
+      // no host real SEMPRE existe; sem simular, o fallback `?? x` do usuário
+      // rodava silenciosamente diferente do VSCode (o Proxy R6 expôs isso)
+      activeColorTheme: { kind: 2 }, // ColorThemeKind.Dark
       showInformationMessage: (msg: string) => {
         state.infoMessages.push(String(msg));
         return Promise.resolve(undefined);
@@ -1145,6 +1198,60 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
       fs: {
         readFile: (uri: UriMock): Promise<Uint8Array> =>
           Promise.resolve(new Uint8Array(fs.readFileSync(uri.fsPath))),
+        writeFile: (uri: UriMock, content: Uint8Array): Promise<void> => {
+          fs.mkdirSync(path.dirname(uri.fsPath), { recursive: true });
+          fs.writeFileSync(uri.fsPath, content);
+          return Promise.resolve();
+        },
+        readDirectory: (uri: UriMock): Promise<[string, number][]> =>
+          Promise.resolve(
+            fs
+              .readdirSync(uri.fsPath, { withFileTypes: true })
+              .map((e) => [e.name, e.isDirectory() ? 2 : 1] as [string, number])
+          ),
+        createDirectory: (uri: UriMock): Promise<void> => {
+          fs.mkdirSync(uri.fsPath, { recursive: true });
+          return Promise.resolve();
+        },
+        stat: (uri: UriMock) => {
+          const s = fs.statSync(uri.fsPath);
+          return Promise.resolve({ type: s.isDirectory() ? 2 : 1, ctime: s.ctimeMs, mtime: s.mtimeMs, size: s.size });
+        },
+        delete: (uri: UriMock, opts?: { recursive?: boolean }): Promise<void> => {
+          fs.rmSync(uri.fsPath, { recursive: opts?.recursive ?? false, force: true });
+          return Promise.resolve();
+        },
+      },
+      findFiles: (include: string, exclude?: string | null, maxResults?: number): Promise<UriMock[]> => {
+        const root = state.projectDir;
+        if (!root) return unsupported("workspace.findFiles (host ativado sem projectDir)");
+        const inc = globToRegex(include);
+        const exc = exclude ? globToRegex(exclude) : undefined;
+        const out: UriMock[] = [];
+        const visit = (dir: string): void => {
+          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            if (entry.name === "node_modules" || entry.name.startsWith(".git")) continue;
+            const abs = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+              visit(abs);
+              continue;
+            }
+            const rel = path.relative(root, abs).split(path.sep).join("/");
+            if (inc.test(rel) && !exc?.test(rel)) {
+              out.push(uriFile(abs));
+              if (maxResults !== undefined && out.length >= maxResults) return;
+            }
+          }
+        };
+        visit(root);
+        return Promise.resolve(maxResults !== undefined ? out.slice(0, maxResults) : out);
+      },
+      asRelativePath: (input: string | UriMock, _includeWorkspaceFolder?: boolean): string => {
+        const root = state.projectDir;
+        const fsPath = typeof input === "string" ? input : input.fsPath;
+        if (!root) return fsPath;
+        const rel = path.relative(root, fsPath);
+        return rel.startsWith("..") ? fsPath : rel.split(path.sep).join("/");
       },
       get textDocuments() {
         return [...state.documents];
@@ -1168,8 +1275,66 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
         return Promise.resolve(doc);
       },
       get workspaceFolders() {
-        return unsupported("workspace.workspaceFolders");
+        // com projectDir (o caso do activateExtension) o workspace é REAL
+        if (!state.projectDir) return undefined;
+        return [{ uri: uriFile(state.projectDir), name: path.basename(state.projectDir), index: 0 }];
+      },
+      getWorkspaceFolder: (uri: UriMock) => {
+        if (!state.projectDir) return undefined;
+        const rel = path.relative(state.projectDir, uri.fsPath);
+        return rel.startsWith("..")
+          ? undefined
+          : { uri: uriFile(state.projectDir), name: path.basename(state.projectDir), index: 0 };
       },
     },
   };
+
+  // ── R6 por Proxy (F5 do dogfood externo): membro DESCONHECIDO de um
+  // namespace lança o erro descritivo com o nome completo — antes, só os
+  // getters enumerados um a um avisavam; o resto era undefined → TypeError
+  // genérico. Membros que EXISTEM (mesmo retornando undefined, ex.:
+  // activeTextEditor) passam normais. O bundle acessa os namespaces via
+  // getters delegantes do interop CJS→ESM, então o Proxy por namespace o
+  // cobre; o de nível de módulo cobre acesso direto (require em testes).
+  for (const ns of ["workspace", "window", "languages", "commands", "lm", "chat", "tests", "env", "extensions"]) {
+    const target = api[ns];
+    if (target && typeof target === "object") api[ns] = r6Namespace(ns, target as object);
+  }
+  return r6Namespace("vscode", api);
+}
+
+const R6_SAFE_PROPS = new Set([
+  "then", "catch", "finally", "toJSON", "toString", "valueOf", "constructor",
+  "hasOwnProperty", "__esModule", "default", "inspect",
+]);
+
+function r6Namespace<T extends object>(name: string, target: T): T {
+  return new Proxy(target, {
+    get(t, prop, receiver) {
+      if (typeof prop === "string" && !(prop in t) && !R6_SAFE_PROPS.has(prop)) {
+        unsupported(`${name}.${prop}`);
+      }
+      return Reflect.get(t, prop, receiver);
+    },
+  });
+}
+
+/** glob mínimo para findFiles: **, *, ?, {a,b} — cobre o uso comum. */
+function globToRegex(glob: string): RegExp {
+  let re = "";
+  for (let i = 0; i < glob.length; i++) {
+    const c = glob[i]!;
+    if (c === "*") {
+      if (glob[i + 1] === "*") {
+        re += "(?:.*)";
+        i++;
+        if (glob[i + 1] === "/") i++;
+      } else re += "[^/]*";
+    } else if (c === "?") re += "[^/]";
+    else if (c === "{") re += "(?:";
+    else if (c === "}") re += ")";
+    else if (c === ",") re += "|";
+    else re += c.replace(/[.+^$()|[\]\\]/g, "\\$&");
+  }
+  return new RegExp(`^${re}$`);
 }

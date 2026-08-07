@@ -1,4 +1,4 @@
-export const IR_VERSION = 9;
+export const IR_VERSION = 10;
 
 export interface SourceLoc {
   file: string;
@@ -105,6 +105,11 @@ export interface IRWebview {
 export interface IRLanguage {
   key: string; // nome da classe
   selector: string[]; // ids de linguagem (emite activationEvents onLanguage:*)
+  /** DSL própria: declara a linguagem em contributes.languages (F4 do dogfood) */
+  extensions?: string[]; // ex.: [".mock"]
+  aliases?: string[];
+  /** caminho do language-configuration.json, relativo à raiz */
+  configuration?: string;
   hoverKey?: string;
   /** @InlineCompletion: ghost text */
   inlineKey?: string;

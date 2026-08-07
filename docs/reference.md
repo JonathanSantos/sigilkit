@@ -96,7 +96,11 @@ derivado do schema das `@Config`.
   `post!: (msg: ...) => void` — o wire injeta; o tipo do parâmetro alimenta
   `registry.panel()` e o `sigil-env.d.ts`. Shell HTML com CSP + nonce é do
   sigil; `@OnRequest` responde ao `callHost` da UI com correlação automática.
-- `@Language({ id: string | string[] })` + providers (um de cada por classe):
+- `@Language({ id: string | string[], extensions?, aliases?, configuration? })`
+  — **DSL própria**: `extensions: [".minha"]` (id ÚNICO nesse caso) emite o
+  `contributes.languages` que associa os arquivos ao language id; sem isso
+  nenhum provider dispara. `configuration` aponta o
+  language-configuration.json. Providers (um de cada por classe):
   `@Hover`, `@Completion({ triggerCharacters? })`, `@CodeLens`,
   `@Diagnostics({ on: "change" | "save" })` (collection gerenciada: revalida
   em open/change/save, limpa no close), `@InlineCompletion` (retorne string,
@@ -136,8 +140,11 @@ derivado do schema das `@Config`.
   `http.fetchImpl` trocável em teste (resolução tardia — lido a cada chamada).
 - `resources.readText/readJson/readBytes(caminhoRelativo)` — arquivos
   empacotados via `workspace.fs` (funciona no vscode.dev).
-- `prompt.text/pick/confirm(...)` e `prompt.steps([...])` — wizard em passos
-  (ESC volta um passo).
+- `prompt.text/pick/confirm(...)` — cada passo é THENABLE: use avulso
+  (`const cor = await prompt.pick([...])`) ou componha em
+  `prompt.steps({...})` (wizard; ESC volta um passo). `pick` aceita strings
+  ou itens ricos `{ label, description?, detail?, value? }` — o retorno é o
+  `value` (ou o label).
 - `editor.openText(conteudo, { language?, beside? })` — documento virtual num
   editor real (highlight/folding/busca do tema do usuário).
 - `llm.ask(prompt, opts?)` / `llm.stream(prompt, onChunk, opts?)` /
@@ -177,7 +184,15 @@ Convenção: uma pasta (com tsconfig `lib: DOM` + `checkJs` e `include` do
 
 `const host = await activateExtension({ projectDir })` — intercepta
 `require("vscode")`, ativa o **bundle real** (`out/extension.js`), semeia os
-defaults do manifesto. API não simulada lança erro descritivo (R6).
+defaults do manifesto. API não simulada lança erro descritivo (R6) —
+**qualquer membro desconhecido de namespace**, via Proxy, não só os
+enumerados. O workspace é real sobre o `projectDir`: `findFiles` (globs),
+`asRelativePath`, `workspace.fs` (read/write/readDirectory/stat/delete) e
+`workspaceFolders` funcionam. Handler que lança durante uma sonda `provide*`
+vira erro ALTO no teste (o guard loga em produção, mas a sonda acusa).
+`openTextDocument(texto, lang)` retorna o EDITOR (documento em `.document`);
+as sondas de linguagem aceitam editor OU documento. `registry.trees
+.get("<prefix>.<viewId>").fire()` força refresh de uma tree em teste.
 
 Sondas do `SigilTestHost` (principais):
 

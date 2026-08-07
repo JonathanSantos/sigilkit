@@ -35,7 +35,8 @@ export class LangLab {
 }
 
 // Providers devolvem objetos estruturais — o simulador repassa como o host.
-@Language({ id: "recipes" })
+// DSL própria: extensions declara a linguagem em contributes.languages (F4).
+@Language({ id: "recipes", extensions: [".recipe", "rcp"], aliases: ["Receitas"] })
 export class RecipesLanguage {
   @CodeAction({ kinds: ["quickfix"] })
   acoes(doc: { getText(): string }) {
@@ -122,6 +123,13 @@ describe("language-lab — a fornada de linguagem completa", () => {
   it("manifesto: activationEvents onLanguage derivado", () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(TMP, "package.json"), "utf8"));
     expect(pkg.activationEvents).toContain("onLanguage:recipes");
+  });
+
+  it("manifesto: DSL própria entra em contributes.languages (extensão normalizada com ponto)", () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(TMP, "package.json"), "utf8"));
+    expect(pkg.contributes.languages).toEqual([
+      { id: "recipes", extensions: [".recipe", ".rcp"], aliases: ["Receitas"] },
+    ]);
   });
 
   it("@CodeAction responde com as ações (e só quando aplicável)", async () => {

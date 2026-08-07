@@ -15,9 +15,13 @@ são GERADOS a partir dos decorators em \`src/\`.
 
 ## Regras de ouro
 
-1. **NUNCA edite \`src/.generated/**\`** nem o bloco \`contributes\`/chaves
-   gerenciadas do \`package.json\` — são regenerados pelo build e sua edição
-   será sobrescrita. Toda mudança acontece nos decorators em \`src/\`.
+1. **NUNCA edite \`src/.generated/**\` nem as chaves GERENCIADAS do
+   \`package.json\`** (as que o build deriva dos decorators) — serão
+   sobrescritas. Chaves que o sigil NÃO gerencia (ex.: um \`contributes\`
+   que nenhum decorator produz) são **preservadas pelo merge** e podem ser
+   mantidas à mão — mas antes confira na referência se já não existe
+   decorator para isso (ex.: DSL própria é \`@Language({ extensions })\`,
+   não entrada manual).
 2. **Depois de mudar qualquer decorator, rode \`npm run build\`** — regenera
    manifesto, wire e tipos. \`npx sigil check .\` falha se o manifesto
    commitado estiver stale (use como verificação barata).
@@ -57,7 +61,7 @@ Classe \`@Extension({ prefix, settings? })\` — a extensão. Membros:
 Outras classes (uma responsabilidade por classe):
 - \`@TreeView({ name, container?, when? })\` + \`@TreeRoot\`/\`@TreeChildren\`/\`@TreeItem\` (+ \`@Command\` com menu \`view/title\`)
 - \`@Webview({ id, title, ui, location? })\` + \`@OnMessage("tipo")\`/\`@OnRequest("tipo")\` — \`location\`: \`"panel"\` (default), \`"sidebar"\` ou \`"dual"\` (painel E sidebar); \`ui:\` é relativo à RAIZ do projeto; declare \`post!: (msg: ...) => void\` para enviar host→UI
-- \`@Language({ id })\` + \`@Hover\`/\`@Completion\`/\`@CodeLens\`/\`@Diagnostics\`/\`@InlineCompletion\`/\`@CodeAction\`/\`@Definition\`/\`@References\`/\`@Rename\`/\`@Formatting\`/\`@Symbols\`/\`@InlayHints\` — \`@Formatting\` pode retornar o documento formatado como **string**
+- \`@Language({ id, extensions?, aliases?, configuration? })\` + \`@Hover\`/\`@Completion\`/\`@CodeLens\`/\`@Diagnostics\`/\`@InlineCompletion\`/\`@CodeAction\`/\`@Definition\`/\`@References\`/\`@Rename\`/\`@Formatting\`/\`@Symbols\`/\`@InlayHints\` — **DSL própria: declare \`extensions: [".minha"]\`** e o sigil emite o \`contributes.languages\` (sem isso o VSCode nunca associa o arquivo ao id e nada dispara); \`@Formatting\` pode retornar o documento formatado como **string**
 - \`@ChatParticipant({ id, name })\` + \`@ChatRequest\`/\`@ChatCommand("nome")\`/\`@ChatFollowups\`
 - \`@CustomEditor({ id, filenamePattern, ui })\` — handlers recebem \`SigilEditorContext\` como 2º argumento (\`editor.getText()\`, \`editor.applyEdit(novoTexto)\`)
 - \`@TestController({ label })\` + \`@TestDiscover\` (retorne nós \`{id, label, children?}\`) + \`@TestRun\` (retorne \`true\`/\`false\`/\`{passed, message?}\` por folha)
@@ -83,6 +87,9 @@ para o Claude Code, \`.vscode/mcp.json\` para o Copilot). Quatro tools:
 - \`sigil_docs\` — busca na referência oficial da API (use antes de chutar
   uma assinatura)
 
+**Primeiro uso**: o cliente (Claude Code/Copilot) pede APROVAÇÃO do servidor
+do \`.mcp.json\` e só o carrega em sessão nova — se as tools \`sigil_*\` não
+aparecerem, aprove/reinicie a sessão (no Claude Code, confira com \`/mcp\`).
 Sem MCP, o mesmo loop existe via terminal (abaixo).
 
 ## O loop de verificação (use SEMPRE)

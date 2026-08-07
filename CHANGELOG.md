@@ -4,6 +4,35 @@ Os pacotes (`@sigilkit/*` e `create-sigil`) versionam em lockstep — cada
 entrada aqui vale para todos na mesma versão. Pré-1.0, mudanças de API podem
 acontecer entre versões minor; sempre listadas aqui.
 
+## Não publicado
+
+A release do primeiro usuário — todas as fricções (F2–F7) do diário do
+primeiro dogfood externo (o projeto Mockeasy), resolvidas:
+
+- **`@Language({ extensions, aliases, configuration })`** (F4) — DSL própria
+  agora declara `contributes.languages` pelo decorator; sem isso o VSCode
+  nunca associava os arquivos ao language id. E ficou documentado: chaves
+  NÃO gerenciadas do `contributes` são preservadas pelo merge.
+- **R6 por Proxy no simulador** (F5) — membro DESCONHECIDO de qualquer
+  namespace (`workspace.*`, `window.*`, …) lança o erro descritivo com o
+  nome completo, em vez de `undefined` → TypeError genérico. E o workspace
+  ficou real sobre o `projectDir`: `findFiles`, `asRelativePath`,
+  `workspace.fs` completo e `workspaceFolders`. Bônus: o Proxy já expôs uma
+  divergência nossa (o `activeColorTheme` que faltava — o fallback do pets
+  rodava silenciosamente diferente do host).
+- **Sondas acusam erro engolido pelo guard** (F7) — handler que lança
+  durante um `provide*` vira exceção ALTA no teste com a mensagem original;
+  e o mock ganhou `getWordRangeAtPosition`, `MarkdownString` e o overload
+  numérico de `Range` (o hover canônico funciona).
+- **`openTextDocument` tipado** (F6) — retorna `TextEditorMock`; as sondas
+  de linguagem aceitam o editor direto (ou `.document`).
+- **`prompt` avulso** (F3) — todo passo é thenable (`await prompt.pick(...)`
+  sem `steps`), e `pick` aceita itens ricos `{label, description, value}`.
+- **Nota de primeiro uso do MCP** no AGENTS.md (F2) — aprovação do servidor
+  e reinício de sessão no primeiro contato.
+- tests/friccoes-lab.test.ts: cada fricção do diário virou asserção
+  permanente.
+
 ## 0.9.1 — 2026-08-07
 
 - **Fix crítico do funil (F1 do primeiro dogfood externo)**: o template do

@@ -7,6 +7,16 @@ import { guard } from "../guard";
 export interface LanguageOptions {
   /** id(s) de linguagem que a classe atende (ex.: "markdown", ["md", "mdx"]) */
   id: string | string[];
+  /**
+   * DSL própria? Declare as extensões de arquivo (ex.: [".mock"]) e o sigil
+   * emite o `contributes.languages` — sem isso o VSCode nunca associa seus
+   * arquivos ao language id e nenhum provider dispara.
+   */
+  extensions?: string[];
+  /** nomes exibidos da linguagem (contributes.languages[].aliases) */
+  aliases?: string[];
+  /** caminho do language-configuration.json (comentários, brackets…), relativo à raiz */
+  configuration?: string;
 }
 
 /**

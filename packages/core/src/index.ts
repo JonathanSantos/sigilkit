@@ -55,7 +55,7 @@ export { State, Secret, ContextKey, bindSecrets, bindContextKeys } from "./decor
 export type { ContextKeyBinding } from "./decorators/state";
 
 export { prompt } from "./prompt";
-export type { PromptStep, TextStepOptions, PickStepOptions } from "./prompt";
+export type { PromptStep, TextStepOptions, PickStepOptions, RichPickItem } from "./prompt";
 
 export { withCommandProgress } from "./progress";
 export type { CommandProgress } from "./progress";

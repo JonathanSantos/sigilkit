@@ -255,7 +255,7 @@ exports[`coletor sobre examples/hello > snapshot do IR 1`] = `
       "sourceFile": "src/views/tasks.ts",
     },
   ],
-  "version": 9,
+  "version": 10,
   "viewContainers": [],
   "watches": [
     {
