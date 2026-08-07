@@ -4,7 +4,7 @@ Os pacotes (`@sigilkit/*` e `create-sigil`) versionam em lockstep — cada
 entrada aqui vale para todos na mesma versão. Pré-1.0, mudanças de API podem
 acontecer entre versões minor; sempre listadas aqui.
 
-## Não publicado
+## 0.10.0 — 2026-08-07
 
 A release do primeiro usuário — todas as fricções (F2–F7) do diário do
 primeiro dogfood externo (o projeto Mockeasy), resolvidas:
