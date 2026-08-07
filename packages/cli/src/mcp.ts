@@ -381,6 +381,20 @@ export function runMcp(projectDir: string): number {
             disco && version && disco !== version
               ? `este servidor MCP carregou o sigil ${version}, mas o disco tem ${disco} — reinicie a sessão MCP para usar a versão nova`
               : undefined;
+          // rodada 3 do dogfood: servidor desatualizado pode FALAR (check/
+          // docs com aviso), mas não pode ESCREVER — um sigil_build velho
+          // regrediria o wire gerado (quase aconteceu no Mockeasy)
+          if (aviso && (name === "sigil_build" || name === "sigil_probe")) {
+            send({
+              jsonrpc: "2.0",
+              id,
+              result: {
+                content: [{ type: "text", text: `erro: ${aviso}. Operação de escrita recusada para não regredir os gerados.` }],
+                isError: true,
+              },
+            });
+            return;
+          }
           const text =
             typeof payload === "string"
               ? aviso

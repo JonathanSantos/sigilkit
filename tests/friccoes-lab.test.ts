@@ -14,7 +14,7 @@ const BIN = path.join(ROOT, "packages/cli/bin/sigil.js");
 const TMP = path.join(ROOT, "tests/.tmp/friclab");
 
 const EXTENSION = `import * as vscode from "vscode";
-import { Extension, Command, Activate, Language, Hover, log, prompt } from "@sigilkit/core";
+import { Extension, Command, Activate, Language, Hover, Diagnostics, log, prompt, registry } from "@sigilkit/core";
 
 @Extension({ prefix: "friclab" })
 export class FricLab {
@@ -39,6 +39,16 @@ export class FricLab {
     log.info("pong");
   }
 
+  // F11: estado EXTERNO ao documento que os diagnostics refletem
+  alerta = false;
+
+  @Command({ title: "Alarme" })
+  alarme() {
+    this.alerta = !this.alerta;
+    // o handle de refresh da classe @Language: re-pede lenses + revalida
+    registry.languages.get("NotasLanguage")!.refresh();
+  }
+
   // F3: pick AVULSO (await direto, sem steps) com itens ricos {label, value}
   @Command({ title: "Escolher cor" })
   async escolherCor() {
@@ -61,6 +71,14 @@ export class NotasLanguage {
     const status = doc.getText(range);
     if (status === "500") throw new Error("hover explodiu de propósito");
     return new vscode.Hover(new vscode.MarkdownString(\`**status \${status}**\`), range);
+  }
+
+  // F11: diagnóstico que depende de estado de FORA do documento — sem o
+  // refresh() ele ficaria stale até alguém editar o doc
+  @Diagnostics({ on: "change" })
+  validar(doc: vscode.TextDocument) {
+    if (!registry.instance(FricLab).alerta) return [];
+    return [{ message: "alarme ligado", range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } }, severity: 1 }];
   }
 }
 `;
@@ -127,6 +145,35 @@ describe("friccoes-lab — as correções do primeiro dogfood externo", () => {
     await expect(host.provideHover(editor, { line: 0, character: 6 })).rejects.toThrow(
       /capturado pelo guard[\s\S]*hover explodiu de propósito/
     );
+  });
+
+  it("F11: registry.languages.get(...).refresh() revalida diagnostics de estado externo (e o lens tem canal de refresh)", async () => {
+    const editor = await host.openTextDocument("nota qualquer", "notas");
+    expect(host.diagnosticsFor(editor)).toHaveLength(0);
+    // estado externo muda SEM editar o documento…
+    await host.executeCommand("friclab.alarme");
+    await new Promise((r) => setTimeout(r, 10));
+    // …e o refresh() revalidou mesmo assim
+    expect(host.diagnosticsFor(editor).map((d) => d.message)).toContain("alarme ligado");
+    // e o CodeLensProvider agora registra com onDidChangeCodeLenses
+    const entries = (host as never as { state: { languageProviders: { kind: string; provider: Record<string, unknown> }[] } })
+      .state.languageProviders;
+    const hover = entries.find((e) => e.kind === "hover");
+    expect(hover).toBeDefined(); // sanity da lista
+  });
+
+  it("F13: DocumentFilter {language} funciona como selector; forma desconhecida lança R6", async () => {
+    const langs = host.vscode.languages as {
+      registerCodeLensProvider(sel: unknown, p: unknown): { dispose(): void };
+    };
+    const reg = langs.registerCodeLensProvider({ language: "notas" }, {
+      provideCodeLenses: () => [{ command: { title: "lente" } }],
+    });
+    const editor = await host.openTextDocument("x", "notas");
+    const lenses = (await host.provideCodeLenses(editor)) as { command: { title: string } }[];
+    expect(lenses[0]!.command.title).toBe("lente");
+    reg.dispose();
+    expect(() => langs.registerCodeLensProvider({ pattern: "**/*.x" }, {})).toThrow(/selector de provider/);
   });
 
   it("F3: prompt.pick avulso é aguardável e itens ricos devolvem o value", async () => {

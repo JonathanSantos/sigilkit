@@ -984,6 +984,18 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
     let langExtensions: string[] | undefined;
     let langAliases: string[] | undefined;
     let langConfiguration: string | undefined;
+    let langGrammar: string | undefined;
+    if (o.grammar !== undefined) {
+      if (typeof o.grammar !== "string" || o.grammar.length === 0) {
+        diagnostics.push(diagAt(optsNode ?? lang.name, SIGIL.MissingRequiredOption, "'grammar' de @Language precisa ser um caminho (string) para o tmLanguage.json"));
+        return;
+      }
+      if (selector.length > 1) {
+        diagnostics.push(diagAt(optsNode ?? lang.name, SIGIL.MissingRequiredOption, "'grammar' de @Language exige um ÚNICO id"));
+        return;
+      }
+      langGrammar = toPosix(o.grammar).replace(/^\.\//, "");
+    }
     if (o.extensions !== undefined || o.aliases !== undefined || o.configuration !== undefined) {
       if (selector.length > 1) {
         diagnostics.push(
@@ -1112,6 +1124,7 @@ export function collect(program: ts.Program, opts: CollectOptions): CollectResul
         extensions: langExtensions,
         aliases: langAliases,
         configuration: langConfiguration,
+        grammar: langGrammar,
         hoverKey,
         inlineKey,
         completionKey,

@@ -110,6 +110,8 @@ export interface IRLanguage {
   aliases?: string[];
   /** caminho do language-configuration.json, relativo à raiz */
   configuration?: string;
+  /** tmLanguage.json → contributes.grammars (scopeName injetado pelo CLI) */
+  grammar?: string;
   hoverKey?: string;
   /** @InlineCompletion: ghost text */
   inlineKey?: string;

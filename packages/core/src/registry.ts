@@ -56,6 +56,10 @@ export class Registry {
   readonly webviews = new Map<string, WebviewHandle>();
   readonly webviewHandlers = new Map<string, (...args: unknown[]) => unknown>();
   readonly languageHandlers = new Map<string, (...args: unknown[]) => unknown>();
+  /** F11 do dogfood: refresh por classe @Language — re-pede CodeLenses e
+   *  revalida @Diagnostics dos docs abertos (lens/diagnóstico que dependem
+   *  de estado EXTERNO ao documento ficavam stale). Chave = nome da classe. */
+  readonly languages = new Map<string, { refresh(): void }>();
   readonly testHandlers = new Map<string, (...args: unknown[]) => unknown>();
   readonly chatHandlers = new Map<string, (...args: unknown[]) => unknown>();
   readonly events = new Map<string, (...args: unknown[]) => unknown>();

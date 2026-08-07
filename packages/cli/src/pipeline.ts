@@ -78,12 +78,29 @@ export function computeProject(projectDir: string, existingProgram?: ts.Program)
     return { ok: false, diagnostics: all };
   }
 
+  const manifest = emitManifest(ir);
+  // F12: o scopeName do contributes.grammars vive DENTRO do tmLanguage.json —
+  // o emitter é puro (R4); a leitura do arquivo é daqui
+  const grammars = manifest.grammars as { language: string; path: string; scopeName?: string }[] | undefined;
+  for (const g of grammars ?? []) {
+    const abs = path.join(projectDir, g.path);
+    try {
+      const parsed = JSON.parse(fs.readFileSync(abs, "utf8")) as { scopeName?: string };
+      if (typeof parsed.scopeName !== "string" || parsed.scopeName.length === 0) {
+        return { ok: false, message: `sigil: a grammar '${g.path}' (@Language de '${g.language}') não declara 'scopeName' — obrigatório em contributes.grammars` };
+      }
+      g.scopeName = parsed.scopeName;
+    } catch {
+      return { ok: false, message: `sigil: grammar '${g.path}' (@Language de '${g.language}') não encontrada ou não é JSON válido (esperado tmLanguage.json com scopeName)` };
+    }
+  }
+
   const genDir = path.join(projectDir, "src", ".generated");
   const files: OutputFile[] = [
     {
       path: pkgPath,
       label: "package.json",
-      content: mergePackageJson(pkgText, emitManifest(ir), emitActivationEvents(ir), { graft }),
+      content: mergePackageJson(pkgText, manifest, emitActivationEvents(ir), { graft }),
     },
     { path: path.join(genDir, "wire.ts"), label: "src/.generated/wire.ts", content: emitWire(ir) },
     { path: path.join(genDir, "config.d.ts"), label: "src/.generated/config.d.ts", content: emitTypes(ir) },

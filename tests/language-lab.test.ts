@@ -35,8 +35,9 @@ export class LangLab {
 }
 
 // Providers devolvem objetos estruturais — o simulador repassa como o host.
-// DSL própria: extensions declara a linguagem em contributes.languages (F4).
-@Language({ id: "recipes", extensions: [".recipe", "rcp"], aliases: ["Receitas"] })
+// DSL própria: extensions declara a linguagem em contributes.languages (F4)
+// e grammar declara o contributes.grammars com scopeName lido do arquivo (F12).
+@Language({ id: "recipes", extensions: [".recipe", "rcp"], aliases: ["Receitas"], grammar: "./syntaxes/recipes.tmLanguage.json" })
 export class RecipesLanguage {
   @CodeAction({ kinds: ["quickfix"] })
   acoes(doc: { getText(): string }) {
@@ -102,6 +103,12 @@ describe("language-lab — a fornada de linguagem completa", () => {
     fs.rmSync(TMP, { recursive: true, force: true });
     expect(sigil("init").status).toBe(0);
     fs.writeFileSync(path.join(TMP, "src/extension.ts"), LANG_EXTENSION);
+    fs.mkdirSync(path.join(TMP, "syntaxes"), { recursive: true });
+    fs.writeFileSync(
+      path.join(TMP, "syntaxes/recipes.tmLanguage.json"),
+      JSON.stringify({ scopeName: "source.recipes", patterns: [] })
+    );
+    fs.writeFileSync(path.join(TMP, "prato.recipe"), "# Prato\n");
     const build = sigil("build");
     expect(build.status, build.out).toBe(0);
     const bundle = spawnSync(
@@ -130,6 +137,22 @@ describe("language-lab — a fornada de linguagem completa", () => {
     expect(pkg.contributes.languages).toEqual([
       { id: "recipes", extensions: [".recipe", ".rcp"], aliases: ["Receitas"] },
     ]);
+  });
+
+  it("F12: grammar declara contributes.grammars com scopeName lido de DENTRO do arquivo", () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(TMP, "package.json"), "utf8"));
+    expect(pkg.contributes.grammars).toEqual([
+      { language: "recipes", path: "./syntaxes/recipes.tmLanguage.json", scopeName: "source.recipes" },
+    ]);
+  });
+
+  it("F14: openTextDocument(uri) resolve o languageId pela extensão do arquivo", async () => {
+    const uriFile = (host.vscode.Uri as { file(p: string): unknown }).file;
+    const ws = host.vscode.workspace as { openTextDocument(u: unknown): Promise<{ languageId: string }> };
+    const doc = await ws.openTextDocument(uriFile(path.join(TMP, "prato.recipe")));
+    expect(doc.languageId).toBe("recipes");
+    const symbols = (await host.provideDocumentSymbols(doc as never)) as { name: string }[];
+    expect(symbols.map((s) => s.name)).toEqual(["Prato"]);
   });
 
   it("@CodeAction responde com as ações (e só quando aplicável)", async () => {

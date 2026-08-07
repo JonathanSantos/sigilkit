@@ -82,6 +82,14 @@ export async function activateExtension(opts: ActivateOptions): Promise<SigilTes
 
   const state = createState();
   state.projectDir = projectDir;
+  // F14: contributes.languages alimenta a resolução extensão→languageId
+  const languages = (pkg.contributes as { languages?: { id?: string; extensions?: string[] }[] } | undefined)
+    ?.languages;
+  for (const lang of languages ?? []) {
+    for (const ext of lang.extensions ?? []) {
+      if (lang.id) state.languageByExtension.set(ext, lang.id);
+    }
+  }
   const properties = pkg.contributes?.configuration?.properties ?? {};
   for (const [id, schema] of Object.entries(properties)) {
     if (schema && "default" in schema) state.defaults.set(id, schema.default);

@@ -4,6 +4,32 @@ Os pacotes (`@sigilkit/*` e `create-sigil`) versionam em lockstep — cada
 entrada aqui vale para todos na mesma versão. Pré-1.0, mudanças de API podem
 acontecer entre versões minor; sempre listadas aqui.
 
+## Não publicado
+
+A rodada 3 do dogfood externo (F11–F14 — incluindo o primeiro bug percebido
+em USO REAL, não pelas sondas):
+
+- **Refresh por classe `@Language`** (F11) —
+  `registry.languages.get("MinhaClasse").refresh()` re-pede os CodeLenses
+  (agora registrados com `onDidChangeCodeLenses`) e revalida os
+  `@Diagnostics` dos documentos abertos. Lens interativo que reflete estado
+  fora do documento (toggles, contadores) ficava stale sem canal de refresh
+  — o padrão das trees, espelhado.
+- **`@Language({ grammar })`** (F12) — syntax highlight declarativo: o
+  `contributes.grammars` sai do decorator, com o `scopeName` lido de DENTRO
+  do tmLanguage.json pelo build (IO no CLI, emitter puro; arquivo ausente ou
+  sem scopeName é erro claro).
+- **`DocumentFilter` como selector no simulador** (F13) — `{ language: X }`
+  funciona; forma desconhecida lança R6 em vez de degradar para selector
+  vazio em silêncio (doutrina "R6 v2", terceira aplicação).
+- **`openTextDocument(uri)` resolve o languageId** (F14) — pela extensão do
+  arquivo contra o `contributes.languages` do manifesto, como o VSCode real
+  (antes: sempre plaintext).
+- **Servidor MCP desatualizado não ESCREVE** — com código carregado ≠ disco,
+  `sigil_build`/`sigil_probe` são recusados com erro (um build velho
+  regrediria o wire — quase aconteceu no Mockeasy); `sigil_check`/
+  `sigil_docs` seguem com o aviso.
+
 ## 0.10.1 — 2026-08-07
 
 A rodada 2 do dogfood externo (F8–F10 do diário do Mockeasy):

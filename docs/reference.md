@@ -96,11 +96,16 @@ derivado do schema das `@Config`.
   `post!: (msg: ...) => void` — o wire injeta; o tipo do parâmetro alimenta
   `registry.panel()` e o `sigil-env.d.ts`. Shell HTML com CSP + nonce é do
   sigil; `@OnRequest` responde ao `callHost` da UI com correlação automática.
-- `@Language({ id: string | string[], extensions?, aliases?, configuration? })`
+- `@Language({ id: string | string[], extensions?, aliases?, configuration?, grammar? })`
   — **DSL própria**: `extensions: [".minha"]` (id ÚNICO nesse caso) emite o
   `contributes.languages` que associa os arquivos ao language id; sem isso
   nenhum provider dispara. `configuration` aponta o
-  language-configuration.json. Providers (um de cada por classe):
+  language-configuration.json; `grammar` aponta o tmLanguage.json e emite o
+  `contributes.grammars` (o `scopeName` é lido de DENTRO do arquivo pelo
+  build). **Refresh de estado externo**:
+  `registry.languages.get("MinhaClasse").refresh()` re-pede os CodeLenses
+  (lens interativo que reflete estado fora do documento) e revalida os
+  `@Diagnostics` dos documentos abertos. Providers (um de cada por classe):
   `@Hover`, `@Completion({ triggerCharacters? })`, `@CodeLens`,
   `@Diagnostics({ on: "change" | "save" })` (collection gerenciada: revalida
   em open/change/save, limpa no close), `@InlineCompletion` (retorne string,

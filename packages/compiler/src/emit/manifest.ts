@@ -17,7 +17,7 @@ export type OwnedContributeKey = (typeof OWNED_CONTRIBUTES)[number];
  * sigil as emite, mas NUNCA removidas quando ausentes — o usuário pode
  * mantê-las à mão enquanto não usar a forma declarativa (container inline).
  */
-export const CONDITIONAL_CONTRIBUTES = ["viewsContainers", "chatParticipants", "customEditors", "languageModelTools", "mcpServerDefinitionProviders", "languages"] as const;
+export const CONDITIONAL_CONTRIBUTES = ["viewsContainers", "chatParticipants", "customEditors", "languageModelTools", "mcpServerDefinitionProviders", "languages", "grammars"] as const;
 export type ConditionalContributeKey = (typeof CONDITIONAL_CONTRIBUTES)[number];
 
 export type Contributes = Partial<Record<OwnedContributeKey | ConditionalContributeKey, unknown>>;
@@ -120,6 +120,13 @@ export function emitManifest(ir: IR): Contributes {
         configuration: l.configuration ? `./${l.configuration}` : undefined,
       })
     );
+  }
+
+  // grammar TextMate (F12): o scopeName vive DENTRO do arquivo — o CLI o
+  // injeta depois (emitter é puro, IO é do pipeline)
+  const withGrammar = ir.languages.filter((l) => l.grammar);
+  if (withGrammar.length > 0) {
+    out.grammars = withGrammar.map((l) => ({ language: l.selector[0], path: `./${l.grammar}` }));
   }
 
   if (ir.chatParticipants.length > 0) {

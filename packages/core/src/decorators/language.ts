@@ -17,6 +17,12 @@ export interface LanguageOptions {
   aliases?: string[];
   /** caminho do language-configuration.json (comentários, brackets…), relativo à raiz */
   configuration?: string;
+  /**
+   * Syntax highlight: caminho do tmLanguage.json (relativo à raiz). O sigil
+   * emite o `contributes.grammars` — o `scopeName` é lido de DENTRO do
+   * arquivo pelo build (F12 do dogfood externo).
+   */
+  grammar?: string;
 }
 
 /**
@@ -185,10 +191,14 @@ export function bindLanguage(binding: LanguageBinding, ctx: vscode.ExtensionCont
       )
     );
   }
+  // F11: canal de refresh — lens interativo depende de estado FORA do doc
+  const lensChanged = new vscode.EventEmitter<void>();
+  disposables.push(lensChanged);
   if (binding.codeLensKey) {
     const key = binding.codeLensKey;
     disposables.push(
       vscode.languages.registerCodeLensProvider(selector, {
+        onDidChangeCodeLenses: lensChanged.event,
         provideCodeLenses: (doc, token) =>
           call(`@CodeLens de ${binding.key}`, key, [doc, token]) as vscode.ProviderResult<vscode.CodeLens[]>,
       })
@@ -283,6 +293,7 @@ export function bindLanguage(binding: LanguageBinding, ctx: vscode.ExtensionCont
       })
     );
   }
+  let revalidateDiagnostics: () => void = () => {};
   if (binding.diagnosticsKey) {
     const key = binding.diagnosticsKey;
     const collection = vscode.languages.createDiagnosticCollection(binding.key);
@@ -302,11 +313,24 @@ export function bindLanguage(binding: LanguageBinding, ctx: vscode.ExtensionCont
     disposables.push(vscode.workspace.onDidOpenTextDocument((doc) => void run(doc)));
     disposables.push(vscode.workspace.onDidCloseTextDocument((doc) => collection.delete(doc.uri)));
     for (const doc of vscode.workspace.textDocuments) void run(doc);
+    revalidateDiagnostics = () => {
+      for (const doc of vscode.workspace.textDocuments) void run(doc);
+    };
   }
+
+  // o handle de refresh da classe (padrão das trees): registry.languages
+  //   .get("MinhaClasse").refresh() → re-pede lenses + revalida diagnostics
+  registry.languages.set(binding.key, {
+    refresh() {
+      lensChanged.fire();
+      revalidateDiagnostics();
+    },
+  });
 
   void ctx;
   return {
     dispose() {
+      registry.languages.delete(binding.key);
       for (const d of disposables) d.dispose();
     },
   };

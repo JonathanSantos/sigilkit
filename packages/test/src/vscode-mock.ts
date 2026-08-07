@@ -626,6 +626,8 @@ export type LlmScriptedReply =
 export interface VscodeMockState {
   /** raiz do projeto sob teste — alimenta workspaceFolders/findFiles/asRelativePath */
   projectDir?: string;
+  /** F14: extensão de arquivo → language id (semeado do contributes.languages) */
+  languageByExtension: Map<string, string>;
   /** valores "escritos" (usuário ou extensão); ausência → default do manifesto */
   values: Map<string, unknown>;
   /** defaults semeados de contributes.configuration.properties */
@@ -717,6 +719,7 @@ export function createState(): VscodeMockState {
     progressRuns: [],
     llmQueue: [],
     llmRequests: [],
+    languageByExtension: new Map(),
     testControllers: [],
     lmTools: [],
     mcpProviders: [],
@@ -769,6 +772,7 @@ export function resetState(state: VscodeMockState): void {
   state.progressRuns.length = 0;
   state.llmQueue.length = 0;
   state.llmRequests.length = 0;
+  state.languageByExtension.clear();
   state.testControllers.length = 0;
   state.lmTools.length = 0;
   state.mcpProviders.length = 0;
@@ -825,8 +829,18 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
       },
     };
   };
-  const toSelectorArray = (selector: unknown): string[] =>
-    typeof selector === "string" ? [selector] : Array.isArray(selector) ? selector.map(String) : [];
+  // F13 do dogfood: DocumentFilter ({language}) é forma comum no host real —
+  // degradar para [] em silêncio era divergência; forma desconhecida lança R6
+  const toSelectorArray = (selector: unknown): string[] => {
+    const one = (s: unknown): string => {
+      if (typeof s === "string") return s;
+      if (s && typeof s === "object" && typeof (s as { language?: unknown }).language === "string") {
+        return (s as { language: string }).language;
+      }
+      return unsupported(`selector de provider '${JSON.stringify(s)}' (use string, {language} ou array deles)`);
+    };
+    return Array.isArray(selector) ? selector.map(one) : [one(selector)];
+  };
 
   const api: Record<string, unknown> = {
     EventEmitter: EventEmitterMock,
@@ -1262,7 +1276,10 @@ export function createVscodeMock(state: VscodeMockState): Record<string, unknown
       openTextDocument: (options?: { content?: string; language?: string } | UriMock) => {
         if (options && "fsPath" in (options as UriMock)) {
           const uri = options as UriMock;
-          const doc = new TextDocumentMock(fs.readFileSync(uri.fsPath, "utf8"), "plaintext", uri);
+          // F14: resolve o language id pela extensão (contributes.languages),
+          // como o VSCode real — antes tudo abria como plaintext
+          const lang = state.languageByExtension.get(path.extname(uri.fsPath)) ?? "plaintext";
+          const doc = new TextDocumentMock(fs.readFileSync(uri.fsPath, "utf8"), lang, uri);
           state.documents.push(doc);
           fireDoc.open(doc);
           return Promise.resolve(doc);
