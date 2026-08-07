@@ -8,3 +8,4 @@ playground/
 *.tsbuildinfo
 *.vsix
 tests/.tmp-ui-*
+.DS_Store
