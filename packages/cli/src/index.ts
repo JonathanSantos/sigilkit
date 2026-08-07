@@ -5,6 +5,7 @@ import { runDev } from "./dev";
 import { runInit } from "./init";
 import { runSim } from "./sim";
 import { runSandbox } from "./sandbox";
+import { runMcp } from "./mcp";
 
 const USAGE = `sigil — framework declarativo para extensões do VSCode
 
@@ -17,6 +18,8 @@ Uso:
   sigil sim     [dir]   hot reload SIMULADO: recarrega no @sigilkit/test + REPL interativo
                         --ui abre um workbench visual no browser (--port=4400)
   sigil sandbox [dir]   VSCode REAL isolado com hot swap sem F5 (swap vs reload pelo IR)
+  sigil mcp     [dir]   servidor MCP por stdio p/ agentes de IA: check/build/probe/docs
+                        (o probe roda a extensão no simulador e rebuilda sozinho)
 `;
 
 export function main(argv: string[] = process.argv.slice(2)): void {
@@ -55,6 +58,9 @@ export function main(argv: string[] = process.argv.slice(2)): void {
       break;
     case "sandbox":
       process.exitCode = runSandbox(projectDir);
+      break;
+    case "mcp":
+      process.exitCode = runMcp(projectDir);
       break;
     case undefined:
     case "--help":

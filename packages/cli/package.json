@@ -22,7 +22,8 @@
   },
   "files": [
     "dist",
-    "bin"
+    "bin",
+    "reference.md"
   ],
   "scripts": {
     "build": "tsc -b ."

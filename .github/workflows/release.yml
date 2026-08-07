@@ -57,8 +57,10 @@ jobs:
             node packages/cli/bin/sigil.js check "$dir"
           done
 
-      - name: LICENSE em cada tarball
-        run: for p in core compiler cli test create; do cp LICENSE "packages/$p/"; done
+      - name: LICENSE em cada tarball (+ reference.md no cli, para o sigil_docs do MCP)
+        run: |
+          for p in core compiler cli test create; do cp LICENSE "packages/$p/"; done
+          cp docs/reference.md packages/cli/reference.md
 
       # cli por último: depende de @sigilkit/compiler e @sigilkit/test.
       # IDEMPOTENTE: versão já publicada é pulada — um release que falhou no

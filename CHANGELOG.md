@@ -6,6 +6,15 @@ acontecer entre versões minor; sempre listadas aqui.
 
 ## Não publicado
 
+- **`sigil mcp` — o loop de verificação como servidor MCP** (zero deps,
+  JSON-RPC por stdio): `sigil_check` (diagnósticos ESTRUTURADOS com
+  code/file/line), `sigil_build`, `sigil_probe` (sessão VIVA do simulador —
+  detecta edição no código e rebuilda/reativa sozinho antes de cada sonda;
+  kinds: command/config/tree/panelRequest/invokeTool/chatRequest/runTests/
+  logs) e `sigil_docs` (busca na referência, sem rede). O template registra
+  o servidor em `.mcp.json` (Claude Code) e `.vscode/mcp.json` (Copilot) —
+  `npm create sigil` e o agente nasce equipado. O framework que declara
+  tools MCP agora É um servidor MCP.
 - **A API inteira numa página: [docs/reference.md](docs/reference.md)** —
   referência densa e de URL estável (decorators, plataforma, protocolo de
   UI, sondas de teste, SIGIL1000–1022, pegadinhas), feita para RAG e

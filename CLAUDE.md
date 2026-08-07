@@ -192,7 +192,18 @@ sigil init via require.resolve("@sigilkit/cli/bin/sigil.js"); publicado
 pelo release.yml junto com os 4 (loops incluem "create"). sigil init gera
 AGENTS.md (manual p/ agentes: regras de ouro, decorators, loop de
 verificação, erros→remédios; fonte em cli/src/agents-md.ts, seção de UI
-condicional ao template react) + CLAUDE.md fino com import @AGENTS.md. Tutorial usa
+condicional ao template react) + CLAUDE.md fino com import @AGENTS.md +
+.mcp.json/.vscode/mcp.json registrando `sigil mcp`. `sigil mcp`
+(cli/src/mcp.ts) = servidor MCP por stdio SEM deps (JSON-RPC 2.0 por
+linha; initialize/tools/list/tools/call): sigil_check (computeProject sem
+escrever; diags estruturados code/file/line), sigil_build, sigil_probe
+(sessão viva do @sigilkit/test; ensureFresh por mtime de src/ui/pkg →
+rebuild+rebundle+reactivate preservando configs; kinds command/config/
+tree/panelRequest/invokeTool/chatRequest/runTests/logs; retorna delta de
+mensagens/logs), sigil_docs (busca por seção no reference.md — publicado:
+cp docs/reference.md → packages/cli/ no release.yml, files inclui;
+dev: fallback ../../docs). tests/mcp.test.ts fala o protocolo real por
+stdio. AGENTS.md/CLAUDE.md/.mcp.json ficam FORA do vsix (.vscodeignore). Tutorial usa
 npm create sigil (código do minuto 4 segue PINADO pelo teste — só prosa
 mudou). ROADMAP.md + templates de issue/PR em .github/.
 

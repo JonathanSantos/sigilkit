@@ -37,9 +37,14 @@ describe("sigil init", () => {
       "README.md",
       "AGENTS.md",
       "CLAUDE.md",
+      ".mcp.json",
+      ".vscode/mcp.json",
     ]) {
       expect(fs.existsSync(path.join(TMP, rel)), rel).toBe(true);
     }
+    // o servidor MCP auto-descoberto pelos dois ecossistemas
+    expect(JSON.parse(fs.readFileSync(path.join(TMP, ".mcp.json"), "utf8")).mcpServers.sigil.args).toEqual(["sigil", "mcp"]);
+    expect(JSON.parse(fs.readFileSync(path.join(TMP, ".vscode/mcp.json"), "utf8")).servers.sigil.type).toBe("stdio");
     // o manual para agentes: regras de ouro + loop de verificação + o
     // CLAUDE.md importando via @ (dois ecossistemas com um arquivo)
     const agents = fs.readFileSync(path.join(TMP, "AGENTS.md"), "utf8");

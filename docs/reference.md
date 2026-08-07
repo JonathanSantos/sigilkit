@@ -28,6 +28,7 @@ mesma versão de todos.
 | `sigil sim <dir>` | simulador com hot reload + REPL (`run`, `set`, `tree`, `msg`, `input`, `logs`) |
 | `sigil sim --ui <dir>` | workbench visual no browser (http://127.0.0.1:4400), webviews reais em iframes |
 | `sigil sandbox <dir>` | VSCode real isolado com hot swap sem F5 (hash do IR decide swap vs reload) |
+| `sigil mcp <dir>` | servidor MCP por stdio para agentes de IA — tools `sigil_check` (diagnósticos estruturados), `sigil_build`, `sigil_probe` (sessão viva do simulador com auto-rebuild ao detectar edição) e `sigil_docs` (busca nesta referência). O template registra em `.mcp.json`/`.vscode/mcp.json` |
 
 Chaves no `package.json` do projeto: `"sigil": { "uiDev": "<cmd>" }` (o
 sim/sandbox sobem o watch da UI junto e recarregam o painel aberto);

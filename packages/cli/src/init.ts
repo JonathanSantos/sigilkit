@@ -443,6 +443,9 @@ node_modules/**
 out/**/*.map
 tsconfig.json
 .gitignore
+.mcp.json
+AGENTS.md
+CLAUDE.md
 **/*.ts
 `;
 
@@ -458,6 +461,18 @@ tsconfig.json
     // CLAUDE.md importa via @ (sintaxe de imports do Claude Code)
     { rel: "AGENTS.md", content: agentsMd(name, react) },
     { rel: "CLAUDE.md", content: claudeMdPointer() },
+    // servidor MCP do sigil auto-descoberto: Claude Code lê .mcp.json,
+    // o Copilot agent mode lê .vscode/mcp.json — zero configuração
+    {
+      rel: ".mcp.json",
+      content: JSON.stringify({ mcpServers: { sigil: { command: "npx", args: ["sigil", "mcp"] } } }, null, 2) + "\n",
+    },
+    {
+      rel: ".vscode/mcp.json",
+      content:
+        JSON.stringify({ servers: { sigil: { type: "stdio", command: "npx", args: ["sigil", "mcp"] } } }, null, 2) +
+        "\n",
+    },
     ...(react
       ? [
           { rel: "ui/index.html", content: uiHtml },

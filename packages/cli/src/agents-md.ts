@@ -69,6 +69,22 @@ Plataforma (\`import { ... } from "@sigilkit/core"\`): \`log.info/warn/error\`,
 \`registry.panel(ClasseWebview)\` (\`post\`/\`open()\`/\`isOpen\` sem strings),
 \`getConfig("${name}.chave")\` (tipado por chave — chave errada retorna \`unknown\`).
 
+## O servidor MCP (se o seu ambiente suporta, prefira-o)
+
+Este projeto registra o servidor MCP do sigil automaticamente (\`.mcp.json\`
+para o Claude Code, \`.vscode/mcp.json\` para o Copilot). Quatro tools:
+
+- \`sigil_check\` — diagnósticos estruturados (code/file/line) sem escrever nada
+- \`sigil_build\` — regenera manifesto/wire/tipos
+- \`sigil_probe\` — executa a extensão na sessão VIVA do simulador; **se você
+  editou código, ele rebuilda e reativa sozinho** — edite e sonde, sem pensar
+  em build. kinds: \`command\`/\`config\`/\`tree\`/\`panelRequest\`/\`invokeTool\`/
+  \`chatRequest\`/\`runTests\`/\`logs\`
+- \`sigil_docs\` — busca na referência oficial da API (use antes de chutar
+  uma assinatura)
+
+Sem MCP, o mesmo loop existe via terminal (abaixo).
+
 ## O loop de verificação (use SEMPRE)
 
 \`\`\`ts
