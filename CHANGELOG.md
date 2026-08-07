@@ -4,7 +4,7 @@ Os pacotes (`@sigilkit/*` e `create-sigil`) versionam em lockstep — cada
 entrada aqui vale para todos na mesma versão. Pré-1.0, mudanças de API podem
 acontecer entre versões minor; sempre listadas aqui.
 
-## Não publicado
+## 0.8.0 — 2026-08-07
 
 A fornada de linguagem — os providers que faltavam para extensões de
 linguagem sérias:

@@ -8,7 +8,7 @@
 //   node scripts/version.mjs 0.2.0
 //   git commit -am "release: v0.2.0" && git tag -a v0.2.0 -m v0.2.0 && git push --follow-tags
 // (tag ANOTADA: --follow-tags ignora tags leves — git tag sem -a não sobe)
-import { readFileSync, writeFileSync, readdirSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
 import { execSync } from "node:child_process";
 
 const v = process.argv[2];
@@ -41,8 +41,10 @@ function update(path, { bumpVersion }) {
   }
 }
 
-for (const p of PKGS) update(`packages/${p}/package.json`, { bumpVersion: true });
-for (const e of readdirSync("examples")) update(`examples/${e}/package.json`, { bumpVersion: false });
+// só diretórios com package.json — um .DS_Store no meio não pode matar o release
+const dirs = (base) => readdirSync(base).filter((d) => existsSync(`${base}/${d}/package.json`));
+for (const p of dirs("packages")) update(`packages/${p}/package.json`, { bumpVersion: true });
+for (const e of dirs("examples")) update(`examples/${e}/package.json`, { bumpVersion: false });
 
 console.log("sincronizando package-lock.json…");
 execSync("npm install --package-lock-only", { stdio: "inherit" });
