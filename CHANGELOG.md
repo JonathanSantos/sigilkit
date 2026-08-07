@@ -6,6 +6,12 @@ acontecer entre versões minor; sempre listadas aqui.
 
 ## Não publicado
 
+- **A API inteira numa página: [docs/reference.md](docs/reference.md)** —
+  referência densa e de URL estável (decorators, plataforma, protocolo de
+  UI, sondas de teste, SIGIL1000–1022, pegadinhas), feita para RAG e
+  contexto de agentes; **pinada por teste** — export do core fora da
+  referência quebra o build. `llms.txt` na raiz indexa os docs com URLs
+  raw para consumo por máquina.
 - **AGENTS.md em todo projeto novo** — o `sigil init`/`npm create sigil`
   agora gera o manual do framework no formato que agentes de IA leem
   primeiro: regras de ouro (nunca editar `.generated`), referência dos

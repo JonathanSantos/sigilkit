@@ -1,0 +1,37 @@
+# sigil
+
+> Framework declarativo para extensões do VSCode: o TypeScript é a fonte
+> única de verdade e o package.json (contributes), o activate() e os tipos
+> de config são DERIVADOS dos decorators em build time — com validação de
+> expressões `when` e schemas de tools de IA saindo dos tipos. Pacotes npm:
+> @sigilkit/core, @sigilkit/compiler, @sigilkit/cli, @sigilkit/test,
+> create-sigil (versionam em lockstep). Docs em pt-BR (README.en.md em
+> inglês).
+
+## Referência (comece aqui, uma página com a API inteira)
+
+- [Referência da API](https://raw.githubusercontent.com/JonathanSantos/sigilkit/main/docs/reference.md):
+  decorators, plataforma de runtime, protocolo de UI tipado, sondas de teste,
+  diagnósticos SIGIL1000–1022, requisitos e pegadinhas
+
+## Documentação
+
+- [README (pt-BR)](https://raw.githubusercontent.com/JonathanSantos/sigilkit/main/README.md):
+  visão geral, tabela de decorators, modos de desenvolvimento, exemplos
+- [README (English)](https://raw.githubusercontent.com/JonathanSantos/sigilkit/main/README.en.md):
+  English overview
+- [Tutorial](https://raw.githubusercontent.com/JonathanSantos/sigilkit/main/docs/tutorial.md):
+  primeira extensão em 5 minutos, sem abrir o VSCode
+- [Spec de design](https://raw.githubusercontent.com/JonathanSantos/sigilkit/main/docs/spec.md):
+  modelo de propriedade, IR, regras R1–R6, armadilhas
+- [CHANGELOG](https://raw.githubusercontent.com/JonathanSantos/sigilkit/main/CHANGELOG.md):
+  o que mudou em cada versão
+
+## Optional
+
+- [ROADMAP](https://raw.githubusercontent.com/JonathanSantos/sigilkit/main/ROADMAP.md):
+  fila pública de features
+- [Exemplo restbench](https://github.com/JonathanSantos/sigilkit/tree/main/examples/restbench):
+  cliente REST com React e tools de Copilot, publicado no Marketplace
+- [Exemplo pets](https://github.com/JonathanSantos/sigilkit/tree/main/examples/pets):
+  case de rewrite do vscode-pets (1.347 linhas de host viram ~260)

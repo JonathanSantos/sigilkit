@@ -421,8 +421,11 @@ O `sigil init` já gera tudo assim; para projetos existentes:
 | [`@sigilkit/test`](packages/test) | simulador para testes | nunca importa `vscode` nem `typescript` |
 
 As regras são **testadas**: `tests/boundaries.test.ts` extrai imports por AST e
-falha o build se alguma for violada. O design completo — modelo de propriedade
-(§4), IR, diagnósticos `SIGIL1000`–`SIGIL1019`, armadilhas — está em
+falha o build se alguma for violada. A API inteira numa página está em
+[docs/reference.md](docs/reference.md) (pinada por teste: export fora da
+referência quebra o build — feita para RAG e contexto de agentes; há também
+um [llms.txt](llms.txt) na raiz). O design completo — modelo de propriedade
+(§4), IR, diagnósticos `SIGIL1000`–`SIGIL1022`, armadilhas — está em
 [docs/spec.md](docs/spec.md), com as erratas descobertas na implementação ao
 final.
 

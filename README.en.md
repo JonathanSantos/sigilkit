@@ -430,8 +430,11 @@ Marketplace is `vsce publish`.
 | [`@sigilkit/test`](packages/test) | simulator for tests | never imports `vscode` nor `typescript` |
 
 The rules are **tested**: `tests/boundaries.test.ts` extracts imports via AST
-and fails the build if any is violated. The full design — ownership model
-(§4), IR, `SIGIL1000`–`SIGIL1019` diagnostics, pitfalls — is in
+and fails the build if any is violated. The entire API on a single page is in
+[docs/reference.md](docs/reference.md) (pinned by a test: an export missing
+from the reference breaks the build — built for RAG and agent context; there
+is also an [llms.txt](llms.txt) at the root). The full design — ownership
+model (§4), IR, `SIGIL1000`–`SIGIL1022` diagnostics, pitfalls — is in
 [docs/spec.md](docs/spec.md) (in Portuguese), with the errata discovered
 during implementation at the end.
 

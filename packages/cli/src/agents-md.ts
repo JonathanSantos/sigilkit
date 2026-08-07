@@ -121,8 +121,12 @@ ${react ? `
 ` : ""}
 ## Documentação
 
-Framework: https://github.com/JonathanSantos/sigilkit — README (tabela
-completa de decorators), docs/spec.md (design) e docs/tutorial.md.
+**A API inteira numa página** (feita para o seu contexto):
+https://raw.githubusercontent.com/JonathanSantos/sigilkit/main/docs/reference.md
+Índice para máquinas:
+https://raw.githubusercontent.com/JonathanSantos/sigilkit/main/llms.txt
+Repo: https://github.com/JonathanSantos/sigilkit (README, docs/spec.md,
+docs/tutorial.md).
 `;
 }
 
