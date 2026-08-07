@@ -110,6 +110,23 @@ export async function activateExtension(opts: ActivateOptions): Promise<SigilTes
 
   try {
     delete require.cache[require.resolve(bundlePath)];
+    // F15 do dogfood externo: bundle com @sigilkit/core EXTERNO (o formato
+    // que o `sigil sandbox` escreve em out/extension.js) deixava o core
+    // CACHEADO entre ativações — congelado no mock da PRIMEIRA (split-brain:
+    // wire recarregado registrava comandos no mock novo; binds do core no
+    // velho). Limpar o core do cache dá a cada ativação um core fresco
+    // amarrado ao mock corrente. Resolvemos a RAIZ real do pacote (symlink
+    // de workspace faz o cache key não conter "@sigilkit") e varremos por
+    // prefixo.
+    try {
+      const coreEntry = require.resolve("@sigilkit/core", { paths: [path.dirname(bundlePath)] });
+      const coreRoot = path.dirname(path.dirname(coreEntry));
+      for (const key of Object.keys(require.cache)) {
+        if (key.startsWith(coreRoot + path.sep)) delete require.cache[key];
+      }
+    } catch {
+      // bundle com core embutido (o padrão): nada a limpar
+    }
     const ext = require(bundlePath) as ExtensionModule;
     const ctx = {
       subscriptions: [] as DisposableLike[],

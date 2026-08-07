@@ -182,6 +182,31 @@ describe("friccoes-lab — as correções do primeiro dogfood externo", () => {
     expect(host.logText()).toContain("cor: #00f");
   });
 
+  it("F15: bundle com core EXTERNO (o formato do sandbox) não vaza entre ativações", async () => {
+    // o sandbox escreve out/extension.js com @sigilkit/core externo; o core
+    // cacheado congelava no mock da 1ª ativação (split-brain da F15)
+    const externo = path.join(TMP, "out/extension-externo.js");
+    const r = spawnSync(
+      "npx",
+      ["esbuild", "src/.generated/wire.ts", "--bundle", "--platform=node", "--format=cjs", "--target=es2022", "--external:vscode", "--external:@sigilkit/core", `--outfile=${externo}`],
+      { cwd: TMP, encoding: "utf8", shell: process.platform === "win32" }
+    );
+    expect(r.status, r.stderr).toBe(0);
+    const h1 = await activateExtension({ projectDir: TMP, bundlePath: externo });
+    const provs = (h: unknown) =>
+      (h as { state: { languageProviders: unknown[] } }).state.languageProviders.length;
+    const n1 = provs(h1);
+    expect(n1).toBeGreaterThan(0);
+    const h2 = await activateExtension({ projectDir: TMP, bundlePath: externo });
+    // sem a limpeza do cache do core: h2 teria 0 providers e h1 dobraria
+    expect(provs(h2)).toBe(n1);
+    expect(provs(h1)).toBe(n1);
+    const editor = await h2.openTextDocument("veja 404 aqui", "notas");
+    expect(await h2.provideHover(editor, { line: 0, character: 6 })).toBeDefined();
+    await h2.dispose();
+    await h1.dispose();
+  });
+
   it("F7: Range aceita o overload numérico do vscode real", () => {
     const RangeClass = host.vscode.Range as new (a: number, b: number, c: number, d: number) => {
       start: { line: number; character: number };

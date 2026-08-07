@@ -4,6 +4,22 @@ Os pacotes (`@sigilkit/*` e `create-sigil`) versionam em lockstep — cada
 entrada aqui vale para todos na mesma versão. Pré-1.0, mudanças de API podem
 acontecer entre versões minor; sempre listadas aqui.
 
+## Não publicado
+
+- **Fix da F15 do dogfood externo** — o diagnóstico corrigiu a atribuição:
+  NÃO era regressão do core 0.11.0. O `sigil sandbox` escreve seu bundle
+  (com `@sigilkit/core` EXTERNO, necessário ao hot swap) **por cima de
+  `out/extension.js`** — o mesmo artefato do `main` e dos testes. Com core
+  externo, o `require` cacheava o core entre ativações do simulador,
+  congelado no mock da PRIMEIRA (split-brain: comandos no mock novo, binds
+  no velho). Duas correções:
+  1. `activateExtension` limpa o core do require.cache a cada ativação
+     (resolvendo a RAIZ real do pacote — symlink de workspace não engana
+     mais) — bundles com core externo ficam plenamente suportados;
+  2. o sandbox, ao sair, **devolve `out/extension.js` ao formato padrão**
+     (core embutido) — a contaminação não sobrevive à sessão.
+  Regressão pinada: dupla ativação de bundle externo no friccoes-lab.
+
 ## 0.11.0 — 2026-08-07
 
 A rodada 3 do dogfood externo (F11–F14 — incluindo o primeiro bug percebido

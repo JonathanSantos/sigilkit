@@ -336,6 +336,26 @@ exports.deactivate = () => { try { sock.destroy(); } catch {} };
       process.on("exit", () => {
         child.kill();
         uiDev?.kill();
+        // F15 do dogfood externo: o bundle do sandbox (core EXTERNO, para o
+        // hot swap) fica em out/extension.js — o MESMO artefato do pkg.main.
+        // Deixá-lo assim contaminava testes e um vsix sem prepublish. Na
+        // saída, devolvemos o formato padrão (core embutido).
+        try {
+          buildSync({
+            entryPoints: [path.join(projectDir, "src", ".generated", "wire.ts")],
+            bundle: true,
+            platform: "node",
+            format: "cjs",
+            target: "es2022",
+            external: ["vscode"],
+            outfile: bundlePath,
+            sourcemap: "inline",
+            logLevel: "silent",
+          });
+          console.log("sandbox: out/extension.js devolvido ao formato padrão (core embutido)");
+        } catch {
+          console.warn("sandbox: não consegui re-bundlar out/extension.js — rode 'npm run build' antes de testar/empacotar");
+        }
       });
       console.log("sandbox: 🚀 VSCode standalone aberto (isolado do seu VSCode)");
     })().catch((e) => {
