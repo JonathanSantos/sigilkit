@@ -4,7 +4,7 @@ Os pacotes (`@sigilkit/*` e `create-sigil`) versionam em lockstep — cada
 entrada aqui vale para todos na mesma versão. Pré-1.0, mudanças de API podem
 acontecer entre versões minor; sempre listadas aqui.
 
-## Não publicado
+## 0.11.1 — 2026-08-07
 
 - **Fix da F15 do dogfood externo** — o diagnóstico corrigiu a atribuição:
   NÃO era regressão do core 0.11.0. O `sigil sandbox` escreve seu bundle

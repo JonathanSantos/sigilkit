@@ -47,13 +47,13 @@
     "sandbox": "sigil sandbox ."
   },
   "dependencies": {
-    "@sigilkit/core": "0.11.0",
+    "@sigilkit/core": "0.11.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@sigilkit/cli": "0.11.0",
-    "@sigilkit/test": "0.11.0",
+    "@sigilkit/cli": "0.11.1",
+    "@sigilkit/test": "0.11.1",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@types/vscode": "^1.75.0",
