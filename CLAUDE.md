@@ -189,7 +189,10 @@ ex-gerenciada removida do código sai à mão. tests/graft.test.ts prova
 extensão legada + sigil convivendo (activate manual chama o do wire).
 packages/create = create-sigil (npm create sigil): bin fino que delega ao
 sigil init via require.resolve("@sigilkit/cli/bin/sigil.js"); publicado
-pelo release.yml junto com os 4 (loops incluem "create"). Tutorial usa
+pelo release.yml junto com os 4 (loops incluem "create"). sigil init gera
+AGENTS.md (manual p/ agentes: regras de ouro, decorators, loop de
+verificação, erros→remédios; fonte em cli/src/agents-md.ts, seção de UI
+condicional ao template react) + CLAUDE.md fino com import @AGENTS.md. Tutorial usa
 npm create sigil (código do minuto 4 segue PINADO pelo teste — só prosa
 mudou). ROADMAP.md + templates de issue/PR em .github/.
 

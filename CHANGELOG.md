@@ -4,6 +4,17 @@ Os pacotes (`@sigilkit/*` e `create-sigil`) versionam em lockstep — cada
 entrada aqui vale para todos na mesma versão. Pré-1.0, mudanças de API podem
 acontecer entre versões minor; sempre listadas aqui.
 
+## Não publicado
+
+- **AGENTS.md em todo projeto novo** — o `sigil init`/`npm create sigil`
+  agora gera o manual do framework no formato que agentes de IA leem
+  primeiro: regras de ouro (nunca editar `.generated`), referência dos
+  decorators, o loop de verificação com `@sigilkit/test` e o dicionário
+  de erros → remédios. Um `CLAUDE.md` fino importa via `@AGENTS.md` —
+  dois ecossistemas com um arquivo. A tese: na era dos agentes, o valor
+  do sigil é dar à IA um loop de verificação por máquina; este arquivo a
+  ensina a usá-lo.
+
 ## 0.8.0 — 2026-08-07
 
 A fornada de linguagem — os providers que faltavam para extensões de

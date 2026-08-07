@@ -107,6 +107,12 @@ cd minha-extensao && npm install && npm run build
 (`--template=react-webview` gera um painel React com o protocolo tipado
 pronto. Sem o `npm create`: `npm i -D @sigilkit/cli && npx sigil init`.)
 
+O projeto nasce com um **`AGENTS.md`** — o manual do sigil para agentes de
+IA (Claude Code, Copilot, Cursor…): regras de ouro, referência da API e o
+loop de verificação headless com `@sigilkit/test`. Seu agente erra alto,
+builda e testa sem abrir o VSCode — é o framework dando à IA o loop de
+feedback que a API crua não dá.
+
 **Siga o [tutorial: sua primeira extensão em 5 minutos](docs/tutorial.md)** —
 comando, config, status bar, watch, aba de opções e `.vsix`, sem abrir o
 VSCode. O teste `tests/tutorial.test.ts` garante que ele nunca apodrece.

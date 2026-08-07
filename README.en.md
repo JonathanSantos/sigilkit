@@ -109,6 +109,12 @@ cd my-extension && npm install && npm run build
 (`--template=react-webview` scaffolds a React panel with the typed protocol
 ready to go. Without `npm create`: `npm i -D @sigilkit/cli && npx sigil init`.)
 
+The project is born with an **`AGENTS.md`** — sigil's manual for AI agents
+(Claude Code, Copilot, Cursor…): golden rules, API reference and the
+headless verification loop with `@sigilkit/test`. Your agent fails loudly,
+builds and tests without opening VSCode — the framework giving AI the
+feedback loop the raw API never had.
+
 **Follow the [tutorial: your first extension in 5 minutes](docs/tutorial.md)**
 (in Portuguese) — command, config, status bar, watch, a settings tab and a
 `.vsix`, without opening VSCode. The test `tests/tutorial.test.ts` guarantees

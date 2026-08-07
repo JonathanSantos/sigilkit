@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { agentsMd, claudeMdPointer } from "./agents-md";
 
 function sanitizeName(raw: string): string {
   const s = raw
@@ -453,6 +454,10 @@ tsconfig.json
     { rel: ".vscodeignore", content: react ? `${vscodeignore}ui/src/**\nui/tsconfig.json\n` : vscodeignore },
     { rel: ".gitignore", content: `node_modules/\nout/\n.generated/\n*.vsix\n${react ? "ui/dist/\n" : ""}` },
     { rel: "README.md", content: readme },
+    // o manual do sigil no formato que agentes de IA leem primeiro; o
+    // CLAUDE.md importa via @ (sintaxe de imports do Claude Code)
+    { rel: "AGENTS.md", content: agentsMd(name, react) },
+    { rel: "CLAUDE.md", content: claudeMdPointer() },
     ...(react
       ? [
           { rel: "ui/index.html", content: uiHtml },

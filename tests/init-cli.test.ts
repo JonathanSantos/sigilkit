@@ -35,9 +35,19 @@ describe("sigil init", () => {
       ".vscodeignore",
       ".gitignore",
       "README.md",
+      "AGENTS.md",
+      "CLAUDE.md",
     ]) {
       expect(fs.existsSync(path.join(TMP, rel)), rel).toBe(true);
     }
+    // o manual para agentes: regras de ouro + loop de verificação + o
+    // CLAUDE.md importando via @ (dois ecossistemas com um arquivo)
+    const agents = fs.readFileSync(path.join(TMP, "AGENTS.md"), "utf8");
+    expect(agents).toContain("NUNCA edite `src/.generated/**`");
+    expect(agents).toContain("activateExtension");
+    expect(agents).toContain("init-target.minhaAcao");
+    expect(agents).not.toContain("A UI React"); // seção só no template react
+    expect(fs.readFileSync(path.join(TMP, "CLAUDE.md"), "utf8")).toContain("@AGENTS.md");
     const pkg = JSON.parse(fs.readFileSync(path.join(TMP, "package.json"), "utf8"));
     expect(pkg.name).toBe("init-target");
     expect(pkg.engines.vscode).toBe("^1.75.0");
@@ -99,6 +109,10 @@ describe("sigil init --template react-webview", () => {
     expect(pkg.dependencies.react).toBeDefined();
     expect(pkg.scripts["build:ui"]).toContain("--jsx=automatic");
     expect(pkg.scripts.typecheck).toContain("tsc -p ui");
+    // no template react o AGENTS.md ganha a seção do protocolo tipado da UI
+    const agents = fs.readFileSync(path.join(REACT_TMP, "AGENTS.md"), "utf8");
+    expect(agents).toContain("A UI React");
+    expect(agents).toContain("sigil-env.d.ts");
   });
 
   it("sigil build gera manifesto + sigil-env.d.ts do painel", () => {
